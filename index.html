@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐾 Portal - Sistema de Inventario Veterinaria</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #1e293b;
+        }
+        
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        
+        h1 { 
+            font-size: 2.5rem; 
+            color: #1e293b;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #64748b;
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .project-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+            border-top: 5px solid var(--primary);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .project-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        
+        .project-card.original {
+            border-top-color: var(--success);
+        }
+        
+        .project-card.mejoras {
+            border-top-color: #8b5cf6;
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .card-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+        }
+        
+        .original .card-icon { background: var(--success); }
+        .mejoras .card-icon { background: #8b5cf6; }
+        
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        
+        .card-subtitle {
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+        
+        .features {
+            list-style: none;
+            margin: 20px 0;
+            padding: 0;
+        }
+        
+        .features li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+            color: #475569;
+        }
+        
+        .features li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: var(--success);
+            font-weight: bold;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            flex: 1;
+            justify-content: center;
+        }
+        
+        .btn-primary:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+        }
+        
+        .btn-outline {
+            background: transparent;
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+        
+        .btn-outline:hover {
+            background: #eff6ff;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .badge-success {
+            background: #d1fae5;
+            color: var(--success);
+        }
+        
+        .badge-premium {
+            background: #f3e8ff;
+            color: #8b5cf6;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 20px;
+            color: #64748b;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .warning-box {
+            background: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .projects-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-paw"></i> Sistema de Inventario Veterinaria</h1>
+            <p class="subtitle">Portal central para gestionar ambas versiones del sistema de inventario y ventas para clínicas veterinarias</p>
+        </header>
+        
+        <div class="projects-grid">
+            <!-- TARJETA VERSIÓN ORIGINAL -->
+            <div class="project-card original">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="fas fa-warehouse"></i>
+                    </div>
+                    <div>
+                        <h2 class="card-title">Versión Original</h2>
+                        <p class="card-subtitle">Sistema básico probado y estable</p>
+                    </div>
+                </div>
+                
+                <p><strong>Base de datos:</strong> Tablas originales (inventario, ventas)</p>
+                
+                <ul class="features">
+                    <li>Gestión completa de inventario</li>
+                    <li>Registro de ventas con descuentos</li>
+                    <li>Reporte de encargos pendientes</li>
+                    <li>Funcionamiento offline</li>
+                    <li>Exportación a Excel</li>
+                    <li>Búsqueda en tiempo real</li>
+                </ul>
+                
+                <div class="warning-box">
+                    <p><i class="fas fa-exclamation-triangle"></i> <strong>Importante:</strong> Usa vistas originales (vista_inventario_cliente, vista_ventas_cliente)</p>
+                </div>
+                
+                <div class="btn-group">
+                    <a href="original/index.html" class="btn btn-primary">
+                        <i class="fas fa-rocket"></i> Abrir Sistema Original
+                    </a>
+                </div>
+            </div>
+            
+            <!-- TARJETA VERSIÓN MEJORAS -->
+            <div class="project-card mejoras">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div>
+                        <h2 class="card-title">Versión Mejoras <span class="badge badge-premium">RECOMENDADO</span></h2>
+                        <p class="card-subtitle">Sistema mejorado con correcciones</p>
+                    </div>
+                </div>
+                
+                <p><strong>Base de datos:</strong> Tablas de mejoras (inventario_mejoras, ventas_mejoras)</p>
+                
+                <ul class="features">
+                    <li><strong>TODAS las funciones de la versión original</strong></li>
+                    <li><strong>CORREGIDO:</strong> Columna "descuento" incluida en ventas</li>
+                    <li><strong>CORREGIDO:</strong> Función RPC acepta parámetro de descuento</li>
+                    <li>Tablas separadas para pruebas</li>
+                    <li>Funciones RPC actualizadas</li>
+                    <li>Mejor manejo de errores</li>
+                </ul>
+                
+                <div class="btn-group">
+                    <a href="mejoras/index.html" class="btn btn-primary">
+                        <i class="fas fa-rocket"></i> Abrir Sistema Mejoras
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="warning-box">
+            <h3><i class="fas fa-info-circle"></i> Instrucciones de uso</h3>
+            <p><strong>Credenciales de prueba para ambas versiones:</strong></p>
+            <p>Usuario: <code>cliente@ejemplo.com</code> | Contraseña: <code>Cl13nt3_S3gur0!</code></p>
+            <p style="margin-top: 10px;"><strong>Nota:</strong> Cada versión trabaja con tablas diferentes en Supabase. Asegúrate de tener creadas las vistas y funciones correspondientes.</p>
+        </div>
+        
+        <footer>
+            <p>Sistema desarrollado para gestión veterinaria | Desplegado con GitHub Pages</p>
+            <p style="margin-top: 10px; font-size: 0.9rem;">
+                <i class="fab fa-github"></i> Repositorio: inventarios
+            </p>
+        </footer>
+    </div>
+</body>
+</html>
