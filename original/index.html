@@ -945,51 +945,51 @@
         }
         
         function mostrarVentas(data) {
-    const tbody = document.getElementById('ventasBody');
-    tbody.innerHTML = '';
-    
-    const hoyChile = getFechaHoyChile();
-    const ventasHoy = data.filter(v => {
-        if (!v.fecha_venta) return false;
-        const fechaVenta = v.fecha_venta.split('T')[0];
-        return fechaVenta === hoyChile;
-    });
-    
-    const totalHoy = ventasHoy.reduce((sum, v) => sum + parseFloat(v.total || 0), 0);
-    document.getElementById('ventas-hoy').textContent = `$${totalHoy.toFixed(2)}`;
-    
-    data.forEach(item => {
-        const fecha = formatoHoraChile(item.fecha_venta);
-        const descuento = parseFloat(item.descuento || 0);
-        
-        const row = `
-            <tr>
-                <td>${item.codigo_barras}</td>
-                <td>${item.cantidad}</td>
-                <td>$${parseFloat(item.precio_unitario || 0).toFixed(2)}</td>
-                <td>${descuento > 0 ? `-$${descuento.toFixed(2)}` : '$0.00'}</td>
-                <td><strong>$${parseFloat(item.total || 0).toFixed(2)}</strong></td>
-                <td>${item.descripcion || ''}</td>
-                <td>${fecha}</td>
-                <td>
-                    <button class="action-btn btn-edit" data-codigo="${item.codigo_barras}" data-fecha="${item.fecha_venta}">
-                        <i class="fas fa-edit"></i> Editar
-                    </button>
-                </td>
-            </tr>
-        `;
-        tbody.innerHTML += row;
-    });
-    
-    // Agregar eventos a los botones de editar
-    document.querySelectorAll('#ventasBody .btn-edit').forEach(button => {
-        button.addEventListener('click', function() {
-            const codigo = this.getAttribute('data-codigo');
-            const fecha = this.getAttribute('data-fecha');
-            editarVenta(codigo, fecha);
-        });
-    });
-}
+            const tbody = document.getElementById('ventasBody');
+            tbody.innerHTML = '';
+            
+            const hoyChile = getFechaHoyChile();
+            const ventasHoy = data.filter(v => {
+                if (!v.fecha_venta) return false;
+                const fechaVenta = v.fecha_venta.split('T')[0];
+                return fechaVenta === hoyChile;
+            });
+            
+            const totalHoy = ventasHoy.reduce((sum, v) => sum + parseFloat(v.total || 0), 0);
+            document.getElementById('ventas-hoy').textContent = `$${totalHoy.toFixed(2)}`;
+            
+            data.forEach(item => {
+                const fecha = formatoHoraChile(item.fecha_venta);
+                const descuento = parseFloat(item.descuento || 0);
+                
+                const row = `
+                    <tr>
+                        <td>${item.codigo_barras}</td>
+                        <td>${item.cantidad}</td>
+                        <td>$${parseFloat(item.precio_unitario || 0).toFixed(2)}</td>
+                        <td>${descuento > 0 ? `-$${descuento.toFixed(2)}` : '$0.00'}</td>
+                        <td><strong>$${parseFloat(item.total || 0).toFixed(2)}</strong></td>
+                        <td>${item.descripcion || ''}</td>
+                        <td>${fecha}</td>
+                        <td>
+                            <button class="action-btn btn-edit" data-codigo="${item.codigo_barras}" data-fecha="${item.fecha_venta}">
+                                <i class="fas fa-edit"></i> Editar
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+            
+            // Agregar eventos a los botones de editar
+            document.querySelectorAll('#ventasBody .btn-edit').forEach(button => {
+                button.addEventListener('click', function() {
+                    const codigo = this.getAttribute('data-codigo');
+                    const fecha = this.getAttribute('data-fecha');
+                    editarVenta(codigo, fecha);
+                });
+            });
+        }
         
         function getStockBadge(cantidad) {
             if (cantidad <= 5) return { class: 'stock-low', text: 'Muy Bajo' };
@@ -1093,31 +1093,31 @@
         // ========== FUNCIONES PARA EDITAR VENTA (CON ACTUALIZACIÓN DE INVENTARIO) ==========
         
         async function editarVenta(codigo, fechaVenta) {
-             ventaEditando = ventas.find(v => 
-                 v.codigo_barras === codigo && 
-                  v.fecha_venta === fechaVenta
+            ventaEditando = ventas.find(v => 
+                v.codigo_barras === codigo && 
+                v.fecha_venta === fechaVenta
             );
     
-             if (!ventaEditando) return;
+            if (!ventaEditando) return;
     
-               // Buscar producto en inventario para mostrar stock actual
-              const producto = inventario.find(p => p.codigo_barras === codigo);
-               const stockActual = producto ? producto.cantidad : 0;
+            // Buscar producto en inventario para mostrar stock actual
+            const producto = inventario.find(p => p.codigo_barras === codigo);
+            const stockActual = producto ? producto.cantidad : 0;
     
-              document.getElementById('editVentaCodigo').value = ventaEditando.codigo_barras;
-              document.getElementById('editVentaFecha').value = formatoHoraChile(ventaEditando.fecha_venta);
-              document.getElementById('editVentaDescripcion').value = ventaEditando.descripcion || '';
-              document.getElementById('editVentaPrecio').value = parseFloat(ventaEditando.precio_unitario).toFixed(2);
-              document.getElementById('editVentaDescuento').value = parseFloat(ventaEditando.descuento || 0).toFixed(2);
-              document.getElementById('editVentaCantidad').value = ventaEditando.cantidad;
+            document.getElementById('editVentaCodigo').value = ventaEditando.codigo_barras;
+            document.getElementById('editVentaFecha').value = formatoHoraChile(ventaEditando.fecha_venta);
+            document.getElementById('editVentaDescripcion').value = ventaEditando.descripcion || '';
+            document.getElementById('editVentaPrecio').value = parseFloat(ventaEditando.precio_unitario).toFixed(2);
+            document.getElementById('editVentaDescuento').value = parseFloat(ventaEditando.descuento || 0).toFixed(2);
+            document.getElementById('editVentaCantidad').value = ventaEditando.cantidad;
     
-              // Agregar información de stock disponible
-             document.getElementById('editVentaDescripcion').placeholder = 
-                  `Descripción | Stock actual: ${stockActual} unidades`;
+            // Agregar información de stock disponible
+            document.getElementById('editVentaDescripcion').placeholder = 
+                `Descripción | Stock actual: ${stockActual} unidades`;
     
-               calcularNuevoTotalConDescuento();
-               openModal('modalVenta');
-           }
+            calcularNuevoTotalConDescuento();
+            openModal('modalVenta');
+        }
         
         function calcularNuevoTotalConDescuento() {
             const precio = parseFloat(document.getElementById('editVentaPrecio').value);
@@ -1129,65 +1129,65 @@
         }
         
         async function guardarVenta() {
-    const nuevaCantidad = parseInt(document.getElementById('editVentaCantidad').value);
-    const precio = parseFloat(document.getElementById('editVentaPrecio').value);
-    const nuevoDescuento = parseFloat(document.getElementById('editVentaDescuento').value) || 0;
-    
-    if (nuevaCantidad <= 0) {
-        showNotification('❌ La cantidad debe ser mayor a 0', 'error');
-        return;
-    }
-    
-    if (nuevoDescuento < 0) {
-        showNotification('❌ El descuento no puede ser negativo', 'error');
-        return;
-    }
-    
-    // Verificar que el descuento no sea mayor al subtotal
-    const subtotal = nuevaCantidad * precio;
-    if (nuevoDescuento > subtotal) {
-        showNotification(`❌ El descuento ($${nuevoDescuento.toFixed(2)}) no puede ser mayor al subtotal ($${subtotal.toFixed(2)})`, 'error');
-        return;
-    }
-    
-    try {
-        showNotification('🔄 Actualizando venta...', 'info');
-        
-        // IMPORTANTE: Ahora usamos la función RPC ACTUALIZADA con 4 parámetros
-        const { data, error } = await supabaseClient.rpc('editar_cantidad_venta', {
-            p_barcode: ventaEditando.codigo_barras,
-            p_fecha_venta: ventaEditando.fecha_venta,
-            p_nueva_cantidad: nuevaCantidad,
-            p_nuevo_descuento: nuevoDescuento  // ¡ESTE ES EL NUEVO PARÁMETRO!
-        });
-        
-        if (error) {
-            console.error('Error de RPC:', error);
-            throw error;
-        }
-        
-        console.log('Respuesta de Supabase:', data);
-        
-        if (data && data.success) {
-            showNotification('✅ Venta actualizada correctamente', 'success');
-            closeModal('modalVenta');
+            const nuevaCantidad = parseInt(document.getElementById('editVentaCantidad').value);
+            const precio = parseFloat(document.getElementById('editVentaPrecio').value);
+            const nuevoDescuento = parseFloat(document.getElementById('editVentaDescuento').value) || 0;
             
-            // Recargar datos para ver los cambios
-            await cargarVentas();
-            await cargarInventario();
-            actualizarEstadisticas();
+            if (nuevaCantidad <= 0) {
+                showNotification('❌ La cantidad debe ser mayor a 0', 'error');
+                return;
+            }
             
-        } else {
-            const mensajeError = data?.error || 'Error desconocido';
-            console.error('Error en respuesta:', data);
-            showNotification('❌ Error: ' + mensajeError, 'error');
+            if (nuevoDescuento < 0) {
+                showNotification('❌ El descuento no puede ser negativo', 'error');
+                return;
+            }
+            
+            // Verificar que el descuento no sea mayor al subtotal
+            const subtotal = nuevaCantidad * precio;
+            if (nuevoDescuento > subtotal) {
+                showNotification(`❌ El descuento ($${nuevoDescuento.toFixed(2)}) no puede ser mayor al subtotal ($${subtotal.toFixed(2)})`, 'error');
+                return;
+            }
+            
+            try {
+                showNotification('🔄 Actualizando venta...', 'info');
+                
+                // IMPORTANTE: Ahora usamos la función RPC ACTUALIZADA con 4 parámetros
+                const { data, error } = await supabaseClient.rpc('editar_cantidad_venta', {
+                    p_barcode: ventaEditando.codigo_barras,
+                    p_fecha_venta: ventaEditando.fecha_venta,
+                    p_nueva_cantidad: nuevaCantidad,
+                    p_nuevo_descuento: nuevoDescuento  // ¡ESTE ES EL NUEVO PARÁMETRO!
+                });
+                
+                if (error) {
+                    console.error('Error de RPC:', error);
+                    throw error;
+                }
+                
+                console.log('Respuesta de Supabase:', data);
+                
+                if (data && data.success) {
+                    showNotification('✅ Venta actualizada correctamente', 'success');
+                    closeModal('modalVenta');
+                    
+                    // Recargar datos para ver los cambios
+                    await cargarVentas();
+                    await cargarInventario();
+                    actualizarEstadisticas();
+                    
+                } else {
+                    const mensajeError = data?.error || 'Error desconocido';
+                    console.error('Error en respuesta:', data);
+                    showNotification('❌ Error: ' + mensajeError, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error completo al actualizar venta:', error);
+                showNotification('❌ Error al actualizar la venta: ' + error.message, 'error');
+            }
         }
-        
-    } catch (error) {
-        console.error('Error completo al actualizar venta:', error);
-        showNotification('❌ Error al actualizar la venta: ' + error.message, 'error');
-    }
-}
         
         // ========== FUNCIONES PARA AGREGAR VENTAS MANUALES ==========
         
@@ -1199,7 +1199,7 @@
             document.getElementById('infoProducto').style.display = 'none';
             document.getElementById('ventaCantidad').value = 1;
             document.getElementById('ventaPrecio').value = '';
-            document.getElementById('ventaDescuento').value = 0;  // NUEVA LÍNEA - Resetear a 0
+            document.getElementById('ventaDescuento').value = 0;
             document.getElementById('ventaDescripcion').value = '';
             document.getElementById('ventaTotal').textContent = '$0.00';
             document.getElementById('fechaVentaActual').textContent = getFechaActualChile();
@@ -1275,7 +1275,7 @@
                 document.getElementById('productoPrecio').textContent = parseFloat(productoSeleccionado.precio || 0).toFixed(2);
         
                 document.getElementById('ventaPrecio').value = parseFloat(productoSeleccionado.precio || 0).toFixed(2);
-                document.getElementById('ventaDescuento').value = 0;  // NUEVA LÍNEA - Resetear descuento
+                document.getElementById('ventaDescuento').value = 0;
                 document.getElementById('ventaDescripcion').value = productoSeleccionado.descripcion || '';
                 document.getElementById('ventaCantidad').max = productoSeleccionado.cantidad;
         
@@ -1297,176 +1297,171 @@
         }
         
         async function guardarNuevaVenta() {
-    if (!productoSeleccionado) {
-        showNotification('❌ Primero selecciona un producto', 'error');
-        return;
-    }
-    
-    const cantidad = parseInt(document.getElementById('ventaCantidad').value);
-    const precio = parseFloat(document.getElementById('ventaPrecio').value);
-    const descuento = parseFloat(document.getElementById('ventaDescuento').value) || 0;
-    const descripcion = document.getElementById('ventaDescripcion').value;
-    const codigoBarras = productoSeleccionado.codigo_barras;
-    
-    if (cantidad <= 0) {
-        showNotification('❌ La cantidad debe ser mayor a 0', 'error');
-        return;
-    }
-    
-    if (precio <= 0) {
-        showNotification('❌ El precio debe ser mayor a 0', 'error');
-        return;
-    }
-    
-    if (descuento < 0) {
-        showNotification('❌ El descuento no puede ser negativo', 'error');
-        return;
-    }
-    
-    // Verificar que el descuento no sea mayor al subtotal
-    const subtotal = cantidad * precio;
-    if (descuento > subtotal) {
-        showNotification(`❌ El descuento ($${descuento.toFixed(2)}) no puede ser mayor al subtotal ($${subtotal.toFixed(2)})`, 'error');
-        return;
-    }
-    
-    if (cantidad > productoSeleccionado.cantidad) {
-        showNotification(`❌ Stock insuficiente. Disponible: ${productoSeleccionado.cantidad}`, 'error');
-        return;
-    }
-    
-    const ventaData = {
-        barcode: codigoBarras,
-        cantidad: cantidad,
-        precio_unitario: precio,
-        descuento: descuento,  // NUEVO CAMPO
-        descripcion: descripcion || productoSeleccionado.descripcion || '',
-        fecha_venta: getHoraChileISO()
-    };
-    
-    if (!navigator.onLine) {
-        // Asegurar que la ventaData tenga descuento
-        if (ventaData.descuento === undefined) {
-            ventaData.descuento = descuento || 0;
+            if (!productoSeleccionado) {
+                showNotification('❌ Primero selecciona un producto', 'error');
+                return;
+            }
+            
+            const cantidad = parseInt(document.getElementById('ventaCantidad').value);
+            const precio = parseFloat(document.getElementById('ventaPrecio').value);
+            const descuento = parseFloat(document.getElementById('ventaDescuento').value) || 0;
+            const descripcion = document.getElementById('ventaDescripcion').value;
+            const codigoBarras = productoSeleccionado.codigo_barras;
+            
+            if (cantidad <= 0) {
+                showNotification('❌ La cantidad debe ser mayor a 0', 'error');
+                return;
+            }
+            
+            if (precio <= 0) {
+                showNotification('❌ El precio debe ser mayor a 0', 'error');
+                return;
+            }
+            
+            if (descuento < 0) {
+                showNotification('❌ El descuento no puede ser negativo', 'error');
+                return;
+            }
+            
+            // Verificar que el descuento no sea mayor al subtotal
+            const subtotal = cantidad * precio;
+            if (descuento > subtotal) {
+                showNotification(`❌ El descuento ($${descuento.toFixed(2)}) no puede ser mayor al subtotal ($${subtotal.toFixed(2)})`, 'error');
+                return;
+            }
+            
+            if (cantidad > productoSeleccionado.cantidad) {
+                showNotification(`❌ Stock insuficiente. Disponible: ${productoSeleccionado.cantidad}`, 'error');
+                return;
+            }
+            
+            const ventaData = {
+                barcode: codigoBarras,
+                cantidad: cantidad,
+                precio_unitario: precio,
+                descuento: descuento,
+                descripcion: descripcion || productoSeleccionado.descripcion || '',
+                fecha_venta: getHoraChileISO()
+            };
+            
+            if (!navigator.onLine) {
+                // Asegurar que la ventaData tenga descuento
+                if (ventaData.descuento === undefined) {
+                    ventaData.descuento = descuento || 0;
+                }
+                
+                guardarVentaOffline(ventaData);
+                actualizarInventarioLocal(codigoBarras, -cantidad);
+                showNotification('📴 Venta guardada localmente. Se sincronizará cuando haya internet', 'warning');
+                closeModal('modalAgregarVenta');
+                actualizarVistaInventarioLocal();
+                return;
+            }
+            
+            try {
+                // Insertar venta directamente con descuento
+                const { data: ventaInsertada, error: errorVenta } = await supabaseClient
+                    .from('ventas')
+                    .insert([ventaData])
+                    .select();
+                
+                if (errorVenta) throw errorVenta;
+                
+                // Actualizar inventario
+                const nuevoStock = productoSeleccionado.cantidad - cantidad;
+                const { error: errorInventario } = await supabaseClient
+                    .from('inventario')
+                    .update({ 
+                        cantidad: nuevoStock,
+                        fecha_actualizacion: getHoraChileISO()
+                    })
+                    .eq('barcode', codigoBarras);
+                
+                if (errorInventario) throw errorInventario;
+                
+                showNotification('✅ Venta registrada correctamente', 'success');
+                closeModal('modalAgregarVenta');
+                cargarDatos();
+                
+            } catch (error) {
+                console.warn('Error online, guardando offline:', error);
+                guardarVentaOffline(ventaData);
+                actualizarInventarioLocal(codigoBarras, -cantidad);
+                showNotification('⚠️ Error de conexión. Venta guardada localmente', 'warning');
+                closeModal('modalAgregarVenta');
+                actualizarVistaInventarioLocal();
+            }
         }
-    
-        // Asegurar que la ventaData tenga total calculado
-        if (!ventaData.total) {
-            ventaData.total = (cantidad * precio) - (ventaData.descuento || 0);
-        }
-    
-        guardarVentaOffline(ventaData);
-        actualizarInventarioLocal(codigoBarras, -cantidad);
-        showNotification('📴 Venta guardada localmente. Se sincronizará cuando haya internet', 'warning');
-        closeModal('modalAgregarVenta');
-        actualizarVistaInventarioLocal();
-        return;
-    }
-    
-    try {
-        // Insertar venta directamente con descuento
-        const { data: ventaInsertada, error: errorVenta } = await supabaseClient
-            .from('ventas')
-            .insert([ventaData])
-            .select();
-        
-        if (errorVenta) throw errorVenta;
-        
-        // Actualizar inventario
-        const nuevoStock = productoSeleccionado.cantidad - cantidad;
-        const { error: errorInventario } = await supabaseClient
-            .from('inventario')
-            .update({ 
-                cantidad: nuevoStock,
-                fecha_actualizacion: getHoraChileISO()
-            })
-            .eq('barcode', codigoBarras);
-        
-        if (errorInventario) throw errorInventario;
-        
-        showNotification('✅ Venta registrada correctamente', 'success');
-        closeModal('modalAgregarVenta');
-        cargarDatos();
-        
-    } catch (error) {
-        console.warn('Error online, guardando offline:', error);
-        guardarVentaOffline(ventaData);
-        actualizarInventarioLocal(codigoBarras, -cantidad);
-        showNotification('⚠️ Error de conexión. Venta guardada localmente', 'warning');
-        closeModal('modalAgregarVenta');
-        actualizarVistaInventarioLocal();
-    }
-}
 
         // ========== FUNCIONES PARA REPORTE DE ENCARGOS ==========
 
-function mostrarReporteEncargos() {
-    // 1. Filtrar productos con cantidad NEGATIVA
-    const encargos = inventario.filter(producto => producto.cantidad < 0);
-    
-    // 2. Si no hay encargos, mostrar mensaje
-    if (encargos.length === 0) {
-        showNotification('✅ No hay encargos pendientes', 'success');
-        return;
-    }
-    
-    // 3. Actualizar el contador en la ventana
-    document.getElementById('total-encargos').textContent = encargos.length;
-    
-    // 4. Mostrar la lista de encargos
-    const tbody = document.getElementById('lista-encargos');
-    tbody.innerHTML = '';
-    
-    // 5. Calcular total de unidades pendientes Y costo total
-    let totalUnidadesPendientes = 0;
-    let inversionTotal = 0;
-    
-    // 6. Para cada producto con encargos...
-    encargos.forEach(producto => {
-        const cantidadPendiente = Math.abs(producto.cantidad);
-        const costoUnitario = parseFloat(producto.costo || 0);
-        const costoProducto = cantidadPendiente * costoUnitario;
-        
-        totalUnidadesPendientes += cantidadPendiente;
-        inversionTotal += costoProducto;
-        
-        // 7. Crear una fila en la tabla
-        const row = `
-            <tr style="border-bottom: 1px solid #e2e8f0;">
-                <td style="padding: 12px;"><strong>${producto.codigo_barras}</strong></td>
-                <td style="padding: 12px;">${producto.descripcion || '<span style="color: #94a3b8;">Sin descripción</span>'}</td>
-                <td style="padding: 12px;">
-                    <span style="padding: 4px 10px; background: #fee2e2; color: #dc2626; border-radius: 20px; font-weight: bold;">
-                        ${cantidadPendiente} unidades
-                    </span>
-                </td>
-                <td style="padding: 12px;">
-                    <div>$${costoUnitario.toFixed(2)} c/u</div>
-                    <div style="font-size: 12px; color: #64748b;">Total: $${costoProducto.toFixed(2)}</div>
-                </td>
-            </tr>
-        `;
-        tbody.innerHTML += row;
-    });
-    
-    // 8. Agregar fila de totales CON INVERSIÓN TOTAL
-    const totalRow = `
-        <tr style="background: #f8fafc; font-weight: bold;">
-            <td style="padding: 12px; color: #475569;" colspan="2">TOTAL GENERAL</td>
-            <td style="padding: 12px; color: #dc2626;">${totalUnidadesPendientes} unidades</td>
-            <td style="padding: 12px; color: #dc2626;">
-                <div>Inversión total:</div>
-                <div style="font-size: 18px;">$${inversionTotal.toFixed(2)}</div>
-            </td>
-        </tr>
-    `;
-    tbody.innerHTML += totalRow;
-    
-    // 9. Mostrar la ventana modal
-    openModal('modalEncargos');
-    
-    showNotification(`💰 Inversión requerida: $${inversionTotal.toFixed(2)} para ${encargos.length} productos`, 'success');
-}
+        function mostrarReporteEncargos() {
+            // 1. Filtrar productos con cantidad NEGATIVA
+            const encargos = inventario.filter(producto => producto.cantidad < 0);
+            
+            // 2. Si no hay encargos, mostrar mensaje
+            if (encargos.length === 0) {
+                showNotification('✅ No hay encargos pendientes', 'success');
+                return;
+            }
+            
+            // 3. Actualizar el contador en la ventana
+            document.getElementById('total-encargos').textContent = encargos.length;
+            
+            // 4. Mostrar la lista de encargos
+            const tbody = document.getElementById('lista-encargos');
+            tbody.innerHTML = '';
+            
+            // 5. Calcular total de unidades pendientes Y costo total
+            let totalUnidadesPendientes = 0;
+            let inversionTotal = 0;
+            
+            // 6. Para cada producto con encargos...
+            encargos.forEach(producto => {
+                const cantidadPendiente = Math.abs(producto.cantidad);
+                const costoUnitario = parseFloat(producto.costo || 0);
+                const costoProducto = cantidadPendiente * costoUnitario;
+                
+                totalUnidadesPendientes += cantidadPendiente;
+                inversionTotal += costoProducto;
+                
+                // 7. Crear una fila en la tabla
+                const row = `
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 12px;"><strong>${producto.codigo_barras}</strong></td>
+                        <td style="padding: 12px;">${producto.descripcion || '<span style="color: #94a3b8;">Sin descripción</span>'}</td>
+                        <td style="padding: 12px;">
+                            <span style="padding: 4px 10px; background: #fee2e2; color: #dc2626; border-radius: 20px; font-weight: bold;">
+                                ${cantidadPendiente} unidades
+                            </span>
+                        </td>
+                        <td style="padding: 12px;">
+                            <div>$${costoUnitario.toFixed(2)} c/u</div>
+                            <div style="font-size: 12px; color: #64748b;">Total: $${costoProducto.toFixed(2)}</div>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+            
+            // 8. Agregar fila de totales CON INVERSIÓN TOTAL
+            const totalRow = `
+                <tr style="background: #f8fafc; font-weight: bold;">
+                    <td style="padding: 12px; color: #475569;" colspan="2">TOTAL GENERAL</td>
+                    <td style="padding: 12px; color: #dc2626;">${totalUnidadesPendientes} unidades</td>
+                    <td style="padding: 12px; color: #dc2626;">
+                        <div>Inversión total:</div>
+                        <div style="font-size: 18px;">$${inversionTotal.toFixed(2)}</div>
+                    </td>
+                </tr>
+            `;
+            tbody.innerHTML += totalRow;
+            
+            // 9. Mostrar la ventana modal
+            openModal('modalEncargos');
+            
+            showNotification(`💰 Inversión requerida: $${inversionTotal.toFixed(2)} para ${encargos.length} productos`, 'success');
+        }
         
         // ========== FUNCIONES OFFLINE ==========
         
@@ -1476,17 +1471,16 @@ function mostrarReporteEncargos() {
                 barcode: ventaData.barcode,
                 cantidad: ventaData.cantidad,
                 precio_unitario: ventaData.precio_unitario,
-                descuento: ventaData.descuento || 0,  // ← Asegurar que existe
-                total: ventaData.total || (ventaData.cantidad * ventaData.precio_unitario) - (ventaData.descuento || 0),
+                descuento: ventaData.descuento || 0,
                 descripcion: ventaData.descripcion || '',
                 fecha_venta: ventaData.fecha_venta || getHoraChileISO(),
                 offline_id: Date.now() + Math.random(),
                 estado: 'pendiente'
             };
-    
-            let ventasPendientes = JSON.parse(localStorage.getItem('ventas_offline_mejoras') || '[]');
+            
+            let ventasPendientes = JSON.parse(localStorage.getItem('ventas_offline') || '[]');
             ventasPendientes.push(ventaParaGuardar);
-            localStorage.setItem('ventas_offline_mejoras', JSON.stringify(ventasPendientes));
+            localStorage.setItem('ventas_offline', JSON.stringify(ventasPendientes));
             actualizarBadgeOffline();
         }
         
@@ -1528,87 +1522,82 @@ function mostrarReporteEncargos() {
         }
         
         async function sincronizarVentasPendientes() {
-    if (!navigator.onLine) {
-        showNotification('❌ No hay conexión a internet', 'error');
-        return;
-    }
-    
-    const ventasPendientes = JSON.parse(localStorage.getItem('ventas_offline_mejoras') || '[]');
-    
-    if (ventasPendientes.length === 0) {
-        showNotification('✅ No hay ventas pendientes por sincronizar', 'success');
-        return;
-    }
-    
-    showNotification(`🔄 Sincronizando ${ventasPendientes.length} ventas pendientes...`, 'info');
-    
-    const exitosas = [];
-    const fallidas = [];
-    
-    for (const venta of ventasPendientes) {
-        try {
-            // PREPARAR DATOS CON VALORES POR DEFECTO
-            const descuento = venta.descuento || 0;
-            const total = venta.total || (venta.cantidad * venta.precio_unitario - descuento);
-            
-            const ventaParaSubir = {
-                barcode: venta.barcode,
-                cantidad: venta.cantidad,
-                precio_unitario: venta.precio_unitario,
-                descuento: descuento,  // ← ¡ASEGURAR QUE TIENE VALOR!
-                total: total,
-                descripcion: venta.descripcion || '',
-                fecha_venta: venta.fecha_venta
-            };
-            
-            // MODIFICADO: Insertar en ventas_mejoras
-            const { error: errorVenta } = await supabaseClient
-                .from('ventas_mejoras')
-                .insert([ventaParaSubir]);
-            
-            if (!errorVenta) {
-                // MODIFICADO: Actualizar inventario_mejoras
-                const producto = inventario.find(p => p.codigo_barras === venta.barcode);
-                if (producto) {
-                    const nuevoStock = producto.cantidad - venta.cantidad;
-                    await supabaseClient
-                        .from('inventario_mejoras')
-                        .update({ 
-                            cantidad: nuevoStock,
-                            fecha_actualizacion: getHoraChileISO()
-                        })
-                        .eq('barcode', venta.barcode);
-                }
-                exitosas.push(venta);
-            } else {
-                console.error('Error insertando venta:', errorVenta);
-                fallidas.push(venta);
+            if (!navigator.onLine) {
+                showNotification('❌ No hay conexión a internet', 'error');
+                return;
             }
-        } catch (error) {
-            console.error('Error sincronizando venta:', error);
-            fallidas.push(venta);
+            
+            const ventasPendientes = JSON.parse(localStorage.getItem('ventas_offline') || '[]');
+            
+            if (ventasPendientes.length === 0) {
+                showNotification('✅ No hay ventas pendientes por sincronizar', 'success');
+                return;
+            }
+            
+            showNotification(`🔄 Sincronizando ${ventasPendientes.length} ventas pendientes...`, 'info');
+            
+            const exitosas = [];
+            const fallidas = [];
+            
+            for (const venta of ventasPendientes) {
+                try {
+                    const ventaParaSubir = {
+                        barcode: venta.barcode,
+                        cantidad: venta.cantidad,
+                        precio_unitario: venta.precio_unitario,
+                        descuento: venta.descuento || 0,
+                        descripcion: venta.descripcion || '',
+                        fecha_venta: venta.fecha_venta
+                    };
+                    
+                    // Insertar venta
+                    const { error: errorVenta } = await supabaseClient
+                        .from('ventas')
+                        .insert([ventaParaSubir]);
+                    
+                    if (!errorVenta) {
+                        // Actualizar inventario
+                        const producto = inventario.find(p => p.codigo_barras === venta.barcode);
+                        if (producto) {
+                            const nuevoStock = producto.cantidad - venta.cantidad;
+                            await supabaseClient
+                                .from('inventario')
+                                .update({ 
+                                    cantidad: nuevoStock,
+                                    fecha_actualizacion: getHoraChileISO()
+                                })
+                                .eq('barcode', venta.barcode);
+                        }
+                        exitosas.push(venta);
+                    } else {
+                        console.error('Error insertando venta:', errorVenta);
+                        fallidas.push(venta);
+                    }
+                } catch (error) {
+                    console.error('Error sincronizando venta:', error);
+                    fallidas.push(venta);
+                }
+            }
+            
+            localStorage.setItem('ventas_offline', JSON.stringify(fallidas));
+            
+            const inventarioOffline = JSON.parse(localStorage.getItem('inventario_offline') || '{}');
+            exitosas.forEach(venta => {
+                delete inventarioOffline[venta.barcode];
+            });
+            localStorage.setItem('inventario_offline', JSON.stringify(inventarioOffline));
+            
+            if (exitosas.length > 0) {
+                showNotification(`✅ ${exitosas.length} ventas sincronizadas exitosamente`, 'success');
+                cargarDatos();
+            }
+            
+            if (fallidas.length > 0) {
+                showNotification(`⚠️ ${fallidas.length} ventas no se pudieron sincronizar`, 'warning');
+            }
+            
+            actualizarBadgeOffline();
         }
-    }
-    
-    localStorage.setItem('ventas_offline_mejoras', JSON.stringify(fallidas));
-    
-    const inventarioOffline = JSON.parse(localStorage.getItem('inventario_offline_mejoras') || '{}');
-    exitosas.forEach(venta => {
-        delete inventarioOffline[venta.barcode];
-    });
-    localStorage.setItem('inventario_offline_mejoras', JSON.stringify(inventarioOffline));
-    
-    if (exitosas.length > 0) {
-        showNotification(`✅ ${exitosas.length} ventas sincronizadas exitosamente`, 'success');
-        cargarDatos();
-    }
-    
-    if (fallidas.length > 0) {
-        showNotification(`⚠️ ${fallidas.length} ventas no se pudieron sincronizar`, 'warning');
-    }
-    
-    actualizarBadgeOffline();
-}
         
         // ========== FUNCIONES GENERALES ==========
         
