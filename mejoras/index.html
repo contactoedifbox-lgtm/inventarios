@@ -354,7 +354,7 @@
                 <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
             </button>
             
-           <div style="margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 8px; font-size: 14px;">
+            <div style="margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 8px; font-size: 14px;">
                 <p><i class="fas fa-info-circle"></i> <strong>Sistema Veterinario - Acceso Restringido</strong></p>
                 <p style="font-size: 12px; color: #64748b;">Solo personal autorizado</p>
             </div>
@@ -438,7 +438,7 @@
             <div class="tabs">
                 <button class="tab-btn" id="tab-ventas-btn">
                     <i class="fas fa-shopping-cart"></i> Ventas
-                </button>
+                </button>    
                 <button class="tab-btn active" id="tab-inventario-btn">
                     <i class="fas fa-boxes"></i> Inventario
                 </button>
@@ -880,9 +880,9 @@
             try {
                 showNotification('Cargando inventario de mejoras...', 'info');
                 
-                // MODIFICADO: Usar vista_inventario_mejoras en lugar de vista_inventario_cliente
+                // USAR VISTA DE MEJORAS
                 const { data, error } = await supabaseClient
-                    .from('vista_inventario_mejoras')  // <-- CAMBIADO
+                    .from('vista_inventario_mejoras')
                     .select('*')
                     .order('fecha_actualizacion', { ascending: false });
                 
@@ -937,9 +937,9 @@
         
         async function cargarVentas() {
             try {
-                // MODIFICADO: Usar vista_ventas_mejoras en lugar de vista_ventas_cliente
+                // USAR VISTA DE MEJORAS
                 const { data, error } = await supabaseClient
-                    .from('vista_ventas_mejoras')  // <-- CAMBIADO
+                    .from('vista_ventas_mejoras')
                     .select('*')
                     .order('fecha_venta', { ascending: false })
                     .limit(200);
@@ -1076,8 +1076,8 @@
             const precio = parseFloat(document.getElementById('editPrecio').value);
             
             try {
-                // MODIFICADO: Llamar a la función RPC editar_inventario_mejoras
-                const { data, error } = await supabaseClient.rpc('editar_inventario_mejoras', {  // <-- CAMBIADO
+                // USAR FUNCIÓN RPC DE MEJORAS
+                const { data, error } = await supabaseClient.rpc('editar_inventario_mejoras', {
                     p_barcode: productoEditando.codigo_barras,
                     p_descripcion: descripcion,
                     p_cantidad: cantidad,
@@ -1163,8 +1163,8 @@
             try {
                 showNotification('🔄 Actualizando venta en mejoras...', 'info');
                 
-                // MODIFICADO: Usar la función RPC editar_cantidad_venta_mejoras
-                const { data, error } = await supabaseClient.rpc('editar_cantidad_venta_mejoras', {  // <-- CAMBIADO
+                // USAR FUNCIÓN RPC DE MEJORAS
+                const { data, error } = await supabaseClient.rpc('editar_cantidad_venta_mejoras', {
                     p_barcode: ventaEditando.codigo_barras,
                     p_fecha_venta: ventaEditando.fecha_venta,
                     p_nueva_cantidad: nuevaCantidad,
@@ -1345,20 +1345,24 @@
                 return;
             }
             
-            // Crear objeto de venta con todos los campos necesarios
+            // Calcular total
+            const total = (cantidad * precio) - descuento;
+            
+            // Crear objeto de venta
             const ventaData = {
                 barcode: codigoBarras,
                 cantidad: cantidad,
                 precio_unitario: precio,
                 descuento: descuento,
-                total: (cantidad * precio) - descuento,
+                total: total,
                 descripcion: descripcion || productoSeleccionado.descripcion || '',
                 fecha_venta: getHoraChileISO()
             };
             
             console.log("Datos de venta a guardar:", ventaData);
+            console.log("¿Modo online?", navigator.onLine);
             
-            // Verificar si estamos en modo offline
+            // SI estamos offline, guardar localmente
             if (!navigator.onLine) {
                 console.log("Modo offline detectado, guardando localmente...");
                 guardarVentaOffline(ventaData);
@@ -1369,10 +1373,12 @@
                 return;
             }
             
+            // SI estamos online, intentar guardar en Supabase
             try {
-                console.log("Modo online, guardando en Supabase...");
+                console.log("Modo online, intentando guardar en Supabase...");
+                showNotification('🔄 Guardando venta en mejoras...', 'info');
                 
-                // 1. Insertar la venta en la tabla ventas_mejoras
+                // 1. Insertar la venta en ventas_mejoras
                 const { data: ventaInsertada, error: errorVenta } = await supabaseClient
                     .from('ventas_mejoras')
                     .insert([ventaData])
@@ -1380,18 +1386,30 @@
                 
                 if (errorVenta) {
                     console.error("Error insertando venta:", errorVenta);
-                    // Si falla, guardar offline
-                    guardarVentaOffline(ventaData);
-                    actualizarInventarioLocal(codigoBarras, -cantidad);
-                    showNotification('⚠️ Error de conexión. Venta guardada localmente', 'warning');
-                    closeModal('modalAgregarVenta');
-                    actualizarVistaInventarioLocal();
+                    
+                    // Si es error de red, guardar offline
+                    if (errorVenta.message && (
+                        errorVenta.message.includes('network') || 
+                        errorVenta.message.includes('fetch') ||
+                        errorVenta.message.includes('Failed to fetch') ||
+                        errorVenta.message.includes('NetworkError')
+                    )) {
+                        console.log("Error de red, guardando offline...");
+                        guardarVentaOffline(ventaData);
+                        actualizarInventarioLocal(codigoBarras, -cantidad);
+                        showNotification('⚠️ Error de red. Venta guardada localmente', 'warning');
+                        closeModal('modalAgregarVenta');
+                        actualizarVistaInventarioLocal();
+                    } else {
+                        // Si es otro error, mostrar mensaje
+                        showNotification(`❌ Error al guardar venta: ${errorVenta.message}`, 'error');
+                    }
                     return;
                 }
                 
-                console.log("Venta insertada:", ventaInsertada);
+                console.log("✅ Venta insertada:", ventaInsertada);
                 
-                // 2. Actualizar el inventario restando la cantidad vendida
+                // 2. Actualizar inventario_mejoras
                 const nuevoStock = productoSeleccionado.cantidad - cantidad;
                 const { error: errorInventario } = await supabaseClient
                     .from('inventario_mejoras')
@@ -1403,220 +1421,41 @@
                 
                 if (errorInventario) {
                     console.error("Error actualizando inventario:", errorInventario);
-                    showNotification('⚠️ Venta registrada pero error al actualizar inventario', 'warning');
+                    showNotification('✅ Venta registrada, pero hubo un problema actualizando el inventario', 'warning');
+                } else {
+                    console.log("✅ Inventario actualizado");
                 }
                 
                 showNotification('✅ Venta registrada correctamente en mejoras', 'success');
                 closeModal('modalAgregarVenta');
                 
-                // Recargar datos para reflejar cambios
+                // Recargar datos
                 await cargarDatos();
                 
             } catch (error) {
-                console.warn('Error inesperado, guardando offline:', error);
-                guardarVentaOffline(ventaData);
-                actualizarInventarioLocal(codigoBarras, -cantidad);
-                showNotification('⚠️ Error de conexión. Venta guardada localmente', 'warning');
-                closeModal('modalAgregarVenta');
-                actualizarVistaInventarioLocal();
-            }
-        }
-        
-        // ========== FUNCIONES OFFLINE CORREGIDAS ==========
-        
-        function guardarVentaOffline(ventaData) {
-            // Asegurar que todos los campos necesarios estén presentes
-            const ventaOffline = {
-                offline_id: Date.now() + Math.random().toString(36).substr(2, 9),
-                barcode: ventaData.barcode,
-                cantidad: ventaData.cantidad,
-                precio_unitario: ventaData.precio_unitario,
-                descuento: ventaData.descuento || 0,
-                total: ventaData.total || (ventaData.cantidad * ventaData.precio_unitario) - (ventaData.descuento || 0),
-                descripcion: ventaData.descripcion || '',
-                fecha_venta: ventaData.fecha_venta,
-                estado: 'pendiente',
-                sync_attempts: 0,
-                created_at: new Date().toISOString()
-            };
-            
-            let ventasPendientes = JSON.parse(localStorage.getItem('ventas_offline_mejoras') || '[]');
-            ventasPendientes.push(ventaOffline);
-            localStorage.setItem('ventas_offline_mejoras', JSON.stringify(ventasPendientes));
-            
-            console.log("Venta guardada offline:", ventaOffline);
-            console.log("Total ventas pendientes:", ventasPendientes.length);
-            
-            actualizarBadgeOffline();
-        }
-        
-        function actualizarInventarioLocal(codigoBarras, cambio) {
-            let inventarioOffline = JSON.parse(localStorage.getItem('inventario_offline_mejoras') || '{}');
-            
-            // Si no existe en el inventario offline, buscar en el inventario actual
-            if (!inventarioOffline[codigoBarras]) {
-                const producto = inventario.find(p => p.codigo_barras === codigoBarras);
-                inventarioOffline[codigoBarras] = producto ? producto.cantidad : 0;
-            }
-            
-            // Aplicar el cambio (restar cantidad vendida)
-            inventarioOffline[codigoBarras] += cambio;
-            
-            // Guardar en localStorage
-            localStorage.setItem('inventario_offline_mejoras', JSON.stringify(inventarioOffline));
-            
-            console.log("Inventario local actualizado:", codigoBarras, "nueva cantidad:", inventarioOffline[codigoBarras]);
-        }
-        
-        function actualizarVistaInventarioLocal() {
-            const inventarioOffline = JSON.parse(localStorage.getItem('inventario_offline_mejoras') || '{}');
-            
-            // Actualizar la vista con los cambios locales
-            inventario.forEach(item => {
-                if (inventarioOffline[item.codigo_barras] !== undefined) {
-                    item.cantidad = inventarioOffline[item.codigo_barras];
-                }
-            });
-            
-            mostrarInventario(inventario);
-        }
-        
-        async function sincronizarVentasPendientes() {
-            if (!navigator.onLine) {
-                showNotification('❌ No hay conexión a internet', 'error');
-                return;
-            }
-            
-            let ventasPendientes = JSON.parse(localStorage.getItem('ventas_offline_mejoras') || '[]');
-            
-            if (ventasPendientes.length === 0) {
-                showNotification('✅ No hay ventas pendientes por sincronizar', 'success');
-                return;
-            }
-            
-            showNotification(`🔄 Sincronizando ${ventasPendientes.length} venta(s) pendientes...`, 'info');
-            
-            const ventasExitosas = [];
-            const ventasFallidas = [];
-            
-            // Procesar cada venta pendiente
-            for (const venta of ventasPendientes) {
-                try {
-                    // Preparar datos para enviar a Supabase
-                    const ventaParaSubir = {
-                        barcode: venta.barcode,
-                        cantidad: venta.cantidad,
-                        precio_unitario: venta.precio_unitario,
-                        descuento: venta.descuento || 0,
-                        total: venta.total || (venta.cantidad * venta.precio_unitario) - (venta.descuento || 0),
-                        descripcion: venta.descripcion || '',
-                        fecha_venta: venta.fecha_venta
-                    };
-                    
-                    console.log("Sincronizando venta:", ventaParaSubir);
-                    
-                    // 1. Insertar venta en Supabase
-                    const { error: errorVenta } = await supabaseClient
-                        .from('ventas_mejoras')
-                        .insert([ventaParaSubir]);
-                    
-                    if (errorVenta) {
-                        console.error("Error sincronizando venta:", errorVenta);
-                        
-                        // Incrementar intentos de sincronización
-                        venta.sync_attempts = (venta.sync_attempts || 0) + 1;
-                        
-                        // Si ha fallado muchas veces, marcar como fallida permanente
-                        if (venta.sync_attempts < 3) {
-                            ventasFallidas.push(venta);
-                        } else {
-                            console.warn("Venta fallida permanentemente después de 3 intentos:", venta.offline_id);
-                        }
-                        continue;
-                    }
-                    
-                    // 2. Actualizar inventario en Supabase
-                    // Primero obtener el stock actual
-                    const { data: productoActual, error: errorProducto } = await supabaseClient
-                        .from('inventario_mejoras')
-                        .select('cantidad')
-                        .eq('barcode', venta.barcode)
-                        .single();
-                    
-                    if (errorProducto) {
-                        console.error("Error obteniendo producto:", errorProducto);
-                        // Continuar aunque falle la actualización del inventario
-                    } else {
-                        const nuevoStock = (productoActual?.cantidad || 0) - venta.cantidad;
-                        await supabaseClient
-                            .from('inventario_mejoras')
-                            .update({ 
-                                cantidad: nuevoStock,
-                                fecha_actualizacion: getHoraChileISO()
-                            })
-                            .eq('barcode', venta.barcode);
-                    }
-                    
-                    ventasExitosas.push(venta.offline_id);
-                    console.log("Venta sincronizada exitosamente:", venta.offline_id);
-                    
-                } catch (error) {
-                    console.error("Error en sincronización:", error);
-                    venta.sync_attempts = (venta.sync_attempts || 0) + 1;
-                    if (venta.sync_attempts < 3) {
-                        ventasFallidas.push(venta);
-                    }
-                }
-            }
-            
-            // Actualizar localStorage con las ventas que aún están pendientes
-            localStorage.setItem('ventas_offline_mejoras', JSON.stringify(ventasFallidas));
-            
-            // Limpiar inventario offline para las ventas exitosas
-            const inventarioOffline = JSON.parse(localStorage.getItem('inventario_offline_mejoras') || '{}');
-            ventasExitosas.forEach(ventaId => {
-                const venta = ventasPendientes.find(v => v.offline_id === ventaId);
-                if (venta) {
-                    delete inventarioOffline[venta.barcode];
-                }
-            });
-            localStorage.setItem('inventario_offline_mejoras', JSON.stringify(inventarioOffline));
-            
-            // Mostrar resultados
-            if (ventasExitosas.length > 0) {
-                showNotification(`✅ ${ventasExitosas.length} venta(s) sincronizada(s) exitosamente`, 'success');
+                console.error("Error inesperado:", error);
                 
-                // Recargar datos para actualizar la vista
-                await cargarDatos();
+                // Verificar si es error de red
+                if (error.message && (
+                    error.message.includes('network') || 
+                    error.message.includes('fetch') ||
+                    error.message.includes('Failed to fetch') ||
+                    error.message.includes('NetworkError')
+                )) {
+                    console.log("Error de red capturado, guardando offline...");
+                    guardarVentaOffline(ventaData);
+                    actualizarInventarioLocal(codigoBarras, -cantidad);
+                    showNotification('⚠️ Error de conexión. Venta guardada localmente', 'warning');
+                    closeModal('modalAgregarVenta');
+                    actualizarVistaInventarioLocal();
+                } else {
+                    showNotification(`❌ Error inesperado: ${error.message}`, 'error');
+                }
             }
-            
-            if (ventasFallidas.length > 0) {
-                showNotification(`⚠️ ${ventasFallidas.length} venta(s) no se pudieron sincronizar`, 'warning');
-            }
-            
-            actualizarBadgeOffline();
         }
-        
-        function actualizarBadgeOffline() {
-            const ventasPendientes = JSON.parse(localStorage.getItem('ventas_offline_mejoras') || '[]');
-            const badge = document.getElementById('offlineBadge');
-            const countSpan = document.getElementById('offlineCount');
-            
-            countSpan.textContent = ventasPendientes.length;
-            
-            if (ventasPendientes.length > 0) {
-                badge.style.display = 'block';
-                // Actualizar título del badge
-                badge.title = `${ventasPendientes.length} venta(s) pendientes de sincronización`;
-            } else {
-                badge.style.display = 'none';
-            }
-            
-            console.log("Badge offline actualizado:", ventasPendientes.length, "ventas pendientes");
-        }
-        
+
         // ========== FUNCIONES PARA REPORTE DE ENCARGOS ==========
-        
+
         function mostrarReporteEncargos() {
             // 1. Filtrar productos con cantidad NEGATIVA
             const encargos = inventario.filter(producto => producto.cantidad < 0);
@@ -1683,6 +1522,186 @@
             openModal('modalEncargos');
             
             showNotification(`💰 Inversión requerida: $${inversionTotal.toFixed(2)} para ${encargos.length} productos`, 'success');
+        }
+        
+        // ========== FUNCIONES OFFLINE CORREGIDAS ==========
+        
+        function guardarVentaOffline(ventaData) {
+            // Asegurar que la venta tenga un ID único para offline
+            const ventaOffline = {
+                offline_id: Date.now() + Math.random().toString(36).substr(2, 9),
+                barcode: ventaData.barcode,
+                cantidad: ventaData.cantidad,
+                precio_unitario: ventaData.precio_unitario,
+                descuento: ventaData.descuento || 0,
+                total: ventaData.total || (ventaData.cantidad * ventaData.precio_unitario) - (ventaData.descuento || 0),
+                descripcion: ventaData.descripcion || '',
+                fecha_venta: ventaData.fecha_venta,
+                estado: 'pendiente',
+                sync_attempts: 0,
+                created_at: new Date().toISOString()
+            };
+            
+            // Guardar en localStorage con clave específica para mejoras
+            let ventasPendientes = JSON.parse(localStorage.getItem('ventas_offline_mejoras') || '[]');
+            ventasPendientes.push(ventaOffline);
+            localStorage.setItem('ventas_offline_mejoras', JSON.stringify(ventasPendientes));
+            
+            console.log("Venta guardada offline (mejoras):", ventaOffline);
+            
+            actualizarBadgeOffline();
+        }
+        
+        function actualizarInventarioLocal(codigoBarras, cambio) {
+            // Usar clave específica para mejoras
+            let inventarioOffline = JSON.parse(localStorage.getItem('inventario_offline_mejoras') || '{}');
+            
+            if (!inventarioOffline[codigoBarras]) {
+                const producto = inventario.find(p => p.codigo_barras === codigoBarras);
+                inventarioOffline[codigoBarras] = producto ? producto.cantidad : 0;
+            }
+            
+            inventarioOffline[codigoBarras] += cambio;
+            localStorage.setItem('inventario_offline_mejoras', JSON.stringify(inventarioOffline));
+        }
+        
+        function actualizarVistaInventarioLocal() {
+            const inventarioOffline = JSON.parse(localStorage.getItem('inventario_offline_mejoras') || '{}');
+            
+            inventario.forEach(item => {
+                if (inventarioOffline[item.codigo_barras] !== undefined) {
+                    item.cantidad = inventarioOffline[item.codigo_barras];
+                }
+            });
+            
+            mostrarInventario(inventario);
+        }
+        
+        async function sincronizarVentasPendientes() {
+            if (!navigator.onLine) {
+                showNotification('❌ No hay conexión a internet', 'error');
+                return;
+            }
+            
+            // Usar clave específica para mejoras
+            let ventasPendientes = JSON.parse(localStorage.getItem('ventas_offline_mejoras') || '[]');
+            
+            if (ventasPendientes.length === 0) {
+                showNotification('✅ No hay ventas pendientes por sincronizar', 'success');
+                return;
+            }
+            
+            showNotification(`🔄 Sincronizando ${ventasPendientes.length} venta(s) pendientes de mejoras...`, 'info');
+            
+            const ventasExitosas = [];
+            const ventasFallidas = [];
+            
+            for (const venta of ventasPendientes) {
+                try {
+                    // Preparar datos para enviar a Supabase
+                    const ventaParaSubir = {
+                        barcode: venta.barcode,
+                        cantidad: venta.cantidad,
+                        precio_unitario: venta.precio_unitario,
+                        descuento: venta.descuento || 0,
+                        total: venta.total || (venta.cantidad * venta.precio_unitario) - (venta.descuento || 0),
+                        descripcion: venta.descripcion || '',
+                        fecha_venta: venta.fecha_venta
+                    };
+                    
+                    console.log("Sincronizando venta de mejoras:", ventaParaSubir);
+                    
+                    // 1. Insertar venta en ventas_mejoras
+                    const { error: errorVenta } = await supabaseClient
+                        .from('ventas_mejoras')
+                        .insert([ventaParaSubir]);
+                    
+                    if (errorVenta) {
+                        console.error("Error sincronizando venta de mejoras:", errorVenta);
+                        
+                        // Incrementar intentos de sincronización
+                        venta.sync_attempts = (venta.sync_attempts || 0) + 1;
+                        
+                        // Si ha fallado menos de 3 veces, mantener en pendientes
+                        if (venta.sync_attempts < 3) {
+                            ventasFallidas.push(venta);
+                        }
+                        continue;
+                    }
+                    
+                    // 2. Actualizar inventario_mejoras
+                    // Obtener stock actual
+                    const { data: productoActual, error: errorProducto } = await supabaseClient
+                        .from('inventario_mejoras')
+                        .select('cantidad')
+                        .eq('barcode', venta.barcode)
+                        .single();
+                    
+                    if (!errorProducto && productoActual) {
+                        const nuevoStock = productoActual.cantidad - venta.cantidad;
+                        await supabaseClient
+                            .from('inventario_mejoras')
+                            .update({ 
+                                cantidad: nuevoStock,
+                                fecha_actualizacion: getHoraChileISO()
+                            })
+                            .eq('barcode', venta.barcode);
+                    }
+                    
+                    ventasExitosas.push(venta.offline_id);
+                    console.log("Venta de mejoras sincronizada exitosamente:", venta.offline_id);
+                    
+                } catch (error) {
+                    console.error("Error en sincronización de mejoras:", error);
+                    venta.sync_attempts = (venta.sync_attempts || 0) + 1;
+                    if (venta.sync_attempts < 3) {
+                        ventasFallidas.push(venta);
+                    }
+                }
+            }
+            
+            // Actualizar localStorage con las ventas que aún están pendientes
+            localStorage.setItem('ventas_offline_mejoras', JSON.stringify(ventasFallidas));
+            
+            // Limpiar inventario offline para las ventas exitosas
+            const inventarioOffline = JSON.parse(localStorage.getItem('inventario_offline_mejoras') || '{}');
+            ventasExitosas.forEach(ventaId => {
+                const venta = ventasPendientes.find(v => v.offline_id === ventaId);
+                if (venta) {
+                    delete inventarioOffline[venta.barcode];
+                }
+            });
+            localStorage.setItem('inventario_offline_mejoras', JSON.stringify(inventarioOffline));
+            
+            // Mostrar resultados
+            if (ventasExitosas.length > 0) {
+                showNotification(`✅ ${ventasExitosas.length} venta(s) de mejoras sincronizada(s) exitosamente`, 'success');
+                
+                // Recargar datos para actualizar la vista
+                await cargarDatos();
+            }
+            
+            if (ventasFallidas.length > 0) {
+                showNotification(`⚠️ ${ventasFallidas.length} venta(s) de mejoras no se pudieron sincronizar`, 'warning');
+            }
+            
+            actualizarBadgeOffline();
+        }
+        
+        function actualizarBadgeOffline() {
+            // Usar clave específica para mejoras
+            const ventasPendientes = JSON.parse(localStorage.getItem('ventas_offline_mejoras') || '[]');
+            const badge = document.getElementById('offlineBadge');
+            const countSpan = document.getElementById('offlineCount');
+            
+            countSpan.textContent = ventasPendientes.length;
+            
+            if (ventasPendientes.length > 0) {
+                badge.style.display = 'block';
+                badge.title = `${ventasPendientes.length} venta(s) de mejoras pendientes de sincronización`;
+            } else {
+                badge.style.display = 'none';
+            }
         }
         
         // ========== FUNCIONES GENERALES ==========
@@ -1802,6 +1821,7 @@
             // Detectar cambios de conexión
             window.addEventListener('online', function() {
                 showNotification('🌐 Conexión a internet restablecida', 'success');
+                // Esperar 3 segundos y sincronizar ventas pendientes
                 setTimeout(sincronizarVentasPendientes, 3000);
             });
             
