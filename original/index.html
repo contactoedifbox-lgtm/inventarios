@@ -428,9 +428,9 @@
             <div class="tabs">
                 <button class="tab-btn" id="tab-ventas-btn">
                     <i class="fas fa-shopping-cart"></i> Ventas
+                </button>    
                 <button class="tab-btn active" id="tab-inventario-btn">
                     <i class="fas fa-boxes"></i> Inventario
-                </button>
                 </button>
             </div>
             
@@ -1508,79 +1508,80 @@ function mostrarReporteEncargos() {
         }
         
         async function sincronizarVentasPendientes() {
-            if (!navigator.onLine) {
-                showNotification('❌ No hay conexión a internet', 'error');
-                return;
-            }
+    if (!navigator.onLine) {
+        showNotification('❌ No hay conexión a internet', 'error');
+        return;
+    }
+    
+    const ventasPendientes = JSON.parse(localStorage.getItem('ventas_offline') || '[]');
+    
+    if (ventasPendientes.length === 0) {
+        showNotification('✅ No hay ventas pendientes por sincronizar', 'success');
+        return;
+    }
+    
+    showNotification(`🔄 Sincronizando ${ventasPendientes.length} ventas pendientes...`, 'info');
+    
+    const exitosas = [];
+    const fallidas = [];
+    
+    for (const venta of ventasPendientes) {
+        try {
+            const ventaParaSubir = {
+                barcode: venta.barcode,
+                cantidad: venta.cantidad,
+                precio_unitario: venta.precio_unitario,
+                descuento: venta.descuento || 0,  // ¡AGREGAR ESTA LÍNEA!
+                descripcion: venta.descripcion,
+                fecha_venta: venta.fecha_venta
+            };
             
-            const ventasPendientes = JSON.parse(localStorage.getItem('ventas_offline') || '[]');
+            // Insertar venta
+            const { error: errorVenta } = await supabaseClient
+                .from('ventas')
+                .insert([ventaParaSubir]);
             
-            if (ventasPendientes.length === 0) {
-                showNotification('✅ No hay ventas pendientes por sincronizar', 'success');
-                return;
-            }
-            
-            showNotification(`🔄 Sincronizando ${ventasPendientes.length} ventas pendientes...`, 'info');
-            
-            const exitosas = [];
-            const fallidas = [];
-            
-            for (const venta of ventasPendientes) {
-                try {
-                    const ventaParaSubir = {
-                        barcode: venta.barcode,
-                        cantidad: venta.cantidad,
-                        precio_unitario: venta.precio_unitario,
-                        descripcion: venta.descripcion,
-                        fecha_venta: venta.fecha_venta
-                    };
-                    
-                    // Insertar venta
-                    const { error: errorVenta } = await supabaseClient
-                        .from('ventas')
-                        .insert([ventaParaSubir]);
-                    
-                    if (!errorVenta) {
-                        // Actualizar inventario
-                        const producto = inventario.find(p => p.codigo_barras === venta.barcode);
-                        if (producto) {
-                            const nuevoStock = producto.cantidad - venta.cantidad;
-                            await supabaseClient
-                                .from('inventario')
-                                .update({ 
-                                    cantidad: nuevoStock,
-                                    fecha_actualizacion: getHoraChileISO()
-                                })
-                                .eq('barcode', venta.barcode);
-                        }
-                        exitosas.push(venta);
-                    } else {
-                        fallidas.push(venta);
-                    }
-                } catch (error) {
-                    fallidas.push(venta);
+            if (!errorVenta) {
+                // Actualizar inventario
+                const producto = inventario.find(p => p.codigo_barras === venta.barcode);
+                if (producto) {
+                    const nuevoStock = producto.cantidad - venta.cantidad;
+                    await supabaseClient
+                        .from('inventario')
+                        .update({ 
+                            cantidad: nuevoStock,
+                            fecha_actualizacion: getHoraChileISO()
+                        })
+                        .eq('barcode', venta.barcode);
                 }
+                exitosas.push(venta);
+            } else {
+                fallidas.push(venta);
             }
-            
-            localStorage.setItem('ventas_offline', JSON.stringify(fallidas));
-            
-            const inventarioOffline = JSON.parse(localStorage.getItem('inventario_offline') || '{}');
-            exitosas.forEach(venta => {
-                delete inventarioOffline[venta.barcode];
-            });
-            localStorage.setItem('inventario_offline', JSON.stringify(inventarioOffline));
-            
-            if (exitosas.length > 0) {
-                showNotification(`✅ ${exitosas.length} ventas sincronizadas exitosamente`, 'success');
-                cargarDatos();
-            }
-            
-            if (fallidas.length > 0) {
-                showNotification(`⚠️ ${fallidas.length} ventas no se pudieron sincronizar`, 'warning');
-            }
-            
-            actualizarBadgeOffline();
+        } catch (error) {
+            fallidas.push(venta);
         }
+    }
+    
+    localStorage.setItem('ventas_offline', JSON.stringify(fallidas));
+    
+    const inventarioOffline = JSON.parse(localStorage.getItem('inventario_offline') || '{}');
+    exitosas.forEach(venta => {
+        delete inventarioOffline[venta.barcode];
+    });
+    localStorage.setItem('inventario_offline', JSON.stringify(inventarioOffline));
+    
+    if (exitosas.length > 0) {
+        showNotification(`✅ ${exitosas.length} ventas sincronizadas exitosamente`, 'success');
+        cargarDatos();
+    }
+    
+    if (fallidas.length > 0) {
+        showNotification(`⚠️ ${fallidas.length} ventas no se pudieron sincronizar`, 'warning');
+    }
+    
+    actualizarBadgeOffline();
+}
         
         // ========== FUNCIONES GENERALES ==========
         
