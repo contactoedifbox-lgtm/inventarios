@@ -11,6 +11,8 @@
             --success: #10b981;
             --warning: #f59e0b;
             --danger: #ef4444;
+            --premium: #8b5cf6;
+            --info: #06b6d4;
         }
         
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -23,7 +25,7 @@
         }
         
         .container { 
-            max-width: 1200px; 
+            max-width: 1400px; 
             margin: 0 auto; 
             padding: 20px;
         }
@@ -78,7 +80,11 @@
         }
         
         .project-card.mejoras {
-            border-top-color: #8b5cf6;
+            border-top-color: var(--premium);
+        }
+        
+        .project-card.mejoras2 {
+            border-top-color: var(--info);
         }
         
         .card-header {
@@ -100,7 +106,8 @@
         }
         
         .original .card-icon { background: var(--success); }
-        .mejoras .card-icon { background: #8b5cf6; }
+        .mejoras .card-icon { background: var(--premium); }
+        .mejoras2 .card-icon { background: var(--info); }
         
         .card-title {
             font-size: 1.5rem;
@@ -191,7 +198,12 @@
         
         .badge-premium {
             background: #f3e8ff;
-            color: #8b5cf6;
+            color: var(--premium);
+        }
+        
+        .badge-info {
+            background: #cffafe;
+            color: var(--info);
         }
         
         footer {
@@ -205,6 +217,14 @@
         .warning-box {
             background: #fffbeb;
             border-left: 4px solid #f59e0b;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+        
+        .info-box {
+            background: #ecfeff;
+            border-left: 4px solid var(--info);
             padding: 20px;
             border-radius: 8px;
             margin-top: 30px;
@@ -225,7 +245,7 @@
     <div class="container">
         <header>
             <h1><i class="fas fa-paw"></i> Sistema de Inventario Veterinaria</h1>
-            <p class="subtitle">Portal central para gestionar ambas versiones del sistema de inventario y ventas para clínicas veterinarias</p>
+            <p class="subtitle">Portal central para gestionar todas las versiones del sistema de inventario y ventas para clínicas veterinarias</p>
         </header>
         
         <div class="projects-grid">
@@ -292,19 +312,54 @@
                     </a>
                 </div>
             </div>
+            
+            <!-- TARJETA VERSIÓN MEJORAS2 (NUEVA) -->
+            <div class="project-card mejoras2">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <div>
+                        <h2 class="card-title">Versión Mejoras2 <span class="badge badge-info">NUEVO</span></h2>
+                        <p class="card-subtitle">Versión avanzada con características adicionales</p>
+                    </div>
+                </div>
+                
+                <p><strong>Base de datos:</strong> Tablas optimizadas (inventario_mejoras2, ventas_mejoras2)</p>
+                
+                <ul class="features">
+                    <li><strong>Correcciones de las versiones anteriores</strong></li>
+                    <li><strong>MEJORADO:</strong> Interfaz de usuario optimizada</li>
+                    <li><strong>MEJORADO:</strong> Rendimiento y velocidad</li>
+                    <li>Gráficos y estadísticas avanzadas</li>
+                    <li>Alertas automáticas de stock bajo</li>
+                    <li>Exportación a PDF y Excel mejorada</li>
+                    <li>Historial completo de cambios</li>
+                </ul>
+                
+                <div class="info-box">
+                    <p><i class="fas fa-lightbulb"></i> <strong>Características exclusivas:</strong> Incluye mejoras de UI/UX y funcionalidades adicionales.</p>
+                </div>
+                
+                <div class="btn-group">
+                    <a href="mejoras2/index.html" class="btn btn-primary">
+                        <i class="fas fa-rocket"></i> Abrir Sistema Mejoras2
+                    </a>
+                </div>
+            </div>
         </div>
         
         <div class="warning-box">
             <h3><i class="fas fa-info-circle"></i> Instrucciones de uso</h3>
-            <p><strong>Credenciales de prueba para ambas versiones:</strong></p>
+            <p><strong>Credenciales de prueba para todas las versiones:</strong></p>
             <p>Usuario: <code>cliente@ejemplo.com</code> | Contraseña: <code>TuClave!</code></p>
-            <p style="margin-top: 10px;"><strong>Nota:</strong> Cada versión trabaja con tablas diferentes en Supabase. Asegúrate de tener creadas las vistas y funciones correspondientes.</p>
+            <p style="margin-top: 10px;"><strong>Nota:</strong> Cada versión trabaja con tablas diferentes en Supabase. Asegúrate de tener creadas las vistas y funciones correspondientes para cada versión.</p>
         </div>
         
         <footer>
             <p>Sistema desarrollado para gestión veterinaria | Desplegado con GitHub Pages</p>
             <p style="margin-top: 10px; font-size: 0.9rem;">
-                <i class="fab fa-github"></i> Repositorio: inventarios
+                <i class="fab fa-github"></i> Repositorio: inventarios | Versiones: Original, Mejoras y Mejoras2
             </p>
         </footer>
     </div>
