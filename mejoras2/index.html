@@ -214,7 +214,7 @@
             width: 90%; 
             max-width: 600px; 
             border-radius: 15px; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+box-shadow: 0 10px 25px rgba(0,0,0,0.1);
             overflow: hidden;
         }
         .modal-header { 
@@ -1153,17 +1153,55 @@
             try {
                 showNotification('🔄 Actualizando venta en mejoras...', 'info');
                 
-                // CAMBIO: Usar editar_cantidad_venta_mejoras
+                // DEBUG: Mostrar datos antes de enviar
+                console.log('=== DATOS DE VENTA ===');
+                console.log('Código:', ventaEditando.codigo_barras);
+                console.log('Fecha original:', ventaEditando.fecha_venta);
+                console.log('Tipo de fecha:', typeof ventaEditando.fecha_venta);
+                
+                // CONVERTIR FECHA A FORMATO TIMESTAMP CORRECTO
+                // La fecha viene en formato ISO de Supabase, pero debemos asegurarnos
+                const fechaTimestamp = new Date(ventaEditando.fecha_venta).toISOString();
+                console.log('Fecha convertida a ISO:', fechaTimestamp);
+                
+                console.log('Nueva cantidad:', nuevaCantidad);
+                console.log('Nuevo descuento:', nuevoDescuento);
+                
+                // Llamar a la función RPC con la fecha convertida
                 const { data, error } = await supabaseClient.rpc('editar_cantidad_venta_mejoras', {
                     p_barcode: ventaEditando.codigo_barras,
-                    p_fecha_venta: ventaEditando.fecha_venta,
+                    p_fecha_venta: fechaTimestamp,  // Usar fecha convertida
                     p_nueva_cantidad: nuevaCantidad,
                     p_nuevo_descuento: nuevoDescuento
                 });
                 
                 if (error) {
                     console.error('Error de RPC:', error);
-                    throw error;
+                    
+                    // Si hay error por formato de fecha, intentar otra estrategia
+                    if (error.message && (error.message.includes('timestamp') || error.message.includes('428C9'))) {
+                        console.log('Probando formato de fecha alternativo...');
+                        
+                        // Intentar con la fecha sin milisegundos
+                        const fechaSimple = fechaTimestamp.split('.')[0] + 'Z';
+                        console.log('Fecha alternativa:', fechaSimple);
+                        
+                        const { data: data2, error: error2 } = await supabaseClient.rpc('editar_cantidad_venta_mejoras', {
+                            p_barcode: ventaEditando.codigo_barras,
+                            p_fecha_venta: fechaSimple,
+                            p_nueva_cantidad: nuevaCantidad,
+                            p_nuevo_descuento: nuevoDescuento
+                        });
+                        
+                        if (error2) {
+                            throw error2;
+                        }
+                        
+                        // Usar los nuevos datos
+                        data = data2;
+                    } else {
+                        throw error;
+                    }
                 }
                 
                 console.log('Respuesta de Supabase:', data);
