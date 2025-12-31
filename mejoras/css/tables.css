@@ -1,1 +1,591 @@
+/* ============================================
+   SISTEMA DE TABLAS
+   ============================================
+   Estilos para todas las tablas de la aplicación:
+   - Tabla de inventario
+   - Tabla de ventas
+   - Tablas dentro de modales
+   ============================================ */
 
+/* ============================================
+   TABLAS BASE (ESTILOS COMUNES)
+   ============================================ */
+
+/* Tabla base - aplica a todas las tablas */
+table {
+    width: 100%;
+    border-collapse: collapse; /* Elimina espacio entre bordes */
+    font-size: 14px;
+    background: white;
+    table-layout: fixed; /* Distribución consistente de columnas */
+}
+
+/* Para tablas muy largas, permite auto-ancho */
+table.auto-layout {
+    table-layout: auto;
+}
+
+/* ============================================
+   ENCABEZADOS DE TABLA (THEAD)
+   ============================================ */
+
+/* Fondo para el encabezado de la tabla */
+thead {
+    background: var(--light);
+    position: sticky;
+    top: 0; /* Se mantiene fijo al hacer scroll */
+    z-index: 10; /* Por encima del contenido */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Celdas de encabezado individuales */
+th {
+    padding: 16px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--gray-600);
+    border-bottom: 2px solid var(--gray-200);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap; /* Evita que el texto se divida */
+    overflow: hidden;
+    text-overflow: ellipsis; /* Puntos suspensivos si el texto es muy largo */
+    user-select: none; /* Evita selección accidental */
+}
+
+/* Indicador de ordenamiento en encabezados */
+th.sortable {
+    cursor: pointer;
+    position: relative;
+    padding-right: 25px; /* Espacio para el ícono de ordenamiento */
+    transition: background-color 0.2s ease;
+}
+
+/* Efecto hover en encabezados ordenables */
+th.sortable:hover {
+    background: var(--gray-100);
+}
+
+/* Ícono de ordenamiento en encabezados */
+th.sortable::after {
+    content: '↕';
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    color: var(--gray-400);
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+}
+
+/* Ícono visible al hacer hover */
+th.sortable:hover::after {
+    opacity: 1;
+}
+
+/* Ícono para orden ascendente */
+th.sortable.asc::after {
+    content: '↑';
+    color: var(--primary);
+    opacity: 1;
+}
+
+/* Ícono para orden descendente */
+th.sortable.desc::after {
+    content: '↓';
+    color: var(--primary);
+    opacity: 1;
+}
+
+/* ============================================
+   CUERPO DE TABLA (TBODY)
+   ============================================ */
+
+/* Celdas del cuerpo de la tabla */
+td {
+    padding: 16px 12px;
+    border-bottom: 1px solid var(--gray-200);
+    vertical-align: middle; /* Centra verticalmente el contenido */
+    word-wrap: break-word; /* Permite que palabras largas se dividan */
+    overflow-wrap: break-word; /* Alternativa para navegadores modernos */
+}
+
+/* Última fila de la tabla */
+tr:last-child td {
+    border-bottom: none; /* Sin borde en la última fila */
+}
+
+/* ============================================
+   FILAS DE TABLA
+   ============================================ */
+
+/* Filas individuales */
+tr {
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+/* Efecto hover en filas */
+tr:hover {
+    background: var(--light);
+}
+
+/* Fila seleccionada (si se implementa selección) */
+tr.selected {
+    background: #e0f2fe; /* Azul muy claro */
+    border-left: 3px solid var(--primary);
+}
+
+/* Fila con estado especial (ej: producto sin stock) */
+tr.out-of-stock {
+    opacity: 0.7;
+    background: #fef2f2; /* Rojo muy claro */
+}
+
+/* Fila con stock crítico */
+tr.low-stock {
+    background: #fffbeb; /* Amarillo muy claro */
+}
+
+/* ============================================
+   TABLA ESPECÍFICA: INVENTARIO (#tablaInventario)
+   ============================================ */
+
+/* Anchos de columna específicos para tabla de inventario */
+#tablaInventario th:nth-child(1) { width: 15%; } /* Código de Barras */
+#tablaInventario th:nth-child(2) { width: 30%; } /* Descripción */
+#tablaInventario th:nth-child(3) { width: 10%; } /* Cantidad */
+#tablaInventario th:nth-child(4) { width: 10%; } /* Costo */
+#tablaInventario th:nth-child(5) { width: 10%; } /* Precio Venta */
+#tablaInventario th:nth-child(6) { width: 15%; } /* Última Actualización */
+#tablaInventario th:nth-child(7) { width: 10%; } /* Acciones */
+
+/* Alineaciones específicas para tabla de inventario */
+#tablaInventario td:nth-child(1) { font-weight: 600; } /* Código en negrita */
+#tablaInventario td:nth-child(3) { text-align: center; } /* Cantidad centrada */
+#tablaInventario td:nth-child(4),
+#tablaInventario td:nth-child(5) { text-align: right; } /* Valores monetarios a la derecha */
+#tablaInventario td:nth-child(7) { text-align: center; } /* Acciones centradas */
+
+/* ============================================
+   TABLA ESPECÍFICA: VENTAS (#tablaVentas)
+   ============================================ */
+
+/* Anchos de columna específicos para tabla de ventas */
+#tablaVentas th:nth-child(1) { width: 15%; } /* Código de Barras */
+#tablaVentas th:nth-child(2) { width: 8%; }  /* Cantidad */
+#tablaVentas th:nth-child(3) { width: 12%; } /* Precio Unitario */
+#tablaVentas th:nth-child(4) { width: 10%; } /* Descuento */
+#tablaVentas th:nth-child(5) { width: 12%; } /* Total */
+#tablaVentas th:nth-child(6) { width: 20%; } /* Descripción */
+#tablaVentas th:nth-child(7) { width: 15%; } /* Fecha Venta */
+#tablaVentas th:nth-child(8) { width: 8%; }  /* Acciones */
+
+/* Alineaciones específicas para tabla de ventas */
+#tablaVentas td:nth-child(2),
+#tablaVentas td:nth-child(3),
+#tablaVentas td:nth-child(4),
+#tablaVentas td:nth-child(5) {
+    text-align: right; /* Valores numéricos a la derecha */
+    font-variant-numeric: tabular-nums; /* Números con mismo ancho */
+}
+
+/* Total en negrita */
+#tablaVentas td:nth-child(5) {
+    font-weight: 600;
+    color: var(--dark);
+}
+
+/* Descuento en rojo si es mayor a 0 */
+#tablaVentas td:nth-child(4):not(:empty) {
+    color: var(--danger);
+}
+
+/* Acciones centradas */
+#tablaVentas td:nth-child(8) {
+    text-align: center;
+}
+
+/* ============================================
+   CONTENIDO ESPECIAL EN CELDAS
+   ============================================ */
+
+/* Celdas con texto truncado (puntos suspensivos) */
+td.truncate {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 0; /* Necesario para que funcione ellipsis */
+}
+
+/* Celdas con múltiples líneas */
+td.multiline {
+    white-space: normal;
+    line-height: 1.4;
+}
+
+/* Celdas con contenido monetario */
+td.money {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+}
+
+/* Formato para valores monetarios */
+td.money::before {
+    content: '$';
+    margin-right: 2px;
+}
+
+/* ============================================
+   BADGES DENTRO DE TABLAS
+   ============================================ */
+
+/* Badge de stock dentro de celdas de tabla */
+td .stock-badge {
+    display: inline-block;
+    margin: 2px 0;
+}
+
+/* ============================================
+   BOTONES DE ACCIÓN EN TABLAS
+   ============================================ */
+
+/* Contenedor de botones en celdas de acción */
+td:last-child {
+    white-space: nowrap; /* Evita que los botones se separen */
+}
+
+/* Botones dentro de tablas */
+table .action-btn {
+    margin: 2px;
+}
+
+/* Botones apilados verticalmente en móviles */
+@media (max-width: 768px) {
+    table .action-btn {
+        display: block;
+        width: 100%;
+        margin: 5px 0;
+    }
+}
+
+/* ============================================
+   ESTADOS DE CARGA EN TABLAS
+   ============================================ */
+
+/* Estado de carga para tablas */
+table.loading {
+    opacity: 0.7;
+    pointer-events: none; /* Deshabilita interacción mientras carga */
+}
+
+/* Fila de carga (placeholder) */
+tr.loading-row td {
+    padding: 20px;
+    text-align: center;
+    color: var(--gray-400);
+}
+
+/* Skeleton loading para celdas */
+td.skeleton {
+    background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    height: 20px;
+    border-radius: 4px;
+}
+
+/* Animación para skeleton loading */
+@keyframes loading {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* ============================================
+   PAGINACIÓN DE TABLAS
+   ============================================ */
+
+/* Contenedor de paginación (si se implementa en el futuro) */
+.table-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: white;
+    border-top: 1px solid var(--gray-200);
+    border-radius: 0 0 12px 12px;
+}
+
+/* Información de paginación */
+.pagination-info {
+    color: var(--gray-500);
+    font-size: 14px;
+}
+
+/* Controles de paginación */
+.pagination-controls {
+    display: flex;
+    gap: 5px;
+}
+
+/* Botones de paginación */
+.pagination-btn {
+    padding: 6px 12px;
+    border: 1px solid var(--gray-300);
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+/* Botón de paginación activo */
+.pagination-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+/* Botón de paginación deshabilitado */
+.pagination-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ============================================
+   SCROLLBAR PERSONALIZADO PARA TABLAS
+   ============================================ */
+
+/* Scrollbar para contenedores de tabla con overflow */
+.table-container::-webkit-scrollbar {
+    height: 8px; /* Scrollbar horizontal */
+    width: 8px;  /* Scrollbar vertical */
+}
+
+/* Track del scrollbar */
+.table-container::-webkit-scrollbar-track {
+    background: var(--gray-100);
+    border-radius: 4px;
+}
+
+/* Thumb (la parte que se mueve) */
+.table-container::-webkit-scrollbar-thumb {
+    background: var(--gray-300);
+    border-radius: 4px;
+}
+
+/* Thumb al hacer hover */
+.table-container::-webkit-scrollbar-thumb:hover {
+    background: var(--gray-400);
+}
+
+/* ============================================
+   TABLAS RESPONSIVE
+   ============================================ */
+
+/* Tablets y pantallas medianas */
+@media (max-width: 1024px) {
+    table {
+        font-size: 13px;
+    }
+    
+    th, td {
+        padding: 12px 8px;
+    }
+    
+    /* Ajusta anchos de columna en tablets */
+    #tablaInventario th:nth-child(6),
+    #tablaVentas th:nth-child(7) {
+        width: 12%; /* Menos espacio para fechas */
+    }
+}
+
+/* Tablets pequeñas y móviles grandes */
+@media (max-width: 768px) {
+    /* Convierte tablas en cards en móviles */
+    .table-container {
+        overflow-x: auto; /* Scroll horizontal */
+        border-radius: 8px;
+    }
+    
+    table {
+        min-width: 700px; /* Ancho mínimo para scroll horizontal */
+        font-size: 12px;
+    }
+    
+    th, td {
+        padding: 10px 6px;
+    }
+    
+    /* Oculta algunas columnas en móviles */
+    #tablaInventario th:nth-child(4), /* Costo */
+    #tablaInventario td:nth-child(4),
+    #tablaVentas th:nth-child(4), /* Descuento */
+    #tablaVentas td:nth-child(4) {
+        display: none;
+    }
+    
+    /* Ajusta anchos de columnas visibles */
+    #tablaInventario th:nth-child(2) { width: 40%; } /* Más espacio para descripción */
+    #tablaVentas th:nth-child(6) { width: 30%; } /* Más espacio para descripción */
+}
+
+/* Móviles pequeños */
+@media (max-width: 480px) {
+    .table-container {
+        margin: 10px -10px; /* Extiende hasta los bordes */
+        border-radius: 0;
+        box-shadow: none;
+        border-top: 1px solid var(--gray-200);
+        border-bottom: 1px solid var(--gray-200);
+    }
+    
+    table {
+        min-width: 100%;
+        font-size: 11px;
+    }
+    
+    th, td {
+        padding: 8px 4px;
+    }
+    
+    /* Oculta más columnas en móviles muy pequeños */
+    #tablaInventario th:nth-child(6), /* Última Actualización */
+    #tablaInventario td:nth-child(6),
+    #tablaVentas th:nth-child(7), /* Fecha Venta */
+    #tablaVentas td:nth-child(7) {
+        display: none;
+    }
+    
+    /* Botones más pequeños en móviles */
+    table .action-btn {
+        padding: 4px 8px;
+        font-size: 10px;
+        min-width: 60px;
+    }
+    
+    /* Badges más pequeños */
+    td .stock-badge {
+        font-size: 10px;
+        padding: 2px 8px;
+        min-width: 60px;
+    }
+}
+
+/* ============================================
+   TABLAS EN MODO OFFLINE
+   ============================================ */
+
+/* Indicador visual para datos en modo offline */
+tr.offline-row {
+    background: #fef3c7; /* Amarillo claro */
+    border-left: 3px solid var(--warning);
+}
+
+/* Indicador para filas pendientes de sincronización */
+tr.pending-sync::after {
+    content: '🔄';
+    margin-left: 5px;
+    font-size: 10px;
+    opacity: 0.7;
+}
+
+/* ============================================
+   MEJORAS DE ACCESIBILIDAD
+   ============================================ */
+
+/* Enfoque para navegación por teclado en filas */
+tr:focus-within {
+    outline: 2px solid var(--primary);
+    outline-offset: -2px;
+    background: var(--light);
+}
+
+/* Mejora contraste para texto en celdas */
+td {
+    color: var(--dark);
+}
+
+/* Texto secundario dentro de celdas */
+td small,
+td .text-muted {
+    color: var(--gray-500);
+    font-size: 12px;
+}
+
+/* ============================================
+   ANIMACIONES Y TRANSICIONES
+   ============================================ */
+
+/* Animación de entrada para nuevas filas */
+@keyframes fadeInRow {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Nueva fila con animación */
+tr.new-row {
+    animation: fadeInRow 0.3s ease;
+}
+
+/* Animación para filas actualizadas */
+@keyframes highlightUpdate {
+    0% {
+        background: #dbeafe; /* Azul claro */
+    }
+    100% {
+        background: white;
+    }
+}
+
+/* Fila recién actualizada */
+tr.updated-row {
+    animation: highlightUpdate 1s ease;
+}
+
+/* ============================================
+   ESTILOS PARA TABLAS VACÍAS
+   ============================================ */
+
+/* Mensaje cuando la tabla está vacía */
+.empty-table-message {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--gray-400);
+    font-style: italic;
+    background: white;
+    border-radius: 0 0 12px 12px;
+}
+
+/* Ícono para tabla vacía */
+.empty-table-message i {
+    font-size: 48px;
+    margin-bottom: 15px;
+    opacity: 0.5;
+    display: block;
+}
+
+/* ============================================
+   ZEBRA STRIPING (OPCIONAL)
+   ============================================ */
+
+/* Filas alternadas (opcional - descomentar si se quiere) */
+/*
+tbody tr:nth-child(even) {
+    background: var(--gray-100);
+}
+tbody tr:nth-child(even):hover {
+    background: var(--gray-200);
+}
+*/
