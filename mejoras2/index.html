@@ -1129,68 +1129,110 @@
         }
         
         async function guardarVenta() {
-            const nuevaCantidad = parseInt(document.getElementById('editVentaCantidad').value);
-            const precio = parseFloat(document.getElementById('editVentaPrecio').value);
-            const nuevoDescuento = parseFloat(document.getElementById('editVentaDescuento').value) || 0;
+    const nuevaCantidad = parseInt(document.getElementById('editVentaCantidad').value);
+    const precio = parseFloat(document.getElementById('editVentaPrecio').value);
+    const nuevoDescuento = parseFloat(document.getElementById('editVentaDescuento').value) || 0;
+    
+    if (nuevaCantidad <= 0) {
+        showNotification('❌ La cantidad debe ser mayor a 0', 'error');
+        return;
+    }
+    
+    if (nuevoDescuento < 0) {
+        showNotification('❌ El descuento no puede ser negativo', 'error');
+        return;
+    }
+    
+    // Verificar que el descuento no sea mayor al subtotal
+    const subtotal = nuevaCantidad * precio;
+    if (nuevoDescuento > subtotal) {
+        showNotification(`❌ El descuento ($${nuevoDescuento.toFixed(2)}) no puede ser mayor al subtotal ($${subtotal.toFixed(2)})`, 'error');
+        return;
+    }
+    
+    try {
+        showNotification('🔄 Actualizando venta en mejoras...', 'info');
+        
+        // Usar la fecha exacta que viene de Supabase
+        const fechaVentaOriginal = ventaEditando.fecha_venta;
+        
+        // Llamar a la función RPC
+        const { data, error } = await supabaseClient.rpc('editar_cantidad_venta_mejoras', {
+            p_barcode: ventaEditando.codigo_barras,
+            p_fecha_venta: fechaVentaOriginal,
+            p_nueva_cantidad: nuevaCantidad,
+            p_nuevo_descuento: nuevoDescuento
+        });
+        
+        if (error) {
+            console.error('Error de RPC:', error);
             
-            if (nuevaCantidad <= 0) {
-                showNotification('❌ La cantidad debe ser mayor a 0', 'error');
-                return;
-            }
-            
-            if (nuevoDescuento < 0) {
-                showNotification('❌ El descuento no puede ser negativo', 'error');
-                return;
-            }
-            
-            // Verificar que el descuento no sea mayor al subtotal
-            const subtotal = nuevaCantidad * precio;
-            if (nuevoDescuento > subtotal) {
-                showNotification(`❌ El descuento ($${nuevoDescuento.toFixed(2)}) no puede ser mayor al subtotal ($${subtotal.toFixed(2)})`, 'error');
-                return;
-            }
-            
-            try {
-                showNotification('🔄 Actualizando venta en mejoras...', 'info');
+            // Si el error es por la columna "total", usar una función alternativa
+            if (error.message && error.message.includes('total') && error.message.includes('generated column')) {
+                console.log('Error por columna generada, probando enfoque alternativo...');
                 
-                // SOLUCIÓN SIMPLE: Usar la fecha exacta que viene de Supabase (igual que el original)
-                const fechaVentaOriginal = ventaEditando.fecha_venta;
+                // Intentar actualizar manualmente sin tocar el total
+                const { error: errorManual } = await supabaseClient
+                    .from('ventas_mejoras')
+                    .update({
+                        cantidad: nuevaCantidad,
+                        descuento: nuevoDescuento
+                        // NO incluir 'total'
+                    })
+                    .eq('barcode', ventaEditando.codigo_barras)
+                    .eq('fecha_venta', fechaVentaOriginal);
                 
-                // Llamar a la función RPC igual que en el original
-                const { data, error } = await supabaseClient.rpc('editar_cantidad_venta_mejoras', {
-                    p_barcode: ventaEditando.codigo_barras,
-                    p_fecha_venta: fechaVentaOriginal,  // Usar fecha original SIN conversión
-                    p_nueva_cantidad: nuevaCantidad,
-                    p_nuevo_descuento: nuevoDescuento
-                });
-                
-                if (error) {
-                    console.error('Error de RPC:', error);
-                    throw error;
+                if (errorManual) {
+                    throw errorManual;
                 }
                 
-                console.log('Respuesta de Supabase:', data);
-                
-                if (data && data.success) {
-                    showNotification('✅ Venta actualizada correctamente en mejoras', 'success');
-                    closeModal('modalVenta');
-                    
-                    // Recargar datos para ver los cambios
-                    await cargarVentas();
-                    await cargarInventario();
-                    actualizarEstadisticas();
-                    
-                } else {
-                    const mensajeError = data?.error || 'Error desconocido';
-                    console.error('Error en respuesta:', data);
-                    showNotification('❌ Error: ' + mensajeError, 'error');
+                // Actualizar inventario manualmente
+                const producto = inventario.find(p => p.codigo_barras === ventaEditando.codigo_barras);
+                if (producto) {
+                    const diferencia = nuevaCantidad - ventaEditando.cantidad;
+                    if (diferencia !== 0) {
+                        const nuevoStock = producto.cantidad - diferencia;
+                        await supabaseClient
+                            .from('inventario_mejoras')
+                            .update({ 
+                                cantidad: nuevoStock,
+                                fecha_actualizacion: getHoraChileISO()
+                            })
+                            .eq('barcode', ventaEditando.codigo_barras);
+                    }
                 }
                 
-            } catch (error) {
-                console.error('Error completo al actualizar venta:', error);
-                showNotification('❌ Error al actualizar la venta en mejoras: ' + error.message, 'error');
+                showNotification('✅ Venta actualizada correctamente en mejoras', 'success');
+                closeModal('modalVenta');
+                cargarDatos();
+                return;
             }
+            
+            throw error;
         }
+        
+        console.log('Respuesta de Supabase:', data);
+        
+        if (data && data.success) {
+            showNotification('✅ Venta actualizada correctamente en mejoras', 'success');
+            closeModal('modalVenta');
+            
+            // Recargar datos para ver los cambios
+            await cargarVentas();
+            await cargarInventario();
+            actualizarEstadisticas();
+            
+        } else {
+            const mensajeError = data?.error || 'Error desconocido';
+            console.error('Error en respuesta:', data);
+            showNotification('❌ Error: ' + mensajeError, 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error completo al actualizar venta:', error);
+        showNotification('❌ Error al actualizar la venta en mejoras: ' + error.message, 'error');
+    }
+}
         
         // ========== FUNCIONES PARA AGREGAR VENTAS MANUALES ==========
         
