@@ -1129,103 +1129,115 @@ box-shadow: 0 10px 25px rgba(0,0,0,0.1);
         }
         
         async function guardarVenta() {
-            const nuevaCantidad = parseInt(document.getElementById('editVentaCantidad').value);
-            const precio = parseFloat(document.getElementById('editVentaPrecio').value);
-            const nuevoDescuento = parseFloat(document.getElementById('editVentaDescuento').value) || 0;
+    const nuevaCantidad = parseInt(document.getElementById('editVentaCantidad').value);
+    const precio = parseFloat(document.getElementById('editVentaPrecio').value);
+    const nuevoDescuento = parseFloat(document.getElementById('editVentaDescuento').value) || 0;
+    
+    if (nuevaCantidad <= 0) {
+        showNotification('❌ La cantidad debe ser mayor a 0', 'error');
+        return;
+    }
+    
+    if (nuevoDescuento < 0) {
+        showNotification('❌ El descuento no puede ser negativo', 'error');
+        return;
+    }
+    
+    // Verificar que el descuento no sea mayor al subtotal
+    const subtotal = nuevaCantidad * precio;
+    if (nuevoDescuento > subtotal) {
+        showNotification(`❌ El descuento ($${nuevoDescuento.toFixed(2)}) no puede ser mayor al subtotal ($${subtotal.toFixed(2)})`, 'error');
+        return;
+    }
+    
+    try {
+        showNotification('🔄 Actualizando venta en mejoras...', 'info');
+        
+        // CONVERTIR fecha ISO a formato PostgreSQL
+        // La fecha viene como: "2025-12-30T16:20:32.153Z"
+        // Necesitamos: "2025-12-30 16:20:32.153"
+        
+        const fechaISO = ventaEditando.fecha_venta;
+        console.log('Fecha ISO recibida:', fechaISO);
+        
+        // Crear objeto Date
+        const fechaObj = new Date(fechaISO);
+        
+        // Extraer componentes
+        const year = fechaObj.getFullYear();
+        const month = String(fechaObj.getMonth() + 1).padStart(2, '0');
+        const day = String(fechaObj.getDate()).padStart(2, '0');
+        const hours = String(fechaObj.getHours()).padStart(2, '0');
+        const minutes = String(fechaObj.getMinutes()).padStart(2, '0');
+        const seconds = String(fechaObj.getSeconds()).padStart(2, '0');
+        
+        // Extraer milisegundos
+        const milliseconds = String(fechaObj.getMilliseconds()).padStart(3, '0');
+        
+        // Formato PostgreSQL: YYYY-MM-DD HH:MM:SS.MMM
+        const fechaPostgreSQL = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`;
+        
+        console.log('Fecha convertida a PostgreSQL:', fechaPostgreSQL);
+        
+        // También probar sin milisegundos por si acaso
+        const fechaPostgreSQLSinMs = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        
+        // Llamar a la función RPC
+        let data, error;
+        
+        // Primero intentar con milisegundos
+        console.log('Intentando con formato CON milisegundos...');
+        const resultado1 = await supabaseClient.rpc('editar_cantidad_venta_mejoras', {
+            p_barcode: ventaEditando.codigo_barras,
+            p_fecha_venta: fechaPostgreSQL,
+            p_nueva_cantidad: nuevaCantidad,
+            p_nuevo_descuento: nuevoDescuento
+        });
+        
+        data = resultado1.data;
+        error = resultado1.error;
+        
+        // Si falla, intentar sin milisegundos
+        if (error || (data && !data.success && data.error?.includes('no encontrada'))) {
+            console.log('Intentando con formato SIN milisegundos...');
+            const resultado2 = await supabaseClient.rpc('editar_cantidad_venta_mejoras', {
+                p_barcode: ventaEditando.codigo_barras,
+                p_fecha_venta: fechaPostgreSQLSinMs,
+                p_nueva_cantidad: nuevaCantidad,
+                p_nuevo_descuento: nuevoDescuento
+            });
             
-            if (nuevaCantidad <= 0) {
-                showNotification('❌ La cantidad debe ser mayor a 0', 'error');
-                return;
-            }
-            
-            if (nuevoDescuento < 0) {
-                showNotification('❌ El descuento no puede ser negativo', 'error');
-                return;
-            }
-            
-            // Verificar que el descuento no sea mayor al subtotal
-            const subtotal = nuevaCantidad * precio;
-            if (nuevoDescuento > subtotal) {
-                showNotification(`❌ El descuento ($${nuevoDescuento.toFixed(2)}) no puede ser mayor al subtotal ($${subtotal.toFixed(2)})`, 'error');
-                return;
-            }
-            
-            try {
-                showNotification('🔄 Actualizando venta en mejoras...', 'info');
-                
-                // DEBUG: Mostrar datos antes de enviar
-                console.log('=== DATOS DE VENTA ===');
-                console.log('Código:', ventaEditando.codigo_barras);
-                console.log('Fecha original:', ventaEditando.fecha_venta);
-                console.log('Tipo de fecha:', typeof ventaEditando.fecha_venta);
-                
-                // CONVERTIR FECHA A FORMATO TIMESTAMP CORRECTO
-                // La fecha viene en formato ISO de Supabase, pero debemos asegurarnos
-                const fechaTimestamp = new Date(ventaEditando.fecha_venta).toISOString();
-                console.log('Fecha convertida a ISO:', fechaTimestamp);
-                
-                console.log('Nueva cantidad:', nuevaCantidad);
-                console.log('Nuevo descuento:', nuevoDescuento);
-                
-                // Llamar a la función RPC con la fecha convertida
-                const { data, error } = await supabaseClient.rpc('editar_cantidad_venta_mejoras', {
-                    p_barcode: ventaEditando.codigo_barras,
-                    p_fecha_venta: fechaTimestamp,  // Usar fecha convertida
-                    p_nueva_cantidad: nuevaCantidad,
-                    p_nuevo_descuento: nuevoDescuento
-                });
-                
-                if (error) {
-                    console.error('Error de RPC:', error);
-                    
-                    // Si hay error por formato de fecha, intentar otra estrategia
-                    if (error.message && (error.message.includes('timestamp') || error.message.includes('428C9'))) {
-                        console.log('Probando formato de fecha alternativo...');
-                        
-                        // Intentar con la fecha sin milisegundos
-                        const fechaSimple = fechaTimestamp.split('.')[0] + 'Z';
-                        console.log('Fecha alternativa:', fechaSimple);
-                        
-                        const { data: data2, error: error2 } = await supabaseClient.rpc('editar_cantidad_venta_mejoras', {
-                            p_barcode: ventaEditando.codigo_barras,
-                            p_fecha_venta: fechaSimple,
-                            p_nueva_cantidad: nuevaCantidad,
-                            p_nuevo_descuento: nuevoDescuento
-                        });
-                        
-                        if (error2) {
-                            throw error2;
-                        }
-                        
-                        // Usar los nuevos datos
-                        data = data2;
-                    } else {
-                        throw error;
-                    }
-                }
-                
-                console.log('Respuesta de Supabase:', data);
-                
-                if (data && data.success) {
-                    showNotification('✅ Venta actualizada correctamente en mejoras', 'success');
-                    closeModal('modalVenta');
-                    
-                    // Recargar datos para ver los cambios
-                    await cargarVentas();
-                    await cargarInventario();
-                    actualizarEstadisticas();
-                    
-                } else {
-                    const mensajeError = data?.error || 'Error desconocido';
-                    console.error('Error en respuesta:', data);
-                    showNotification('❌ Error: ' + mensajeError, 'error');
-                }
-                
-            } catch (error) {
-                console.error('Error completo al actualizar venta:', error);
-                showNotification('❌ Error al actualizar la venta en mejoras: ' + error.message, 'error');
-            }
+            data = resultado2.data;
+            error = resultado2.error;
         }
+        
+        if (error) {
+            console.error('Error de RPC:', error);
+            throw error;
+        }
+        
+        console.log('Respuesta de Supabase:', data);
+        
+        if (data && data.success) {
+            showNotification('✅ Venta actualizada correctamente en mejoras', 'success');
+            closeModal('modalVenta');
+            
+            // Recargar datos para ver los cambios
+            await cargarVentas();
+            await cargarInventario();
+            actualizarEstadisticas();
+            
+        } else {
+            const mensajeError = data?.error || 'Error desconocido';
+            console.error('Error en respuesta:', data);
+            showNotification('❌ Error: ' + mensajeError, 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error completo al actualizar venta:', error);
+        showNotification('❌ Error al actualizar la venta en mejoras: ' + error.message, 'error');
+    }
+}
         
         // ========== FUNCIONES PARA AGREGAR VENTAS MANUALES ==========
         
