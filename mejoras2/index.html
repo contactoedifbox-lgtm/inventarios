@@ -497,24 +497,24 @@ box-shadow: 0 10px 25px rgba(0,0,0,0.1);
                 <div class="modal-body">
                     <form id="formInventario">
                         <div class="form-group">
-                            <label>Código de Barras</label>
+                            <label for="editCodigo">Código de Barras</label>
                             <input type="text" id="editCodigo" readonly style="background: #f1f5f9;">
                         </div>
                         <div class="form-group">
-                            <label>Descripción</label>
+                            <label for="editDescripcion">Descripción</label>
                             <textarea id="editDescripcion" rows="3"></textarea>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Cantidad</label>
+                                <label for="editCantidad">Cantidad</label>
                                 <input type="number" id="editCantidad" min="0" required>
                             </div>
                             <div class="form-group">
-                                <label>Costo</label>
+                                <label for="editCosto">Costo</label>
                                 <input type="number" id="editCosto" min="0" step="0.01" required>
                             </div>
                             <div class="form-group">
-                                <label>Precio Venta</label>
+                                <label for="editPrecio">Precio Venta</label>
                                 <input type="number" id="editPrecio" min="0" step="0.01" required>
                             </div>
                         </div>
@@ -537,34 +537,34 @@ box-shadow: 0 10px 25px rgba(0,0,0,0.1);
                 <div class="modal-body">
                     <form id="formVenta">
                         <div class="form-group">
-                            <label>Código de Barras</label>
+                            <label for="editVentaCodigo">Código de Barras</label>
                             <input type="text" id="editVentaCodigo" readonly style="background: #f1f5f9;">
                         </div>
                         <div class="form-group">
-                            <label>Fecha de Venta</label>
+                            <label for="editVentaFecha">Fecha de Venta</label>
                             <input type="text" id="editVentaFecha" readonly style="background: #f1f5f9;">
                         </div>
                         <div class="form-group">
-                            <label>Descripción</label>
+                            <label for="editVentaDescripcion">Descripción</label>
                             <input type="text" id="editVentaDescripcion" readonly style="background: #f1f5f9;">
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Precio Unitario</label>
+                                <label for="editVentaPrecio">Precio Unitario</label>
                                 <input type="text" id="editVentaPrecio" readonly style="background: #f1f5f9;">
                             </div>
                             <div class="form-group">
-                                <label>Descuento Actual ($)</label>
+                                <label for="editVentaDescuento">Descuento Actual ($)</label>
                                 <input type="number" id="editVentaDescuento" step="0.01" min="0" required>
                                 <small style="color: #64748b; font-size: 12px;">Modificar si es necesario</small>
                             </div>
                             <div class="form-group">
-                                <label>Nueva Cantidad</label>
+                                <label for="editVentaCantidad">Nueva Cantidad</label>
                                 <input type="number" id="editVentaCantidad" min="1" required>
                             </div>
                         </div>
                         <div class="form-group">
-                            <label>Nuevo Total</label>
+                            <label for="editVentaTotal">Nuevo Total</label>
                             <input type="text" id="editVentaTotal" readonly style="background: #f1f5f9; font-weight: bold; font-size: 18px;">
                         </div>
                     </form>
@@ -586,7 +586,7 @@ box-shadow: 0 10px 25px rgba(0,0,0,0.1);
                 <div class="modal-body">
                     <form id="formAgregarVenta">
                         <div class="form-group">
-                            <label>Buscar Producto</label>
+                            <label for="buscarProducto">Buscar Producto</label>
                             <input type="text" id="buscarProducto" placeholder="Escribe código o descripción..." 
                                    style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; width: 100%;">
                             <div id="resultadosBusqueda" style="max-height: 200px; overflow-y: auto; margin-top: 10px; border: 1px solid #e2e8f0; border-radius: 8px; display: none;">
@@ -605,22 +605,22 @@ box-shadow: 0 10px 25px rgba(0,0,0,0.1);
                         
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Cantidad</label>
+                                <label for="ventaCantidad">Cantidad</label>
                                 <input type="number" id="ventaCantidad" min="1" value="1" required>
                             </div>
                             <div class="form-group">
-                                <label>Precio Unitario</label>
+                                <label for="ventaPrecio">Precio Unitario</label>
                                 <input type="number" id="ventaPrecio" step="0.01" min="0" required>
                             </div>
                             <div class="form-group">
-                                <label>Descuento ($)</label>
+                                <label for="ventaDescuento">Descuento ($)</label>
                                 <input type="number" id="ventaDescuento" step="0.01" min="0" value="0" required>
                                 <small style="color: #64748b; font-size: 12px;">Monto fijo en pesos</small>
                             </div>
                         </div>
                         
                         <div class="form-group">
-                            <label>Descripción de la Venta</label>
+                            <label for="ventaDescripcion">Descripción de la Venta</label>
                             <textarea id="ventaDescripcion" rows="2" placeholder="Descripción del producto..."></textarea>
                             <small style="color: #64748b; font-size: 12px;">Puedes modificar esta descripción si es necesario</small>
                         </div>
@@ -1129,115 +1129,85 @@ box-shadow: 0 10px 25px rgba(0,0,0,0.1);
         }
         
         async function guardarVenta() {
-    const nuevaCantidad = parseInt(document.getElementById('editVentaCantidad').value);
-    const precio = parseFloat(document.getElementById('editVentaPrecio').value);
-    const nuevoDescuento = parseFloat(document.getElementById('editVentaDescuento').value) || 0;
-    
-    if (nuevaCantidad <= 0) {
-        showNotification('❌ La cantidad debe ser mayor a 0', 'error');
-        return;
-    }
-    
-    if (nuevoDescuento < 0) {
-        showNotification('❌ El descuento no puede ser negativo', 'error');
-        return;
-    }
-    
-    // Verificar que el descuento no sea mayor al subtotal
-    const subtotal = nuevaCantidad * precio;
-    if (nuevoDescuento > subtotal) {
-        showNotification(`❌ El descuento ($${nuevoDescuento.toFixed(2)}) no puede ser mayor al subtotal ($${subtotal.toFixed(2)})`, 'error');
-        return;
-    }
-    
-    try {
-        showNotification('🔄 Actualizando venta en mejoras...', 'info');
-        
-        // CONVERTIR fecha ISO a formato PostgreSQL
-        // La fecha viene como: "2025-12-30T16:20:32.153Z"
-        // Necesitamos: "2025-12-30 16:20:32.153"
-        
-        const fechaISO = ventaEditando.fecha_venta;
-        console.log('Fecha ISO recibida:', fechaISO);
-        
-        // Crear objeto Date
-        const fechaObj = new Date(fechaISO);
-        
-        // Extraer componentes
-        const year = fechaObj.getFullYear();
-        const month = String(fechaObj.getMonth() + 1).padStart(2, '0');
-        const day = String(fechaObj.getDate()).padStart(2, '0');
-        const hours = String(fechaObj.getHours()).padStart(2, '0');
-        const minutes = String(fechaObj.getMinutes()).padStart(2, '0');
-        const seconds = String(fechaObj.getSeconds()).padStart(2, '0');
-        
-        // Extraer milisegundos
-        const milliseconds = String(fechaObj.getMilliseconds()).padStart(3, '0');
-        
-        // Formato PostgreSQL: YYYY-MM-DD HH:MM:SS.MMM
-        const fechaPostgreSQL = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`;
-        
-        console.log('Fecha convertida a PostgreSQL:', fechaPostgreSQL);
-        
-        // También probar sin milisegundos por si acaso
-        const fechaPostgreSQLSinMs = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-        
-        // Llamar a la función RPC
-        let data, error;
-        
-        // Primero intentar con milisegundos
-        console.log('Intentando con formato CON milisegundos...');
-        const resultado1 = await supabaseClient.rpc('editar_cantidad_venta_mejoras', {
-            p_barcode: ventaEditando.codigo_barras,
-            p_fecha_venta: fechaPostgreSQL,
-            p_nueva_cantidad: nuevaCantidad,
-            p_nuevo_descuento: nuevoDescuento
-        });
-        
-        data = resultado1.data;
-        error = resultado1.error;
-        
-        // Si falla, intentar sin milisegundos
-        if (error || (data && !data.success && data.error?.includes('no encontrada'))) {
-            console.log('Intentando con formato SIN milisegundos...');
-            const resultado2 = await supabaseClient.rpc('editar_cantidad_venta_mejoras', {
-                p_barcode: ventaEditando.codigo_barras,
-                p_fecha_venta: fechaPostgreSQLSinMs,
-                p_nueva_cantidad: nuevaCantidad,
-                p_nuevo_descuento: nuevoDescuento
-            });
+            const nuevaCantidad = parseInt(document.getElementById('editVentaCantidad').value);
+            const precio = parseFloat(document.getElementById('editVentaPrecio').value);
+            const nuevoDescuento = parseFloat(document.getElementById('editVentaDescuento').value) || 0;
             
-            data = resultado2.data;
-            error = resultado2.error;
-        }
-        
-        if (error) {
-            console.error('Error de RPC:', error);
-            throw error;
-        }
-        
-        console.log('Respuesta de Supabase:', data);
-        
-        if (data && data.success) {
-            showNotification('✅ Venta actualizada correctamente en mejoras', 'success');
-            closeModal('modalVenta');
+            if (nuevaCantidad <= 0) {
+                showNotification('❌ La cantidad debe ser mayor a 0', 'error');
+                return;
+            }
             
-            // Recargar datos para ver los cambios
-            await cargarVentas();
-            await cargarInventario();
-            actualizarEstadisticas();
+            if (nuevoDescuento < 0) {
+                showNotification('❌ El descuento no puede ser negativo', 'error');
+                return;
+            }
             
-        } else {
-            const mensajeError = data?.error || 'Error desconocido';
-            console.error('Error en respuesta:', data);
-            showNotification('❌ Error: ' + mensajeError, 'error');
+            // Verificar que el descuento no sea mayor al subtotal
+            const subtotal = nuevaCantidad * precio;
+            if (nuevoDescuento > subtotal) {
+                showNotification(`❌ El descuento ($${nuevoDescuento.toFixed(2)}) no puede ser mayor al subtotal ($${subtotal.toFixed(2)})`, 'error');
+                return;
+            }
+            
+            try {
+                showNotification('🔄 Actualizando venta en mejoras...', 'info');
+                
+                // CRÍTICO: Usar la fecha EXACTA que viene de Supabase
+                // NO convertirla, usarla tal cual
+                const fechaOriginal = ventaEditando.fecha_venta;
+                
+                console.log('=== DEBUG ===');
+                console.log('Código:', ventaEditando.codigo_barras);
+                console.log('Fecha ORIGINAL (sin conversión):', fechaOriginal);
+                console.log('Tipo de dato:', typeof fechaOriginal);
+                
+                // Llamar a la función RPC con la fecha SIN conversión
+                const { data, error } = await supabaseClient.rpc('editar_cantidad_venta_mejoras', {
+                    p_barcode: ventaEditando.codigo_barras,
+                    p_fecha_venta: fechaOriginal,  // ¡SIN conversión!
+                    p_nueva_cantidad: nuevaCantidad,
+                    p_nuevo_descuento: nuevoDescuento
+                });
+                
+                if (error) {
+                    console.error('Error de RPC:', error);
+                    throw error;
+                }
+                
+                console.log('Respuesta de Supabase:', data);
+                
+                if (data && data.success) {
+                    showNotification('✅ Venta actualizada correctamente en mejoras', 'success');
+                    closeModal('modalVenta');
+                    
+                    // Recargar datos para ver los cambios
+                    await cargarVentas();
+                    await cargarInventario();
+                    actualizarEstadisticas();
+                    
+                } else {
+                    const mensajeError = data?.error || 'Error desconocido';
+                    console.error('Error en respuesta:', data);
+                    showNotification('❌ Error: ' + mensajeError, 'error');
+                    
+                    // Si el error es "Venta no encontrada", probar una conversión simple
+                    if (mensajeError.includes('no encontrada')) {
+                        console.log('Probando conversión simple...');
+                        
+                        // Convertir solo para debug
+                        const fechaObj = new Date(fechaOriginal);
+                        const fechaSimple = `${fechaObj.getFullYear()}-${String(fechaObj.getMonth() + 1).padStart(2, '0')}-${String(fechaObj.getDate()).padStart(2, '0')} ${String(fechaObj.getHours()).padStart(2, '0')}:${String(fechaObj.getMinutes()).padStart(2, '0')}:${String(fechaObj.getSeconds()).padStart(2, '0')}`;
+                        
+                        console.log('Fecha convertida simple:', fechaSimple);
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Error completo al actualizar venta:', error);
+                showNotification('❌ Error al actualizar la venta en mejoras: ' + error.message, 'error');
+            }
         }
-        
-    } catch (error) {
-        console.error('Error completo al actualizar venta:', error);
-        showNotification('❌ Error al actualizar la venta en mejoras: ' + error.message, 'error');
-    }
-}
         
         // ========== FUNCIONES PARA AGREGAR VENTAS MANUALES ==========
         
@@ -1644,12 +1614,12 @@ box-shadow: 0 10px 25px rgba(0,0,0,0.1);
             localStorage.setItem('inventario_offline_mejoras', JSON.stringify(inventarioOffline));
             
             if (exitosas.length > 0) {
-                showNotification(`✅ ${exitosas.length} ventas de mejoras sincronizadas exitosamente`, 'success');
+                showNotification(`✅ ${exitosas.length} ventas de mejoras sincronizadas exitosamente', 'success');
                 cargarDatos();
             }
             
             if (fallidas.length > 0) {
-                showNotification(`⚠️ ${fallidas.length} ventas de mejoras no se pudieron sincronizar`, 'warning');
+                showNotification(`⚠️ ${fallidas.length} ventas de mejoras no se pudieron sincronizar', 'warning');
             }
             
             actualizarBadgeOffline();
