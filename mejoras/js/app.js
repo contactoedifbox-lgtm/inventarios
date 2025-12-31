@@ -1,15 +1,15 @@
 /* ============================================
-   APLICACIÓN PRINCIPAL
+   APLICACIÓN PRINCIPAL - VERSIÓN COMPLETA CSP-SEGURA
    ============================================
-   Punto de entrada principal de la aplicación:
-   - Coordinación de módulos
-   - Configuración global
-   - Manejo de eventos principales
+   Punto de entrada principal de la aplicación
+   Versión corregida para evitar problemas de CSP
    ============================================ */
 
 // ============================================
 // CONFIGURACIÓN GLOBAL DE LA APLICACIÓN
 // ============================================
+
+let veterinariaAppInstance = null;
 
 class VeterinariaApp {
     constructor() {
@@ -148,7 +148,9 @@ class VeterinariaApp {
         // ========== LOGIN ==========
         const loginButton = document.getElementById('login-button');
         if (loginButton) {
-            loginButton.addEventListener('click', () => this.handleLogin());
+            loginButton.addEventListener('click', () => {
+                this.handleLogin();
+            });
         }
         
         const loginPassword = document.getElementById('login-password');
@@ -161,7 +163,9 @@ class VeterinariaApp {
         // ========== LOGOUT ==========
         const logoutButton = document.getElementById('logout-button');
         if (logoutButton) {
-            logoutButton.addEventListener('click', () => this.handleLogout());
+            logoutButton.addEventListener('click', () => {
+                this.handleLogout();
+            });
         }
         
         // ========== TABS ==========
@@ -169,35 +173,58 @@ class VeterinariaApp {
         const tabVentasBtn = document.getElementById('tab-ventas-btn');
         
         if (tabInventarioBtn) {
-            tabInventarioBtn.addEventListener('click', () => this.switchTab('inventario'));
+            tabInventarioBtn.addEventListener('click', () => {
+                this.switchTab('inventario');
+            });
         }
         
         if (tabVentasBtn) {
-            tabVentasBtn.addEventListener('click', () => this.switchTab('ventas'));
+            tabVentasBtn.addEventListener('click', () => {
+                this.switchTab('ventas');
+            });
         }
         
         // ========== BOTONES PRINCIPALES ==========
         const agregarVentaBtn = document.getElementById('agregar-venta-btn');
         if (agregarVentaBtn) {
-            agregarVentaBtn.addEventListener('click', () => this.handleAgregarVenta());
+            agregarVentaBtn.addEventListener('click', () => {
+                this.handleAgregarVenta();
+            });
         }
         
         const exportarExcelBtn = document.getElementById('exportar-excel-btn');
         if (exportarExcelBtn) {
-            exportarExcelBtn.addEventListener('click', () => this.handleExportExcel());
+            exportarExcelBtn.addEventListener('click', () => {
+                this.handleExportExcel();
+            });
         }
         
         const reporteEncargosBtn = document.getElementById('reporte-encargos-btn');
         if (reporteEncargosBtn) {
-            reporteEncargosBtn.addEventListener('click', () => this.handleReporteEncargos());
+            reporteEncargosBtn.addEventListener('click', () => {
+                this.handleReporteEncargos();
+            });
+        }
+        
+        // ========== BÚSQUEDA ==========
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                this.handleSearchInput(e);
+            });
         }
         
         // ========== MODALES ==========
         this.setupModalEventListeners();
         
         // ========== CONEXIÓN ==========
-        window.addEventListener('online', () => this.handleOnlineStatus());
-        window.addEventListener('offline', () => this.handleOfflineStatus());
+        window.addEventListener('online', () => {
+            this.handleOnlineStatus();
+        });
+        
+        window.addEventListener('offline', () => {
+            this.handleOfflineStatus();
+        });
         
         // ========== ATAJOS DE TECLADO ==========
         this.setupKeyboardShortcuts();
@@ -215,13 +242,19 @@ class VeterinariaApp {
         const saveInventario = document.getElementById('save-inventario');
         
         if (closeModalInventario) {
-            closeModalInventario.addEventListener('click', () => this.closeModal('modalInventario'));
+            closeModalInventario.addEventListener('click', () => {
+                this.closeModal('modalInventario');
+            });
         }
         if (cancelInventario) {
-            cancelInventario.addEventListener('click', () => this.closeModal('modalInventario'));
+            cancelInventario.addEventListener('click', () => {
+                this.closeModal('modalInventario');
+            });
         }
         if (saveInventario) {
-            saveInventario.addEventListener('click', () => this.handleSaveInventario());
+            saveInventario.addEventListener('click', () => {
+                this.handleSaveInventario();
+            });
         }
         
         // Modal Venta
@@ -230,13 +263,19 @@ class VeterinariaApp {
         const saveVenta = document.getElementById('save-venta');
         
         if (closeModalVenta) {
-            closeModalVenta.addEventListener('click', () => this.closeModal('modalVenta'));
+            closeModalVenta.addEventListener('click', () => {
+                this.closeModal('modalVenta');
+            });
         }
         if (cancelVenta) {
-            cancelVenta.addEventListener('click', () => this.closeModal('modalVenta'));
+            cancelVenta.addEventListener('click', () => {
+                this.closeModal('modalVenta');
+            });
         }
         if (saveVenta) {
-            saveVenta.addEventListener('click', () => this.handleSaveVenta());
+            saveVenta.addEventListener('click', () => {
+                this.handleSaveVenta();
+            });
         }
         
         // Modal Agregar Venta
@@ -245,13 +284,19 @@ class VeterinariaApp {
         const saveAgregarVenta = document.getElementById('save-agregar-venta');
         
         if (closeModalAgregarVenta) {
-            closeModalAgregarVenta.addEventListener('click', () => this.closeModal('modalAgregarVenta'));
+            closeModalAgregarVenta.addEventListener('click', () => {
+                this.closeModal('modalAgregarVenta');
+            });
         }
         if (cancelAgregarVenta) {
-            cancelAgregarVenta.addEventListener('click', () => this.closeModal('modalAgregarVenta'));
+            cancelAgregarVenta.addEventListener('click', () => {
+                this.closeModal('modalAgregarVenta');
+            });
         }
         if (saveAgregarVenta) {
-            saveAgregarVenta.addEventListener('click', () => this.handleSaveNuevaVenta());
+            saveAgregarVenta.addEventListener('click', () => {
+                this.handleSaveNuevaVenta();
+            });
         }
         
         // Modal Encargos
@@ -259,10 +304,14 @@ class VeterinariaApp {
         const cancelEncargos = document.getElementById('cancel-encargos');
         
         if (closeModalEncargos) {
-            closeModalEncargos.addEventListener('click', () => this.closeModal('modalEncargos'));
+            closeModalEncargos.addEventListener('click', () => {
+                this.closeModal('modalEncargos');
+            });
         }
         if (cancelEncargos) {
-            cancelEncargos.addEventListener('click', () => this.closeModal('modalEncargos'));
+            cancelEncargos.addEventListener('click', () => {
+                this.closeModal('modalEncargos');
+            });
         }
         
         // Eventos en tiempo real para modales
@@ -278,10 +327,14 @@ class VeterinariaApp {
         const editVentaDescuento = document.getElementById('editVentaDescuento');
         
         if (editVentaCantidad) {
-            editVentaCantidad.addEventListener('input', () => this.calcularTotalVentaEdicion());
+            editVentaCantidad.addEventListener('input', () => {
+                this.calcularTotalVentaEdicion();
+            });
         }
         if (editVentaDescuento) {
-            editVentaDescuento.addEventListener('input', () => this.calcularTotalVentaEdicion());
+            editVentaDescuento.addEventListener('input', () => {
+                this.calcularTotalVentaEdicion();
+            });
         }
         
         // Actualizar total en modal de nueva venta
@@ -290,13 +343,27 @@ class VeterinariaApp {
         const ventaDescuento = document.getElementById('ventaDescuento');
         
         if (ventaCantidad) {
-            ventaCantidad.addEventListener('input', () => this.calcularTotalNuevaVenta());
+            ventaCantidad.addEventListener('input', () => {
+                this.calcularTotalNuevaVenta();
+            });
         }
         if (ventaPrecio) {
-            ventaPrecio.addEventListener('input', () => this.calcularTotalNuevaVenta());
+            ventaPrecio.addEventListener('input', () => {
+                this.calcularTotalNuevaVenta();
+            });
         }
         if (ventaDescuento) {
-            ventaDescuento.addEventListener('input', () => this.calcularTotalNuevaVenta());
+            ventaDescuento.addEventListener('input', () => {
+                this.calcularTotalNuevaVenta();
+            });
+        }
+        
+        // Búsqueda en modal de agregar venta
+        const buscarProducto = document.getElementById('buscarProducto');
+        if (buscarProducto) {
+            buscarProducto.addEventListener('input', () => {
+                this.handleBuscarProducto();
+            });
         }
     }
 
@@ -365,7 +432,7 @@ class VeterinariaApp {
         const password = document.getElementById('login-password')?.value;
         
         if (!email || !password) {
-            window.notifications?.error('Por favor ingresa email y contraseña');
+            this.showNotification('Por favor ingresa email y contraseña', 'error');
             return;
         }
         
@@ -381,7 +448,7 @@ class VeterinariaApp {
      * Maneja el logout
      */
     async handleLogout() {
-        const confirmar = confirm('¿Estás seguro de que quieres cerrar sesión?');
+        const confirmar = window.confirm('¿Estás seguro de que quieres cerrar sesión?');
         if (!confirmar) return;
         
         if (window.auth && window.auth.logoutUser) {
@@ -449,14 +516,14 @@ class VeterinariaApp {
             
             if (activeTab === 'inventario') {
                 data = window.inventory?.getInventario();
-                filename = `inventario_mejoras_${window.utils.getFechaHoyChile()}.csv`;
+                filename = `inventario_mejoras_${this.getFechaHoyChile()}.csv`;
             } else {
                 data = window.sales?.getVentas();
-                filename = `ventas_mejoras_${window.utils.getFechaHoyChile()}.csv`;
+                filename = `ventas_mejoras_${this.getFechaHoyChile()}.csv`;
             }
             
             if (!data || data.length === 0) {
-                window.notifications?.warning('No hay datos para exportar');
+                this.showNotification('No hay datos para exportar', 'warning');
                 return;
             }
             
@@ -471,7 +538,7 @@ class VeterinariaApp {
             
         } catch (error) {
             console.error('❌ Error exportando:', error);
-            window.notifications?.error('Error al exportar los datos');
+            this.showNotification('Error al exportar los datos', 'error');
         }
     }
 
@@ -510,7 +577,7 @@ class VeterinariaApp {
         
         URL.revokeObjectURL(url);
         
-        window.notifications?.success(`Exportado: ${data.length} registros`);
+        this.showNotification(`Exportado: ${data.length} registros`, 'success');
     }
 
     /**
@@ -521,7 +588,7 @@ class VeterinariaApp {
         
         const inventario = window.inventory?.getInventario();
         if (!inventario || inventario.length === 0) {
-            window.notifications?.warning('No hay datos de inventario');
+            this.showNotification('No hay datos de inventario', 'warning');
             return;
         }
         
@@ -529,7 +596,7 @@ class VeterinariaApp {
         const encargos = inventario.filter(p => p.cantidad < 0);
         
         if (encargos.length === 0) {
-            window.notifications?.info('No hay encargos pendientes');
+            this.showNotification('No hay encargos pendientes', 'info');
             return;
         }
         
@@ -553,18 +620,18 @@ class VeterinariaApp {
                 inversionTotal += costoProducto;
                 
                 const row = document.createElement('tr');
-                row.style.cssText = 'border-bottom: 1px solid var(--gray-200);';
+                row.style.cssText = 'border-bottom: 1px solid #e2e8f0;';
                 row.innerHTML = `
                     <td style="padding: 12px;"><strong>${producto.codigo_barras}</strong></td>
-                    <td style="padding: 12px;">${producto.descripcion || '<span style="color: var(--gray-500);">Sin descripción</span>'}</td>
+                    <td style="padding: 12px;">${producto.descripcion || '<span style="color: #94a3b8;">Sin descripción</span>'}</td>
                     <td style="padding: 12px;">
-                        <span style="padding: 4px 10px; background: var(--red-100); color: var(--red-600); border-radius: 20px; font-weight: bold;">
+                        <span style="padding: 4px 10px; background: #fee2e2; color: #dc2626; border-radius: 20px; font-weight: bold;">
                             ${cantidadPendiente} unidades
                         </span>
                     </td>
                     <td style="padding: 12px;">
-                        <div>${window.utils.formatoMoneda(costoUnitario)} c/u</div>
-                        <div style="font-size: 12px; color: var(--gray-500);">Total: ${window.utils.formatoMoneda(costoProducto)}</div>
+                        <div>$${costoUnitario.toFixed(2)} c/u</div>
+                        <div style="font-size: 12px; color: #64748b;">Total: $${costoProducto.toFixed(2)}</div>
                     </td>
                 `;
                 tbody.appendChild(row);
@@ -572,13 +639,13 @@ class VeterinariaApp {
             
             // Agregar fila de totales
             const totalRow = document.createElement('tr');
-            totalRow.style.cssText = 'background: var(--gray-50); font-weight: bold;';
+            totalRow.style.cssText = 'background: #f8fafc; font-weight: bold;';
             totalRow.innerHTML = `
-                <td style="padding: 12px; color: var(--gray-700);" colspan="2">TOTAL GENERAL</td>
-                <td style="padding: 12px; color: var(--red-600);">${totalUnidades} unidades</td>
-                <td style="padding: 12px; color: var(--red-600);">
+                <td style="padding: 12px; color: #475569;" colspan="2">TOTAL GENERAL</td>
+                <td style="padding: 12px; color: #dc2626;">${totalUnidades} unidades</td>
+                <td style="padding: 12px; color: #dc2626;">
                     <div>Inversión total:</div>
-                    <div style="font-size: 18px;">${window.utils.formatoMoneda(inversionTotal)}</div>
+                    <div style="font-size: 18px;">$${inversionTotal.toFixed(2)}</div>
                 </td>
             `;
             tbody.appendChild(totalRow);
@@ -587,7 +654,33 @@ class VeterinariaApp {
         // Abrir modal
         this.openModal('modalEncargos');
         
-        window.notifications?.success(`💰 Inversión requerida: ${window.utils.formatoMoneda(inversionTotal)} para ${encargos.length} productos`);
+        this.showNotification(`💰 Inversión requerida: $${inversionTotal.toFixed(2)} para ${encargos.length} productos`, 'success');
+    }
+
+    /**
+     * Maneja búsqueda en input
+     */
+    handleSearchInput(e) {
+        const searchTerm = e.target.value.trim();
+        const activeTab = this.getActiveTab();
+        
+        if (activeTab === 'inventario' && window.inventory) {
+            window.inventory.aplicarFiltro({ texto: searchTerm });
+        } else if (activeTab === 'ventas' && window.sales) {
+            window.sales.aplicarFiltroVentas({ texto: searchTerm });
+        }
+    }
+
+    /**
+     * Maneja búsqueda en modal de producto
+     */
+    handleBuscarProducto() {
+        if (window.searchManager) {
+            const searchTerm = document.getElementById('buscarProducto')?.value || '';
+            if (searchTerm.length >= 2) {
+                window.searchManager.executeVentaSearch(searchTerm);
+            }
+        }
     }
 
     /**
@@ -655,12 +748,6 @@ class VeterinariaApp {
             // Mostrar indicador de carga
             this.showLoading(true);
             
-            // Configurar tablas con TableRenderer
-            if (window.tableRenderer) {
-                window.tableRenderer.setupInventoryTable();
-                window.tableRenderer.setupSalesTable();
-            }
-            
             // Cargar inventario
             if (window.inventory && window.inventory.cargarInventario) {
                 await window.inventory.cargarInventario();
@@ -684,7 +771,7 @@ class VeterinariaApp {
             
         } catch (error) {
             console.error('❌ Error cargando datos:', error);
-            window.notifications?.error('Error al cargar los datos');
+            this.showNotification('Error al cargar los datos', 'error');
         } finally {
             this.showLoading(false);
         }
@@ -711,13 +798,12 @@ class VeterinariaApp {
      * Actualiza estadísticas
      */
     updateStats() {
-        // Esta función se llama periódicamente para actualizar estadísticas
         console.log('📊 Actualizando estadísticas...');
         
         // Actualizar fecha en header
         const fechaHoyElement = document.getElementById('fecha-hoy');
         if (fechaHoyElement) {
-            fechaHoyElement.textContent = window.utils.getFechaActualChile();
+            fechaHoyElement.textContent = this.getFechaActualChile();
         }
         
         // Actualizar ventas de hoy
@@ -744,7 +830,7 @@ class VeterinariaApp {
         setInterval(() => {
             const fechaVentaActual = document.getElementById('fechaVentaActual');
             if (fechaVentaActual) {
-                fechaVentaActual.textContent = window.utils.getFechaActualChile();
+                fechaVentaActual.textContent = this.getFechaActualChile();
             }
         }, 60000);
         
@@ -773,7 +859,7 @@ class VeterinariaApp {
     handleOnlineStatus() {
         console.log('🌐 Conexión a internet restablecida');
         
-        window.notifications?.success('Conexión a internet restablecida', 'success', 3000);
+        this.showNotification('Conexión a internet restablecida', 'success', 3000);
         
         // Intentar sincronizar ventas pendientes
         setTimeout(() => {
@@ -789,7 +875,7 @@ class VeterinariaApp {
     handleOfflineStatus() {
         console.warn('📴 Sin conexión a internet');
         
-        window.notifications?.warning(
+        this.showNotification(
             'Modo offline activado. Las ventas se guardarán localmente',
             'warning',
             5000
@@ -826,10 +912,7 @@ class VeterinariaApp {
         
         // Mostrar notificación al usuario
         const errorMessage = error.message || 'Error desconocido';
-        window.notifications?.error(`Error: ${errorMessage}`, 'error');
-        
-        // Registrar error para debugging
-        this.logError(error);
+        this.showNotification(`Error: ${errorMessage}`, 'error');
     }
 
     /**
@@ -905,26 +988,6 @@ ${error.stack || error.message || 'Error desconocido'}
         document.body.appendChild(errorScreen);
     }
 
-    /**
-     * Registra error para debugging
-     * @param {Error} error - Error a registrar
-     */
-    logError(error) {
-        const errorLog = {
-            timestamp: new Date().toISOString(),
-            message: error.message,
-            stack: error.stack,
-            url: window.location.href,
-            userAgent: navigator.userAgent,
-            online: navigator.onLine
-        };
-        
-        console.log('📝 Registro de error:', errorLog);
-        
-        // Aquí podrías enviar el error a un servicio de logging
-        // o guardarlo en localStorage para debugging
-    }
-
     // ============================================
     // UTILIDADES DE LA APLICACIÓN
     // ============================================
@@ -992,7 +1055,7 @@ ${error.stack || error.message || 'Error desconocido'}
     async refreshData() {
         console.log('🔄 Refrescando datos...');
         
-        window.notifications?.info('Actualizando datos...', 'info', 2000);
+        this.showNotification('Actualizando datos...', 'info', 2000);
         
         await this.loadApplicationData();
     }
@@ -1088,12 +1151,34 @@ ${error.stack || error.message || 'Error desconocido'}
     }
 
     /**
+     * Muestra notificación
+     */
+    showNotification(message, type = 'info', duration = 3000) {
+        if (window.notifications && window.notifications.showNotification) {
+            window.notifications.showNotification(message, type, duration);
+        } else {
+            // Fallback básico
+            console.log(`[${type.toUpperCase()}] ${message}`);
+            const notification = document.getElementById('notification');
+            if (notification) {
+                notification.textContent = message;
+                notification.className = `notification ${type}`;
+                notification.style.display = 'block';
+                
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                }, duration);
+            }
+        }
+    }
+
+    /**
      * Muestra mensaje de bienvenida
      */
     showWelcomeMessage() {
         setTimeout(() => {
             if (window.auth?.isAuthenticated()) {
-                window.notifications?.info(
+                this.showNotification(
                     `Bienvenido al ${this.appName}`,
                     'info',
                     3000
@@ -1106,25 +1191,23 @@ ${error.stack || error.message || 'Error desconocido'}
      * Muestra ayuda
      */
     showHelp() {
-        const helpText = `
-        🆘 AYUDA - Atajos de Teclado:
+        const helpText = `🆘 AYUDA - Atajos de Teclado:
         
-        Ctrl/Cmd + N: Nueva venta
-        Ctrl/Cmd + E: Exportar datos
-        Ctrl/Cmd + F: Buscar
-        Ctrl/Cmd + R: Recargar datos
-        Ctrl/Cmd + L: Cerrar sesión
-        Escape: Cerrar modales
-        F1: Mostrar esta ayuda
+Ctrl/Cmd + N: Nueva venta
+Ctrl/Cmd + E: Exportar datos
+Ctrl/Cmd + F: Buscar
+Ctrl/Cmd + R: Recargar datos
+Ctrl/Cmd + L: Cerrar sesión
+Escape: Cerrar modales
+F1: Mostrar esta ayuda
+
+📱 Funcionalidades:
+- Escáner de código de barras automático
+- Modo offline para ventas
+- Reporte de encargos pendientes
+- Estadísticas en tiempo real`;
         
-        📱 Funcionalidades:
-        - Escáner de código de barras automático
-        - Modo offline para ventas
-        - Reporte de encargos pendientes
-        - Estadísticas en tiempo real
-        `;
-        
-        alert(helpText);
+        window.alert(helpText);
     }
 
     /**
@@ -1137,7 +1220,6 @@ ${error.stack || error.message || 'Error desconocido'}
             isInitialized: this.isInitialized,
             authenticated: window.auth?.isAuthenticated(),
             userEmail: window.auth?.getCurrentUserEmail(),
-            modules: Object.keys(this.modules),
             online: navigator.onLine,
             userAgent: navigator.userAgent,
             screenSize: `${window.screen.width}x${window.screen.height}`,
@@ -1145,16 +1227,64 @@ ${error.stack || error.message || 'Error desconocido'}
         };
         
         console.log('🔍 Información de depuración:', debugInfo);
-        alert(JSON.stringify(debugInfo, null, 2));
+        window.alert(JSON.stringify(debugInfo, null, 2));
+    }
+
+    /**
+     * Verifica autenticación
+     */
+    async checkAuth() {
+        if (window.auth && window.auth.checkAuth) {
+            return await window.auth.checkAuth();
+        }
+        return false;
+    }
+
+    /**
+     * Obtiene fecha actual en Chile
+     */
+    getFechaActualChile() {
+        if (window.utils && window.utils.getFechaActualChile) {
+            return window.utils.getFechaActualChile();
+        }
+        
+        const ahora = new Date();
+        const offset = -3;
+        const fechaChile = new Date(ahora.getTime() + offset * 60 * 60 * 1000);
+        
+        const opciones = { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric'
+        };
+        
+        return fechaChile.toLocaleDateString('es-CL', opciones);
+    }
+
+    /**
+     * Obtiene fecha hoy en formato YYYY-MM-DD
+     */
+    getFechaHoyChile() {
+        if (window.utils && window.utils.getFechaHoyChile) {
+            return window.utils.getFechaHoyChile();
+        }
+        
+        const ahora = new Date();
+        const offset = -3;
+        const fechaChile = new Date(ahora.getTime() + offset * 60 * 60 * 1000);
+        
+        const año = fechaChile.getFullYear();
+        const mes = (fechaChile.getMonth() + 1).toString().padStart(2, '0');
+        const dia = fechaChile.getDate().toString().padStart(2, '0');
+        
+        return `${año}-${mes}-${dia}`;
     }
 }
 
 // ============================================
 // INICIALIZACIÓN DE LA APLICACIÓN
 // ============================================
-
-// Crear instancia global de la aplicación
-let veterinariaAppInstance = null;
 
 /**
  * Inicializa la aplicación principal
@@ -1215,9 +1345,15 @@ async function initializeApp() {
 
 // Inicializar cuando el DOM esté listo
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeApp);
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+            initializeApp();
+        }, 100);
+    });
 } else {
-    initializeApp();
+    setTimeout(() => {
+        initializeApp();
+    }, 100);
 }
 
 // Exportar al ámbito global
@@ -1247,7 +1383,7 @@ window.veterinariaApp = {
         return null;
     },
     
-    // Variables globales (para compatibilidad)
+    // Variables globales
     get globals() {
         return veterinariaAppInstance ? veterinariaAppInstance.globals : {
             inventario: [],
