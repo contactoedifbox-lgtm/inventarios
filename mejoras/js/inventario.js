@@ -71,7 +71,13 @@ function mostrarInventario(data) {
     document.querySelectorAll('#inventarioBody .btn-edit').forEach(button => {
         button.addEventListener('click', function() {
             const codigo = this.getAttribute('data-codigo');
-            window.editarInventario(codigo);
+            // Verifica que la función exista antes de llamarla
+            if (window.editarInventario && typeof window.editarInventario === 'function') {
+                window.editarInventario(codigo);
+            } else {
+                console.error('Error: editarInventario no está disponible');
+                showNotification('Error: Función no disponible. Recarga la página.', 'error');
+            }
         });
     });
     
