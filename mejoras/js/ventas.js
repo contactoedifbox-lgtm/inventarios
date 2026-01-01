@@ -110,8 +110,7 @@ async function eliminarVenta(codigo, fechaVenta, cantidad) {
         inventario[productoIndex].cantidad = nuevoStock;
         inventario[productoIndex].fecha_actualizacion = new Date().toISOString();
         
-        mostrarInventario([inventario[productoIndex]], true);
-        
+        actualizarFilaInventarioLocal(codigo, nuevoStock);
         await cargarVentas();
         actualizarEstadisticas();
         
@@ -124,16 +123,19 @@ async function eliminarVenta(codigo, fechaVenta, cantidad) {
 }
 
 async function editarVenta(codigo, fechaVenta) {
-    ventaEditando = ventas.find(v => v.codigo_barras === codigo && v.fecha_venta === fechaVenta);
-    if (!ventaEditando) return;
+    const venta = ventas.find(v => v.codigo_barras === codigo && v.fecha_venta === fechaVenta);
+    if (!venta) return;
+    
+    window.ventaEditando = venta;
+    
     const producto = inventario.find(p => p.codigo_barras === codigo);
     const stockActual = producto ? producto.cantidad : 0;
-    document.getElementById('editVentaCodigo').value = ventaEditando.codigo_barras;
-    document.getElementById('editVentaFecha').value = formatoHoraChile(ventaEditando.fecha_venta);
-    document.getElementById('editVentaDescripcion').value = ventaEditando.descripcion || '';
-    document.getElementById('editVentaPrecio').value = parseFloat(ventaEditando.precio_unitario).toFixed(2);
-    document.getElementById('editVentaDescuento').value = parseFloat(ventaEditando.descuento || 0).toFixed(2);
-    document.getElementById('editVentaCantidad').value = ventaEditando.cantidad;
+    document.getElementById('editVentaCodigo').value = venta.codigo_barras;
+    document.getElementById('editVentaFecha').value = formatoHoraChile(venta.fecha_venta);
+    document.getElementById('editVentaDescripcion').value = venta.descripcion || '';
+    document.getElementById('editVentaPrecio').value = parseFloat(venta.precio_unitario).toFixed(2);
+    document.getElementById('editVentaDescuento').value = parseFloat(venta.descuento || 0).toFixed(2);
+    document.getElementById('editVentaCantidad').value = venta.cantidad;
     document.getElementById('editVentaDescripcion').placeholder = `Descripción | Stock actual: ${stockActual} unidades`;
     calcularNuevoTotalConDescuento();
     openModal('modalVenta');
@@ -149,9 +151,15 @@ function calcularNuevoTotalConDescuento() {
 }
 
 async function guardarVenta() {
+    if (!window.ventaEditando) {
+        showNotification('❌ Error: No hay venta seleccionada para editar', 'error');
+        return;
+    }
+    
     const nuevaCantidad = parseInt(document.getElementById('editVentaCantidad').value);
     const precio = parseFloat(document.getElementById('editVentaPrecio').value);
     const nuevoDescuento = parseFloat(document.getElementById('editVentaDescuento').value) || 0;
+    
     if (nuevaCantidad <= 0) {
         showNotification('❌ La cantidad debe ser mayor a 0', 'error');
         return;
@@ -160,35 +168,44 @@ async function guardarVenta() {
         showNotification('❌ El descuento no puede ser negativo', 'error');
         return;
     }
+    
     const subtotal = nuevaCantidad * precio;
     if (nuevoDescuento > subtotal) {
         showNotification(`❌ El descuento ($${nuevoDescuento.toFixed(2)}) no puede ser mayor al subtotal ($${subtotal.toFixed(2)})`, 'error');
         return;
     }
+    
     try {
         showNotification('🔄 Actualizando venta MEJORAS...', 'info');
         const { data, error } = await supabaseClient.rpc('editar_cantidad_venta_mejoras', {
-            p_barcode: ventaEditando.codigo_barras,
-            p_fecha_venta: ventaEditando.fecha_venta,
+            p_barcode: window.ventaEditando.codigo_barras,
+            p_fecha_venta: window.ventaEditando.fecha_venta,
             p_nueva_cantidad: nuevaCantidad,
             p_nuevo_descuento: nuevoDescuento
         });
+        
         if (error) throw error;
+        
         if (data && data.success) {
+            const productoIndex = inventario.findIndex(p => p.codigo_barras === window.ventaEditando.codigo_barras);
+            if (productoIndex !== -1) {
+                const diferenciaCantidad = window.ventaEditando.cantidad - nuevaCantidad;
+                const nuevoStock = inventario[productoIndex].cantidad + diferenciaCantidad;
+                
+                inventario[productoIndex].cantidad = nuevoStock;
+                inventario[productoIndex].fecha_actualizacion = new Date().toISOString();
+                
+                actualizarFilaInventarioLocal(window.ventaEditando.codigo_barras, nuevoStock);
+            }
+            
             showNotification('✅ Venta MEJORAS actualizada correctamente', 'success');
             closeModal('modalVenta');
             
-            const productoIndex = inventario.findIndex(p => p.codigo_barras === ventaEditando.codigo_barras);
-            if (productoIndex !== -1) {
-                const diferenciaCantidad = ventaEditando.cantidad - nuevaCantidad;
-                inventario[productoIndex].cantidad += diferenciaCantidad;
-                inventario[productoIndex].fecha_actualizacion = new Date().toISOString();
-                
-                mostrarInventario([inventario[productoIndex]], true);
-            }
-            
             await cargarVentas();
             actualizarEstadisticas();
+            
+            window.ventaEditando = null;
+            
         } else {
             const mensajeError = data?.error || 'Error desconocido';
             showNotification('❌ Error: ' + mensajeError, 'error');
@@ -297,6 +314,7 @@ async function guardarNuevaVenta() {
     const descuento = parseFloat(document.getElementById('ventaDescuento').value) || 0;
     const descripcion = document.getElementById('ventaDescripcion').value;
     const codigoBarras = productoSeleccionado.codigo_barras;
+    
     if (cantidad <= 0) {
         showNotification('❌ La cantidad debe ser mayor a 0', 'error');
         return;
@@ -309,15 +327,18 @@ async function guardarNuevaVenta() {
         showNotification('❌ El descuento no puede ser negativo', 'error');
         return;
     }
+    
     const subtotal = cantidad * precio;
     if (descuento > subtotal) {
         showNotification(`❌ El descuento ($${descuento.toFixed(2)}) no puede ser mayor al subtotal ($${subtotal.toFixed(2)})`, 'error');
         return;
     }
+    
     if (cantidad > productoSeleccionado.cantidad) {
         showNotification(`❌ Stock insuficiente. Disponible: ${productoSeleccionado.cantidad}`, 'error');
         return;
     }
+    
     const ventaData = {
         barcode: codigoBarras,
         cantidad: cantidad,
@@ -326,6 +347,7 @@ async function guardarNuevaVenta() {
         descripcion: descripcion || productoSeleccionado.descripcion || '',
         fecha_venta: getHoraChileISO()
     };
+    
     if (!navigator.onLine) {
         if (ventaData.descuento === undefined) {
             ventaData.descuento = descuento || 0;
@@ -337,13 +359,17 @@ async function guardarNuevaVenta() {
         actualizarVistaInventarioLocal();
         return;
     }
+    
     try {
         const { data: ventaInsertada, error: errorVenta } = await supabaseClient
             .from('ventas_mejoras')
             .insert([ventaData])
             .select();
+            
         if (errorVenta) throw errorVenta;
+        
         const nuevoStock = productoSeleccionado.cantidad - cantidad;
+        
         const { error: errorInventario } = await supabaseClient
             .from('inventario_mejoras')
             .update({ 
@@ -351,18 +377,19 @@ async function guardarNuevaVenta() {
                 fecha_actualizacion: getHoraChileISO()
             })
             .eq('barcode', codigoBarras);
+            
         if (errorInventario) throw errorInventario;
-        
-        showNotification('✅ Venta MEJORAS registrada correctamente', 'success');
-        closeModal('modalAgregarVenta');
         
         const productoIndex = inventario.findIndex(p => p.codigo_barras === codigoBarras);
         if (productoIndex !== -1) {
             inventario[productoIndex].cantidad = nuevoStock;
             inventario[productoIndex].fecha_actualizacion = new Date().toISOString();
             
-            mostrarInventario([inventario[productoIndex]], true);
+            actualizarFilaInventarioLocal(codigoBarras, nuevoStock);
         }
+        
+        showNotification('✅ Venta MEJORAS registrada correctamente', 'success');
+        closeModal('modalAgregarVenta');
         
         await cargarVentas();
         actualizarEstadisticas();
@@ -417,7 +444,7 @@ function mostrarReporteEncargos() {
             <td style="padding: 12px; color: #dc2626;">${totalUnidadesPendientes} unidades</td>
             <td style="padding: 12px; color: #dc2626;">
                 <div>Inversión total:</div>
-                    <div style="font-size: 18px;">$${inversionTotal.toFixed(2)}</div>
+                <div style="font-size: 18px;">$${inversionTotal.toFixed(2)}</div>
             </td>
         </tr>
     `;
@@ -458,4 +485,31 @@ function exportToExcel() {
     a.download = filename;
     a.click();
     showNotification('Archivo MEJORAS exportado correctamente', 'success');
+}
+
+function actualizarFilaInventarioLocal(codigo, nuevoStock) {
+    const productoIndex = inventario.findIndex(p => p.codigo_barras === codigo);
+    if (productoIndex !== -1) {
+        const producto = inventario[productoIndex];
+        producto.cantidad = nuevoStock;
+        producto.fecha_actualizacion = new Date().toISOString();
+        
+        const tbody = document.getElementById('inventarioBody');
+        const filas = tbody.getElementsByTagName('tr');
+        
+        for (let fila of filas) {
+            const codigoCelda = fila.cells[0].textContent.trim();
+            if (codigoCelda === codigo) {
+                const stockBadge = getStockBadge(nuevoStock);
+                const fecha = formatoHoraChile(producto.fecha_actualizacion);
+                
+                fila.cells[1].innerHTML = producto.descripcion || '<span style="color: #94a3b8;">Sin descripción</span>';
+                fila.cells[2].innerHTML = `<span class="stock-badge ${stockBadge.class}">${nuevoStock} unidades</span>`;
+                fila.cells[3].textContent = `$${parseFloat(producto.costo || 0).toFixed(2)}`;
+                fila.cells[4].innerHTML = `<strong>$${parseFloat(producto.precio || 0).toFixed(2)}</strong>`;
+                fila.cells[5].textContent = fecha;
+                break;
+            }
+        }
+    }
 }
