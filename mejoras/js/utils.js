@@ -113,3 +113,21 @@ function showNotification(message, type) {
     notification.style.display = 'block';
     setTimeout(() => notification.style.display = 'none', 3000);
 }
+
+function actualizarEstadoSistema() {
+    const estadoElemento = document.getElementById('estado-sistema');
+    if (navigator.onLine) {
+        estadoElemento.textContent = 'Online';
+        estadoElemento.style.color = '#10b981';
+    } else {
+        estadoElemento.textContent = 'Offline';
+        estadoElemento.style.color = '#f59e0b';
+    }
+}
+
+function actualizarFechaHoyCorta() {
+    const hoy = new Date();
+    const dia = hoy.getDate().toString().padStart(2, '0');
+    const mes = (hoy.getMonth() + 1).toString().padStart(2, '0');
+    document.getElementById('fecha-hoy-corta').textContent = `${dia}/${mes}`;
+}
