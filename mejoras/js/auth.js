@@ -48,13 +48,7 @@ function showLoginError(message) {
 }
 
 function showApp() {
-    const loginContainer = document.getElementById('login-container');
-    const appContainer = document.getElementById('app-container');
-    const currentUserElement = document.getElementById('current-user');
-    const userEmailElement = document.getElementById('user-email');
-    
-    if (loginContainer) loginContainer.style.display = 'none';
-    if (appContainer) appContainer.style.display = 'block';
-    if (currentUserElement) currentUserElement.textContent = currentUser?.email || 'Cliente - MEJORAS';
-    if (userEmailElement) userEmailElement.textContent = currentUser?.email || 'Usuario';
+    document.getElementById('login-container').style.display = 'none';
+    document.getElementById('app-container').style.display = 'block';
+    document.getElementById('current-user').textContent = currentUser?.email || 'Cliente - MEJORAS';
 }
