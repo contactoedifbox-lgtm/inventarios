@@ -66,6 +66,34 @@ function mostrarVentas(data) {
     });
 }
 
+function actualizarFilaInventario(codigo, nuevaCantidad) {
+    const filas = document.querySelectorAll('#inventarioBody tr');
+    for (let fila of filas) {
+        const codigoFila = fila.querySelector('td:first-child strong')?.textContent;
+        if (codigoFila === codigo) {
+            const celdaStock = fila.querySelector('td:nth-child(3)');
+            const badge = celdaStock.querySelector('.stock-badge');
+            const stockBadge = getStockBadge(nuevaCantidad);
+            
+            badge.textContent = `${nuevaCantidad} unidades`;
+            badge.className = `stock-badge ${stockBadge.class}`;
+            
+            const productoIndex = inventario.findIndex(p => p.codigo_barras === codigo);
+            if (productoIndex !== -1) {
+                inventario[productoIndex].cantidad = nuevaCantidad;
+                inventario[productoIndex].fecha_actualizacion = getHoraChileISO();
+            }
+            
+            const fechaCelda = fila.querySelector('td:nth-child(6)');
+            fechaCelda.textContent = formatoHoraChile(getHoraChileISO());
+            
+            break;
+        }
+    }
+    actualizarEstadisticas();
+    document.getElementById('inventario-needs-sync').style.display = 'inline-block';
+}
+
 async function eliminarVenta(codigo, fechaVenta, cantidad) {
     if (!confirm(`¿Estás seguro de eliminar esta venta?\nCódigo: ${codigo}\nCantidad: ${cantidad}\n\nEsta acción devolverá ${cantidad} unidades al inventario.`)) {
         return;
