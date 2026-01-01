@@ -9,9 +9,55 @@ async function cargarInventario() {
         inventario = data;
         mostrarInventario(inventario);
         showNotification('Inventario MEJORAS cargado', 'success');
+        document.getElementById('inventarioSincronizado').style.display = 'block';
+        document.getElementById('inventarioNoSincronizado').style.display = 'none';
     } catch (error) {
         console.error('Error cargando inventario MEJORAS:', error);
         showNotification('Error al cargar inventario MEJORAS', 'error');
+    }
+}
+
+async function actualizarFilaInventario(codigo) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('vista_inventario_mejoras')
+            .select('*')
+            .eq('codigo_barras', codigo)
+            .single();
+        
+        if (error) throw error;
+        
+        const index = inventario.findIndex(p => p.codigo_barras === codigo);
+        if (index !== -1) {
+            inventario[index] = data;
+            actualizarFilaTabla(data);
+        } else {
+            inventario.push(data);
+            mostrarInventario(inventario);
+        }
+        actualizarEstadisticas();
+    } catch (error) {
+        console.error('Error actualizando fila inventario:', error);
+    }
+}
+
+function actualizarFilaTabla(producto) {
+    const tbody = document.getElementById('inventarioBody');
+    const rows = tbody.getElementsByTagName('tr');
+    
+    for (let row of rows) {
+        const codigoCell = row.cells[0];
+        if (codigoCell && codigoCell.textContent.trim() === producto.codigo_barras) {
+            const stockBadge = getStockBadge(producto.cantidad);
+            const fecha = formatoHoraChile(producto.fecha_actualizacion);
+            
+            row.cells[2].innerHTML = `<span class="stock-badge ${stockBadge.class}">${producto.cantidad} unidades</span>`;
+            row.cells[5].textContent = fecha;
+            
+            document.getElementById('inventarioSincronizado').style.display = 'none';
+            document.getElementById('inventarioNoSincronizado').style.display = 'block';
+            return;
+        }
     }
 }
 
@@ -47,17 +93,6 @@ function mostrarInventario(data) {
     });
 }
 
-async function editarInventario(codigo) {
-    productoEditando = inventario.find(p => p.codigo_barras === codigo);
-    if (!productoEditando) return;
-    document.getElementById('editCodigo').value = productoEditando.codigo_barras;
-    document.getElementById('editDescripcion').value = productoEditando.descripcion || '';
-    document.getElementById('editCantidad').value = productoEditando.cantidad;
-    document.getElementById('editCosto').value = productoEditando.costo || 0;
-    document.getElementById('editPrecio').value = productoEditando.precio || 0;
-    openModal('modalInventario');
-}
-
 async function guardarInventario() {
     const descripcion = document.getElementById('editDescripcion').value;
     const cantidad = parseInt(document.getElementById('editCantidad').value);
@@ -75,21 +110,12 @@ async function guardarInventario() {
         if (data && data.success) {
             showNotification('✅ Producto actualizado', 'success');
             closeModal('modalInventario');
-            cargarDatos();
+            await actualizarFilaInventario(productoEditando.codigo_barras);
         } else {
             showNotification('❌ Error: ' + (data?.message || 'Desconocido'), 'error');
         }
     } catch (error) {
         console.error('Error actualizando inventario MEJORAS:', error);
         showNotification('❌ Error al actualizar', 'error');
-    }
-}
-
-function actualizarEstadisticas() {
-    const stockBajo = inventario.filter(p => p.cantidad < 10).length;
-    document.getElementById('stock-bajo').textContent = stockBajo;
-    if (inventario.length > 0 && inventario[0].fecha_actualizacion) {
-        const hora = formatoHoraCortaChile(inventario[0].fecha_actualizacion);
-        document.getElementById('ultima-actualizacion').textContent = hora;
     }
 }
