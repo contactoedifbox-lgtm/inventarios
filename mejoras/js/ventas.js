@@ -70,50 +70,87 @@ async function eliminarVenta(codigo, fechaVenta, cantidad) {
     if (!confirm(`¿Estás seguro de eliminar esta venta?\nCódigo: ${codigo}\nCantidad: ${cantidad}\n\nEsta acción devolverá ${cantidad} unidades al inventario.`)) {
         return;
     }
+    
     try {
         showNotification('🔄 Eliminando venta MEJORAS...', 'info');
         
-        // 1. Obtener el stock actual primero
+        console.log('Iniciando eliminación:', { codigo, fechaVenta, cantidad });
+        
+        // 1. PRIMERO: Obtener información del producto
         const { data: producto, error: errorProducto } = await supabaseClient
             .from('inventario_mejoras')
-            .select('cantidad')
+            .select('cantidad, descripcion')
             .eq('barcode', codigo)
             .single();
         
-        if (errorProducto) throw errorProducto;
+        if (errorProducto) {
+            console.error('Error obteniendo producto:', errorProducto);
+            throw new Error(`Producto ${codigo} no encontrado en inventario`);
+        }
         
-        const stockActual = producto.cantidad;
-        const nuevoStock = stockActual + cantidad;
+        console.log('Producto encontrado:', producto);
         
-        // 2. Eliminar la venta
+        // Calcular nuevo stock
+        const stockActual = parseInt(producto.cantidad) || 0;
+        const nuevoStock = stockActual + parseInt(cantidad);
+        
+        console.log('Cálculo de stock:', { stockActual, cantidad, nuevoStock });
+        
+        // 2. SEGUNDO: Eliminar la venta
+        console.log('Eliminando venta...');
         const { error: errorEliminar } = await supabaseClient
             .from('ventas_mejoras')
             .delete()
             .eq('barcode', codigo)
             .eq('fecha_venta', fechaVenta);
         
-        if (errorEliminar) throw errorEliminar;
+        if (errorEliminar) {
+            console.error('Error eliminando venta:', errorEliminar);
+            throw errorEliminar;
+        }
         
-        // 3. Actualizar inventario (sumar cantidad)
+        console.log('Venta eliminada correctamente');
+        
+        // 3. TERCERO: Actualizar inventario
+        console.log('Actualizando inventario...');
         const { error: errorInventario } = await supabaseClient
             .from('inventario_mejoras')
             .update({ 
                 cantidad: nuevoStock,
-                fecha_actualizacion: getHoraChileISO()
+                fecha_actualizacion: new Date().toISOString() // Usar hora actual
             })
             .eq('barcode', codigo);
         
-        if (errorInventario) throw errorInventario;
+        if (errorInventario) {
+            console.error('Error actualizando inventario:', errorInventario);
+            throw errorInventario;
+        }
         
-        showNotification('✅ Venta MEJORAS eliminada correctamente. Stock restaurado.', 'success');
+        console.log('Inventario actualizado correctamente');
         
-        await cargarVentas();
-        await cargarInventario();
+        // 4. CUARTO: Actualizar vistas LOCALES inmediatamente
+        // Actualizar array local de ventas
+        ventas = ventas.filter(v => !(v.codigo_barras === codigo && v.fecha_venta === fechaVenta));
+        
+        // Actualizar array local de inventario
+        const productoIndex = inventario.findIndex(p => p.codigo_barras === codigo);
+        if (productoIndex !== -1) {
+            inventario[productoIndex].cantidad = nuevoStock;
+            inventario[productoIndex].fecha_actualizacion = new Date().toISOString();
+        }
+        
+        // 5. QUINTO: Refrescar tablas
+        mostrarVentas(ventas); // Usar el array local actualizado
+        mostrarInventario(inventario); // Usar el array local actualizado
         actualizarEstadisticas();
         
+        showNotification(`✅ Venta eliminada. Stock de ${producto.descripcion || codigo} restaurado: ${stockActual} → ${nuevoStock} unidades`, 'success');
+        
+        console.log('Eliminación completada exitosamente');
+        
     } catch (error) {
-        console.error('Error eliminando venta MEJORAS:', error);
-        showNotification('❌ Error al eliminar la venta MEJORAS: ' + error.message, 'error');
+        console.error('Error completo eliminando venta:', error);
+        showNotification('❌ Error al eliminar la venta: ' + error.message, 'error');
     }
 }
 
