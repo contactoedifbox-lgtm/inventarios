@@ -1,4 +1,14 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Cargar última sincronización al iniciar
+    const ultimaSync = localStorage.getItem('ultimaSincronizacion');
+    if (ultimaSync) {
+        const hora = formatoHoraCortaChile(ultimaSync);
+        const elemento = document.getElementById('last-sync-time');
+        if (elemento) {
+            elemento.textContent = `Última sinc.: ${hora}`;
+        }
+    }
+    
     document.getElementById('searchInput').addEventListener('input', function(e) {
         filtrarTabla(e.target.value);
     });
