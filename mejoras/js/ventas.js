@@ -339,14 +339,6 @@ function mostrarReporteEncargos() {
     showNotification(`💰 Inversión requerida MEJORAS: $${inversionTotal.toFixed(2)} para ${encargos.length} productos`, 'success');
 }
 
-async function cargarDatos() {
-    await cargarInventario();
-    await cargarVentas();
-    actualizarEstadisticas();
-    document.getElementById('fecha-hoy').textContent = getFechaActualChile();
-    showTab('ventas');
-}
-
 function exportToExcel() {
     const tabActiva = document.querySelector('.tab-btn.active').textContent.toLowerCase();
     let data, filename;
