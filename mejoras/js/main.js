@@ -31,10 +31,12 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('editVentaDescuento').addEventListener('input', calcularNuevoTotalConDescuento);
     window.addEventListener('online', function() {
         showNotification('🌐 Conexión a internet restablecida', 'success');
+        actualizarEstadoSistema();
         setTimeout(sincronizarVentasPendientes, 3000);
     });
     window.addEventListener('offline', function() {
         showNotification('📴 Modo offline activado. Las ventas se guardarán localmente', 'warning');
+        actualizarEstadoSistema();
     });
     document.getElementById('offlineBadge').addEventListener('click', sincronizarVentasPendientes);
     actualizarBadgeOffline();
@@ -49,4 +51,10 @@ document.addEventListener('DOMContentLoaded', function() {
     checkAuth();
     
     document.getElementById('recargarInventarioBtn').addEventListener('click', cargarInventario);
+    
+    actualizarEstadoSistema();
+    actualizarFechaHoyCorta();
+    
+    setInterval(actualizarEstadoSistema, 5000);
+    setInterval(actualizarFechaHoyCorta, 60000);
 });
