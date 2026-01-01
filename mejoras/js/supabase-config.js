@@ -7,10 +7,21 @@ let productoEditando = null;
 let ventaEditando = null;
 let productoSeleccionado = null;
 let currentUser = null;
+let inventarioNeedsSync = false;
+
 window.cargarDatos = async function() {
     await cargarInventario();
     await cargarVentas();
     actualizarEstadisticas();
     document.getElementById('fecha-hoy').textContent = getFechaActualChile();
     showTab('ventas');
+};
+
+window.forzarSincronizacionInventario = async function() {
+    if (!navigator.onLine) {
+        showNotification('❌ No hay conexión a internet', 'error');
+        return;
+    }
+    await cargarInventario();
+    showNotification('✅ Inventario sincronizado completamente', 'success');
 };
