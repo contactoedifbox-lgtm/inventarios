@@ -110,6 +110,16 @@
                 <i class="fas fa-search"></i>
                 <input type="text" id="searchInput" placeholder="Buscar por código de barras o descripción...">
             </div>
+
+            <div class="sync-container">
+                <button id="sync-inventario-btn" onclick="forzarSincronizacionInventario()">
+                    <i class="fas fa-sync-alt"></i> Actualizar inventario completo
+                </button>
+                <span id="inventario-needs-sync">
+                    <i class="fas fa-exclamation-triangle"></i> Inventario necesita sincronización
+                </span>
+                <span class="last-sync-info" id="last-sync-time"></span>
+            </div>
             
             <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
                 <button onclick="forzarSincronizacionInventario()" class="action-btn" style="background: #3b82f6;">
