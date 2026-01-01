@@ -59,6 +59,8 @@ async function sincronizarVentasPendientes() {
     showNotification(`🔄 Sincronizando ${ventasPendientes.length} ventas pendientes MEJORAS...`, 'info');
     const exitosas = [];
     const fallidas = [];
+    const productosActualizar = new Set();
+    
     for (const venta of ventasPendientes) {
         try {
             const ventaParaSubir = {
@@ -69,20 +71,26 @@ async function sincronizarVentasPendientes() {
                 descripcion: venta.descripcion || '',
                 fecha_venta: venta.fecha_venta
             };
+            
             const { error: errorVenta } = await supabaseClient
                 .from('ventas_mejoras')
                 .insert([ventaParaSubir]);
+                
             if (!errorVenta) {
                 const producto = inventario.find(p => p.codigo_barras === venta.barcode);
                 if (producto) {
                     const nuevoStock = producto.cantidad - venta.cantidad;
-                    await supabaseClient
+                    const { error: errorInventario } = await supabaseClient
                         .from('inventario_mejoras')
                         .update({ 
                             cantidad: nuevoStock,
                             fecha_actualizacion: getHoraChileISO()
                         })
                         .eq('barcode', venta.barcode);
+                        
+                    if (!errorInventario) {
+                        productosActualizar.add(venta.barcode);
+                    }
                 }
                 exitosas.push(venta);
             } else {
@@ -94,18 +102,27 @@ async function sincronizarVentasPendientes() {
             fallidas.push(venta);
         }
     }
+    
     localStorage.setItem('ventas_offline_mejoras', JSON.stringify(fallidas));
     const inventarioOffline = JSON.parse(localStorage.getItem('inventario_offline_mejoras') || '{}');
     exitosas.forEach(venta => {
         delete inventarioOffline[venta.barcode];
     });
     localStorage.setItem('inventario_offline_mejoras', JSON.stringify(inventarioOffline));
+    
+    for (const codigo of productosActualizar) {
+        await actualizarFilaInventario(codigo);
+    }
+    
     if (exitosas.length > 0) {
         showNotification(`✅ ${exitosas.length} ventas MEJORAS sincronizadas exitosamente`, 'success');
-        cargarDatos();
+        await cargarVentas();
+        actualizarEstadisticas();
     }
+    
     if (fallidas.length > 0) {
         showNotification(`⚠️ ${fallidas.length} ventas MEJORAS no se pudieron sincronizar`, 'warning');
     }
+    
     actualizarBadgeOffline();
 }
