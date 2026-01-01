@@ -139,8 +139,8 @@ async function eliminarVenta(codigo, fechaVenta, cantidad) {
         
         console.log('Venta eliminada correctamente');
         
-        // 3. TERCERO: Actualizar inventario
-        console.log('Actualizando inventario...');
+        // 3. TERCERO: Actualizar inventario en Supabase
+        console.log('Actualizando inventario en Supabase...');
         const { error: errorInventario } = await supabaseClient
             .from('inventario_mejoras')
             .update({ 
@@ -154,19 +154,21 @@ async function eliminarVenta(codigo, fechaVenta, cantidad) {
             throw errorInventario;
         }
         
-        console.log('Inventario actualizado correctamente');
+        console.log('Inventario actualizado correctamente en Supabase');
         
-        // 4. CUARTO: Actualizar array local de inventario
+        // 4. CUARTO: Actualizar array local de inventario y vista
         const productoIndex = inventario.findIndex(p => p.codigo_barras === codigo);
         if (productoIndex !== -1) {
             inventario[productoIndex].cantidad = nuevoStock;
             inventario[productoIndex].fecha_actualizacion = new Date().toISOString();
+            
+            // ACTUALIZAR INCREMENTALMENTE la fila en la tabla
+            actualizarFilaInventario(codigo, nuevoStock);
         }
         
-        // 5. QUINTO: Recargar datos COMPLETOS desde Supabase
-        // Esto es necesario porque las vistas pueden tener caché
+        // 5. QUINTO: Recargar solo ventas desde Supabase (NO inventario)
         await cargarVentas();  // Recargar desde vista_ventas_mejoras
-        await cargarInventario(); // Recargar desde vista_inventario_mejoras
+        
         actualizarEstadisticas();
         
         showNotification(`✅ Venta eliminada. Stock de ${producto.descripcion || codigo} restaurado: ${stockActual} → ${nuevoStock} unidades`, 'success');
