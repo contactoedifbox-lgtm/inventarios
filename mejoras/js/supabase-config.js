@@ -1,66 +1,34 @@
-const SUPABASE_URL = 'https://qnhmfvtqgwtlckcvzbhq.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_791W4BHb07AeA_DX2EWZCQ_Fxlzv30o';
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-let inventario = [];
-let ventas = [];
-let currentUser = null;
-let inventarioSincronizado = true;
-
-window.cargarDatos = async function() {
-    await cargarInventario();
-    await cargarVentas();
-    actualizarEstadisticas();
-    document.getElementById('fecha-hoy').textContent = getFechaActualChile();
-    showTab('ventas');
-    inventarioSincronizado = true;
-    actualizarIndicadorSincronizacion();
-};
-
-window.actualizarInventarioCompleto = async function() {
-    showNotification('🔄 Recargando inventario completo MEJORAS...', 'info');
-    await cargarInventario(true);
-    inventarioSincronizado = true;
-    actualizarIndicadorSincronizacion();
-};
-
-function actualizarIndicadorSincronizacion() {
-    const indicador = document.getElementById('sincronizacion-indicador');
-    if (!indicador) return;
-    
-    if (!inventarioSincronizado) {
-        indicador.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Inventario parcial';
-        indicador.className = 'sync-indicator sync-warning';
-    } else {
-        indicador.innerHTML = '<i class="fas fa-check-circle"></i> Inventario completo';
-        indicador.className = 'sync-indicator sync-success';
-    }
-}
-
-window.marcarInventarioComoNoSincronizado = function() {
-    inventarioSincronizado = false;
-    actualizarIndicadorSincronizacion();
-};
-
 window.editarInventario = async function(codigo) {
+    console.log('editando inventario, codigo:', codigo);
+    console.log('inventario array length:', inventario.length);
+    console.log('inventario array:', inventario);
+    
     window.productoEditando = inventario.find(p => p.codigo_barras === codigo);
+    
+    console.log('producto encontrado:', window.productoEditando);
+    
     if (!window.productoEditando) {
-        console.error('Producto no encontrado:', codigo);
-        showNotification('❌ Producto no encontrado', 'error');
+        console.error('Producto no encontrado en inventario. Código:', codigo);
+        showNotification('❌ Producto no encontrado en el inventario local', 'error');
         return;
     }
+    
     document.getElementById('editCodigo').value = window.productoEditando.codigo_barras;
     document.getElementById('editDescripcion').value = window.productoEditando.descripcion || '';
     document.getElementById('editCantidad').value = window.productoEditando.cantidad;
     document.getElementById('editCosto').value = window.productoEditando.costo || 0;
     document.getElementById('editPrecio').value = window.productoEditando.precio || 0;
+    
     openModal('modalInventario');
-    console.log('Producto para editar:', window.productoEditando);
 };
 
 window.guardarInventario = async function() {
-    if (!window.productoEditando) {
-        showNotification('❌ Error: No hay producto seleccionado para editar', 'error');
-        console.error('productoEditando es null o undefined');
+    console.log('=== INICIANDO guardarInventario ===');
+    console.log('window.productoEditando:', window.productoEditando);
+    
+    if (!window.productoEditando || !window.productoEditando.codigo_barras) {
+        showNotification('❌ Error: No hay producto seleccionado o el producto no tiene código', 'error');
+        console.error('Error crítico - productoEditando:', window.productoEditando);
         return;
     }
     
@@ -69,7 +37,7 @@ window.guardarInventario = async function() {
     const costo = parseFloat(document.getElementById('editCosto').value);
     const precio = parseFloat(document.getElementById('editPrecio').value);
     
-    console.log('Guardando producto:', {
+    console.log('Datos a guardar:', {
         codigo: window.productoEditando.codigo_barras,
         descripcion,
         cantidad,
@@ -92,15 +60,21 @@ window.guardarInventario = async function() {
             showNotification('✅ Producto actualizado', 'success');
             closeModal('modalInventario');
             
+            // Actualizar el array local de inventario
             const productoIndex = inventario.findIndex(p => p.codigo_barras === window.productoEditando.codigo_barras);
+            console.log('Índice encontrado en inventario:', productoIndex);
+            
             if (productoIndex !== -1) {
                 inventario[productoIndex].descripcion = descripcion;
                 inventario[productoIndex].cantidad = cantidad;
                 inventario[productoIndex].costo = costo;
                 inventario[productoIndex].precio = precio;
                 inventario[productoIndex].fecha_actualizacion = new Date().toISOString();
+                
+                console.log('Inventario actualizado localmente:', inventario[productoIndex]);
             }
             
+            // Recargar la vista
             await cargarInventario(false);
             window.productoEditando = null;
             
@@ -108,31 +82,7 @@ window.guardarInventario = async function() {
             showNotification('❌ Error: ' + (data?.message || 'Desconocido'), 'error');
         }
     } catch (error) {
-        console.error('Error actualizando inventario MEJORAS:', error);
-        showNotification('❌ Error al actualizar', 'error');
+        console.error('Error completo actualizando inventario MEJORAS:', error);
+        showNotification('❌ Error al actualizar: ' + error.message, 'error');
     }
 };
-
-document.addEventListener('DOMContentLoaded', function() {
-    const headerButtons = document.querySelector('.header-buttons');
-    if (headerButtons) {
-        const botonRecargaCompleta = document.createElement('button');
-        botonRecargaCompleta.id = 'recarga-inventario-btn';
-        botonRecargaCompleta.className = 'header-btn warning';
-        botonRecargaCompleta.innerHTML = '<i class="fas fa-sync-alt"></i> Recargar Inventario';
-        botonRecargaCompleta.addEventListener('click', actualizarInventarioCompleto);
-        
-        const sincronizacionIndicador = document.createElement('div');
-        sincronizacionIndicador.id = 'sincronizacion-indicador';
-        sincronizacionIndicador.className = 'sync-indicator sync-success';
-        sincronizacionIndicador.innerHTML = '<i class="fas fa-check-circle"></i> Inventario completo';
-        sincronizacionIndicador.style.marginLeft = '10px';
-        sincronizacionIndicador.style.padding = '8px 15px';
-        sincronizacionIndicador.style.borderRadius = '6px';
-        sincronizacionIndicador.style.fontSize = '14px';
-        sincronizacionIndicador.style.fontWeight = '500';
-        
-        headerButtons.insertBefore(sincronizacionIndicador, headerButtons.firstChild);
-        headerButtons.insertBefore(botonRecargaCompleta, headerButtons.firstChild);
-    }
-});
