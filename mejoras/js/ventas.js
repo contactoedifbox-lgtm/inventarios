@@ -207,7 +207,12 @@ async function guardarVenta() {
             showNotification('✅ Venta MEJORAS actualizada correctamente', 'success');
             closeModal('modalVenta');
             await cargarVentas();
-            await cargarInventario();
+            const producto = inventario.find(p => p.codigo_barras === ventaEditando.codigo_barras);
+            if (producto) {
+                const diferencia = nuevaCantidad - ventaEditando.cantidad;
+                const nuevoStock = producto.cantidad - diferencia;
+                actualizarFilaInventario(ventaEditando.codigo_barras, nuevoStock);
+            }
             actualizarEstadisticas();
         } else {
             const mensajeError = data?.error || 'Error desconocido';
