@@ -9,6 +9,7 @@ async function cargarInventario() {
         inventario = data;
         mostrarInventario(inventario);
         showNotification('Inventario MEJORAS cargado', 'success');
+        document.getElementById('inventario-needs-sync').style.display = 'none';
     } catch (error) {
         console.error('Error cargando inventario MEJORAS:', error);
         showNotification('Error al cargar inventario MEJORAS', 'error');
