@@ -41,6 +41,9 @@ function mostrarVentas(data) {
                     <button class="action-btn btn-edit" data-codigo="${item.codigo_barras}" data-fecha="${item.fecha_venta}">
                         <i class="fas fa-edit"></i> Editar
                     </button>
+                    <button class="action-btn btn-delete" data-codigo="${item.codigo_barras}" data-fecha="${item.fecha_venta}" data-cantidad="${item.cantidad}">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
                 </td>
             </tr>
         `;
@@ -53,6 +56,55 @@ function mostrarVentas(data) {
             editarVenta(codigo, fecha);
         });
     });
+    document.querySelectorAll('#ventasBody .btn-delete').forEach(button => {
+        button.addEventListener('click', function() {
+            const codigo = this.getAttribute('data-codigo');
+            const fecha = this.getAttribute('data-fecha');
+            const cantidad = parseInt(this.getAttribute('data-cantidad'));
+            eliminarVenta(codigo, fecha, cantidad);
+        });
+    });
+}
+
+async function eliminarVenta(codigo, fechaVenta, cantidad) {
+    if (!confirm(`¿Estás seguro de eliminar esta venta?\nCódigo: ${codigo}\nCantidad: ${cantidad}\n\nEsta acción devolverá ${cantidad} unidades al inventario.`)) {
+        return;
+    }
+    
+    try {
+        showNotification('🔄 Eliminando venta MEJORAS...', 'info');
+        
+        // 1. Eliminar la venta de la tabla ventas_mejoras
+        const { error: errorEliminar } = await supabaseClient
+            .from('ventas_mejoras')
+            .delete()
+            .eq('barcode', codigo)
+            .eq('fecha_venta', fechaVenta);
+        
+        if (errorEliminar) throw errorEliminar;
+        
+        // 2. Devolver el stock al inventario_mejoras
+        const { error: errorInventario } = await supabaseClient
+            .from('inventario_mejoras')
+            .update({ 
+                cantidad: supabaseClient.raw('cantidad + ' + cantidad),
+                fecha_actualizacion: getHoraChileISO()
+            })
+            .eq('barcode', codigo);
+        
+        if (errorInventario) throw errorInventario;
+        
+        showNotification('✅ Venta MEJORAS eliminada correctamente. Stock restaurado.', 'success');
+        
+        // 3. Recargar datos para ver cambios
+        await cargarVentas();
+        await cargarInventario();
+        actualizarEstadisticas();
+        
+    } catch (error) {
+        console.error('Error eliminando venta MEJORAS:', error);
+        showNotification('❌ Error al eliminar la venta MEJORAS: ' + error.message, 'error');
+    }
 }
 
 async function editarVenta(codigo, fechaVenta) {
