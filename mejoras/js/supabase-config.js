@@ -22,6 +22,35 @@ window.forzarSincronizacionInventario = async function() {
         showNotification('❌ No hay conexión a internet', 'error');
         return;
     }
-    await cargarInventario();
-    showNotification('✅ Inventario sincronizado completamente', 'success');
+    
+    const boton = document.getElementById('sync-inventario-btn');
+    const botonOriginal = boton.innerHTML;
+    
+    boton.classList.add('sync-loading');
+    boton.innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizando...';
+    boton.disabled = true;
+    
+    try {
+        await cargarInventario();
+        showNotification('✅ Inventario sincronizado completamente', 'success');
+        actualizarUltimaSincronizacion();
+        document.getElementById('inventario-needs-sync').style.display = 'none';
+    } catch (error) {
+        console.error('Error sincronizando inventario:', error);
+        showNotification('❌ Error al sincronizar inventario', 'error');
+    } finally {
+        boton.classList.remove('sync-loading');
+        boton.innerHTML = botonOriginal;
+        boton.disabled = false;
+    }
 };
+
+function actualizarUltimaSincronizacion() {
+    const ahora = getHoraChileISO();
+    const horaFormateada = formatoHoraCortaChile(ahora);
+    const elemento = document.getElementById('last-sync-time');
+    if (elemento) {
+        elemento.textContent = `Sincronizado: ${horaFormateada}`;
+    }
+    localStorage.setItem('ultimaSincronizacion', ahora);
+}
