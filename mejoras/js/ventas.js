@@ -117,7 +117,7 @@ async function eliminarVenta(codigo, fechaVenta, cantidad) {
             .from('inventario_mejoras')
             .update({ 
                 cantidad: nuevoStock,
-                fecha_actualizacion: new Date().toISOString() // Usar hora actual
+                fecha_actualizacion: new Date().toISOString()
             })
             .eq('barcode', codigo);
         
@@ -128,20 +128,17 @@ async function eliminarVenta(codigo, fechaVenta, cantidad) {
         
         console.log('Inventario actualizado correctamente');
         
-        // 4. CUARTO: Actualizar vistas LOCALES inmediatamente
-        // Actualizar array local de ventas
-        ventas = ventas.filter(v => !(v.codigo_barras === codigo && v.fecha_venta === fechaVenta));
-        
-        // Actualizar array local de inventario
+        // 4. CUARTO: Actualizar array local de inventario
         const productoIndex = inventario.findIndex(p => p.codigo_barras === codigo);
         if (productoIndex !== -1) {
             inventario[productoIndex].cantidad = nuevoStock;
             inventario[productoIndex].fecha_actualizacion = new Date().toISOString();
         }
         
-        // 5. QUINTO: Refrescar tablas
-        mostrarVentas(ventas); // Usar el array local actualizado
-        mostrarInventario(inventario); // Usar el array local actualizado
+        // 5. QUINTO: Recargar datos COMPLETOS desde Supabase
+        // Esto es necesario porque las vistas pueden tener caché
+        await cargarVentas();  // Recargar desde vista_ventas_mejoras
+        await cargarInventario(); // Recargar desde vista_inventario_mejoras
         actualizarEstadisticas();
         
         showNotification(`✅ Venta eliminada. Stock de ${producto.descripcion || codigo} restaurado: ${stockActual} → ${nuevoStock} unidades`, 'success');
