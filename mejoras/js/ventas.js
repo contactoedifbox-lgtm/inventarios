@@ -72,24 +72,45 @@ async function eliminarVenta(codigo, fechaVenta, cantidad) {
     }
     try {
         showNotification('🔄 Eliminando venta MEJORAS...', 'info');
+        
+        // 1. Obtener el stock actual primero
+        const { data: producto, error: errorProducto } = await supabaseClient
+            .from('inventario_mejoras')
+            .select('cantidad')
+            .eq('barcode', codigo)
+            .single();
+        
+        if (errorProducto) throw errorProducto;
+        
+        const stockActual = producto.cantidad;
+        const nuevoStock = stockActual + cantidad;
+        
+        // 2. Eliminar la venta
         const { error: errorEliminar } = await supabaseClient
             .from('ventas_mejoras')
             .delete()
             .eq('barcode', codigo)
             .eq('fecha_venta', fechaVenta);
+        
         if (errorEliminar) throw errorEliminar;
+        
+        // 3. Actualizar inventario (sumar cantidad)
         const { error: errorInventario } = await supabaseClient
             .from('inventario_mejoras')
             .update({ 
-                cantidad: supabaseClient.raw('cantidad + ' + cantidad),
+                cantidad: nuevoStock,
                 fecha_actualizacion: getHoraChileISO()
             })
             .eq('barcode', codigo);
+        
         if (errorInventario) throw errorInventario;
+        
         showNotification('✅ Venta MEJORAS eliminada correctamente. Stock restaurado.', 'success');
+        
         await cargarVentas();
         await cargarInventario();
         actualizarEstadisticas();
+        
     } catch (error) {
         console.error('Error eliminando venta MEJORAS:', error);
         showNotification('❌ Error al eliminar la venta MEJORAS: ' + error.message, 'error');
