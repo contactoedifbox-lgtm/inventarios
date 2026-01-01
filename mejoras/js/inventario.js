@@ -43,57 +43,6 @@ async function cargarInventario(forzarCompleto = false) {
     }
 }
 
-function mostrarInventario(data) {
-    const tbody = document.getElementById('inventarioBody');
-    tbody.innerHTML = '';
-    
-    data.forEach(item => {
-        const stockBadge = getStockBadge(item.cantidad);
-        const fecha = formatoHoraChile(item.fecha_actualizacion);
-        const row = `
-            <tr>
-                <td><strong>${item.codigo_barras}</strong></td>
-                <td>${item.descripcion || '<span style="color: #94a3b8;">Sin descripción</span>'}</td>
-                <td><span class="stock-badge ${stockBadge.class}">${item.cantidad} unidades</span></td>
-                <td>$${parseFloat(item.costo || 0).toFixed(2)}</td>
-                <td><strong>$${parseFloat(item.precio || 0).toFixed(2)}</strong></td>
-                <td>${fecha}</td>
-                <td>
-                    <button class="action-btn btn-edit" data-codigo="${item.codigo_barras}">
-                        <i class="fas fa-edit"></i> Editar
-                    </button>
-                </td>
-            </tr>
-        `;
-        tbody.innerHTML += row;
-    });
-    
-    document.querySelectorAll('#inventarioBody .btn-edit').forEach(button => {
-        button.addEventListener('click', function() {
-            const codigo = this.getAttribute('data-codigo');
-            editarInventario(codigo);
-        });
-    });
-    
-    document.getElementById('total-productos').textContent = inventario.length;
-}
-
-function actualizarInventarioIncremental(nuevosDatos) {
-    if (!nuevosDatos || nuevosDatos.length === 0) return;
-    
-    nuevosDatos.forEach(nuevoItem => {
-        const index = inventario.findIndex(p => p.codigo_barras === nuevoItem.codigo_barras);
-        if (index !== -1) {
-            inventario[index] = nuevoItem;
-        } else {
-            inventario.push(nuevoItem);
-        }
-    });
-    
-    mostrarInventario(inventario);
-    actualizarEstadisticas();
-}
-
 async function editarInventario(codigo) {
     productoEditando = inventario.find(p => p.codigo_barras === codigo);
     if (!productoEditando) return;
@@ -144,6 +93,57 @@ async function guardarInventario() {
         console.error('Error actualizando inventario MEJORAS:', error);
         showNotification('❌ Error al actualizar', 'error');
     }
+}
+
+function mostrarInventario(data) {
+    const tbody = document.getElementById('inventarioBody');
+    tbody.innerHTML = '';
+    
+    data.forEach(item => {
+        const stockBadge = getStockBadge(item.cantidad);
+        const fecha = formatoHoraChile(item.fecha_actualizacion);
+        const row = `
+            <tr>
+                <td><strong>${item.codigo_barras}</strong></td>
+                <td>${item.descripcion || '<span style="color: #94a3b8;">Sin descripción</span>'}</td>
+                <td><span class="stock-badge ${stockBadge.class}">${item.cantidad} unidades</span></td>
+                <td>$${parseFloat(item.costo || 0).toFixed(2)}</td>
+                <td><strong>$${parseFloat(item.precio || 0).toFixed(2)}</strong></td>
+                <td>${fecha}</td>
+                <td>
+                    <button class="action-btn btn-edit" data-codigo="${item.codigo_barras}">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                </td>
+            </tr>
+        `;
+        tbody.innerHTML += row;
+    });
+    
+    document.querySelectorAll('#inventarioBody .btn-edit').forEach(button => {
+        button.addEventListener('click', function() {
+            const codigo = this.getAttribute('data-codigo');
+            editarInventario(codigo);
+        });
+    });
+    
+    document.getElementById('total-productos').textContent = inventario.length;
+}
+
+function actualizarInventarioIncremental(nuevosDatos) {
+    if (!nuevosDatos || nuevosDatos.length === 0) return;
+    
+    nuevosDatos.forEach(nuevoItem => {
+        const index = inventario.findIndex(p => p.codigo_barras === nuevoItem.codigo_barras);
+        if (index !== -1) {
+            inventario[index] = nuevoItem;
+        } else {
+            inventario.push(nuevoItem);
+        }
+    });
+    
+    mostrarInventario(inventario);
+    actualizarEstadisticas();
 }
 
 function actualizarEstadisticas() {
