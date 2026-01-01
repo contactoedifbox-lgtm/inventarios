@@ -22,13 +22,13 @@ function mostrarInventario(data) {
         const stockBadge = getStockBadge(item.cantidad);
         const fecha = formatoHoraChile(item.fecha_actualizacion);
         const row = `
-            <tr>
+            <tr data-codigo="${item.codigo_barras}">
                 <td><strong>${item.codigo_barras}</strong></td>
                 <td>${item.descripcion || '<span style="color: #94a3b8;">Sin descripción</span>'}</td>
                 <td><span class="stock-badge ${stockBadge.class}">${item.cantidad} unidades</span></td>
                 <td>$${parseFloat(item.costo || 0).toFixed(2)}</td>
                 <td><strong>$${parseFloat(item.precio || 0).toFixed(2)}</strong></td>
-                <td>${fecha}</td>
+                <td class="fecha-actualizacion">${fecha}</td>
                 <td>
                     <button class="action-btn btn-edit" data-codigo="${item.codigo_barras}">
                         <i class="fas fa-edit"></i> Editar
@@ -39,6 +39,7 @@ function mostrarInventario(data) {
         tbody.innerHTML += row;
     });
     document.getElementById('total-productos').textContent = data.length;
+    document.getElementById('inventario-needs-sync').style.display = 'none';
     document.querySelectorAll('#inventarioBody .btn-edit').forEach(button => {
         button.addEventListener('click', function() {
             const codigo = this.getAttribute('data-codigo');
