@@ -1,7 +1,11 @@
 async function cargarInventario(forzarCompleto = false) {
+    console.log('=== cargarInventario llamado ===', { forzarCompleto, inventarioLength: inventario.length });
+    
     try {
         if (forzarCompleto || inventario.length === 0) {
+            console.log('Haciendo carga COMPLETA de inventario');
             showNotification('🔄 Cargando inventario COMPLETO MEJORAS...', 'info');
+            
             const { data, error } = await supabaseClient
                 .from('vista_inventario_mejoras')
                 .select('*')
@@ -9,6 +13,7 @@ async function cargarInventario(forzarCompleto = false) {
                 
             if (error) throw error;
             
+            console.log('Datos recibidos de Supabase:', data.length, 'productos');
             inventario = data;
             mostrarInventario(inventario);
             showNotification(`✅ Inventario MEJORAS cargado (${data.length} productos)`, 'success');
