@@ -375,7 +375,9 @@ async function guardarNuevaVenta() {
         if (errorInventario) throw errorInventario;
         showNotification('✅ Venta MEJORAS registrada correctamente', 'success');
         closeModal('modalAgregarVenta');
-        cargarDatos();
+        await cargarVentas();
+        actualizarFilaInventario(codigoBarras, nuevoStock);
+        actualizarEstadisticas();
     } catch (error) {
         console.warn('Error online, guardando offline:', error);
         guardarVentaOffline(ventaData);
