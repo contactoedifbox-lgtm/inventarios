@@ -71,7 +71,8 @@ function actualizarFilaInventario(codigo, nuevaCantidad) {
     console.log('Código buscado:', codigo);
     console.log('Nueva cantidad:', nuevaCantidad);
     
-    const filas = document.querySelectorAll('#inventarioBody tr');
+    // CAMBIA ESTA LÍNEA: usa 'let' en lugar de 'const'
+    let filas = document.querySelectorAll('#inventarioBody tr');
     console.log('Filas encontradas:', filas.length);
     
     for (let fila of filas) {
