@@ -67,10 +67,19 @@ function mostrarVentas(data) {
 }
 
 function actualizarFilaInventario(codigo, nuevaCantidad) {
+    console.log('=== ACTUALIZAR FILA INVENTARIO ===');
+    console.log('Código buscado:', codigo);
+    console.log('Nueva cantidad:', nuevaCantidad);
+    
+    const filas = document.querySelectorAll('#inventarioBody tr');
+    console.log('Filas encontradas:', filas.length);
+    
+    // Buscar la fila en la tabla de inventario
     const filas = document.querySelectorAll('#inventarioBody tr');
     for (let fila of filas) {
-        const codigoFila = fila.querySelector('td:first-child strong')?.textContent;
+        const codigoFila = fila.querySelector('td:first-child strong')?.textContent.trim();
         if (codigoFila === codigo) {
+            // Actualizar la celda de cantidad
             const celdaStock = fila.querySelector('td:nth-child(3)');
             const badge = celdaStock.querySelector('.stock-badge');
             const stockBadge = getStockBadge(nuevaCantidad);
@@ -78,18 +87,24 @@ function actualizarFilaInventario(codigo, nuevaCantidad) {
             badge.textContent = `${nuevaCantidad} unidades`;
             badge.className = `stock-badge ${stockBadge.class}`;
             
+            // Actualizar el array global de inventario
             const productoIndex = inventario.findIndex(p => p.codigo_barras === codigo);
             if (productoIndex !== -1) {
                 inventario[productoIndex].cantidad = nuevaCantidad;
                 inventario[productoIndex].fecha_actualizacion = getHoraChileISO();
             }
             
+            // Actualizar la fecha de actualización
             const fechaCelda = fila.querySelector('td:nth-child(6)');
-            fechaCelda.textContent = formatoHoraChile(getHoraChileISO());
+            if (fechaCelda) {
+                fechaCelda.textContent = formatoHoraChile(getHoraChileISO());
+            }
             
             break;
         }
     }
+    
+    // Actualizar estadísticas y mostrar indicador
     actualizarEstadisticas();
     document.getElementById('inventario-needs-sync').style.display = 'inline-block';
 }
@@ -210,6 +225,7 @@ async function guardarVenta() {
     const nuevaCantidad = parseInt(document.getElementById('editVentaCantidad').value);
     const precio = parseFloat(document.getElementById('editVentaPrecio').value);
     const nuevoDescuento = parseFloat(document.getElementById('editVentaDescuento').value) || 0;
+    
     if (nuevaCantidad <= 0) {
         showNotification('❌ La cantidad debe ser mayor a 0', 'error');
         return;
@@ -218,32 +234,76 @@ async function guardarVenta() {
         showNotification('❌ El descuento no puede ser negativo', 'error');
         return;
     }
+    
     const subtotal = nuevaCantidad * precio;
     if (nuevoDescuento > subtotal) {
         showNotification(`❌ El descuento ($${nuevoDescuento.toFixed(2)}) no puede ser mayor al subtotal ($${subtotal.toFixed(2)})`, 'error');
         return;
     }
+    
     try {
         showNotification('🔄 Actualizando venta MEJORAS...', 'info');
+        
+        // PRIMERO: Obtener el stock actual del producto
+        const { data: productoActual, error: errorProducto } = await supabaseClient
+            .from('inventario_mejoras')
+            .select('cantidad')
+            .eq('barcode', ventaEditando.codigo_barras)
+            .single();
+        
+        if (errorProducto) {
+            console.error('Error obteniendo producto actual:', errorProducto);
+            throw errorProducto;
+        }
+        
+        // Calcular la diferencia y nuevo stock
+        const diferencia = nuevaCantidad - ventaEditando.cantidad;
+        const stockActual = parseInt(productoActual.cantidad);
+        const nuevoStock = stockActual - diferencia;
+        
+        console.log('Cálculo stock edición:', {
+            stockActual,
+            ventaAnterior: ventaEditando.cantidad,
+            ventaNueva: nuevaCantidad,
+            diferencia,
+            nuevoStock
+        });
+        
+        // SEGUNDO: Actualizar la venta usando el RPC
         const { data, error } = await supabaseClient.rpc('editar_cantidad_venta_mejoras', {
             p_barcode: ventaEditando.codigo_barras,
             p_fecha_venta: ventaEditando.fecha_venta,
             p_nueva_cantidad: nuevaCantidad,
             p_nuevo_descuento: nuevoDescuento
         });
+        
         if (error) throw error;
+        
         console.log('Respuesta de Supabase:', data);
+        
         if (data && data.success) {
+            // TERCERO: Actualizar el inventario en Supabase
+            const { error: errorUpdateInventario } = await supabaseClient
+                .from('inventario_mejoras')
+                .update({ 
+                    cantidad: nuevoStock,
+                    fecha_actualizacion: getHoraChileISO()
+                })
+                .eq('barcode', ventaEditando.codigo_barras);
+            
+            if (errorUpdateInventario) throw errorUpdateInventario;
+            
+            // CUARTO: Actualizar localmente
             showNotification('✅ Venta MEJORAS actualizada correctamente', 'success');
             closeModal('modalVenta');
-            await cargarVentas();
-            const producto = inventario.find(p => p.codigo_barras === ventaEditando.codigo_barras);
-            if (producto) {
-                const diferencia = nuevaCantidad - ventaEditando.cantidad;
-                const nuevoStock = producto.cantidad - diferencia;
-                actualizarFilaInventario(ventaEditando.codigo_barras, nuevoStock);
-            }
+            
+            await cargarVentas(); // Recargar ventas
+            
+            // Actualizar incrementalmente el inventario
+            actualizarFilaInventario(ventaEditando.codigo_barras, nuevoStock);
+            
             actualizarEstadisticas();
+            
         } else {
             const mensajeError = data?.error || 'Error desconocido';
             console.error('Error en respuesta:', data);
@@ -399,7 +459,16 @@ async function guardarNuevaVenta() {
             .insert([ventaData])
             .select();
         if (errorVenta) throw errorVenta;
+        // En guardarNuevaVenta(), después de calcular nuevoStock:
         const nuevoStock = productoSeleccionado.cantidad - cantidad;
+        console.log('Cálculo stock nueva venta:', {
+            stockInicial: productoSeleccionado.cantidad,
+            cantidadVendida: cantidad,
+            nuevoStock: nuevoStock
+        });
+
+        actualizarFilaInventario(codigoBarras, nuevoStock);
+        
         const { error: errorInventario } = await supabaseClient
             .from('inventario_mejoras')
             .update({ 
