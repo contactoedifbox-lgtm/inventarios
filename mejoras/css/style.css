@@ -322,6 +322,11 @@ tr:hover {
 .btn-edit { background: var(--primary); color: white; }
 .btn-save { background: var(--success); color: white; }
 .btn-cancel { background: var(--gray-400); color: white; }
+.btn-delete { 
+    background: var(--danger); 
+    color: white; 
+    margin-left: 5px;
+}
 
 /* ========== MODALES ========== */
 .modal { 
