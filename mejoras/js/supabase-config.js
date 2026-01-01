@@ -10,11 +10,13 @@ let currentUser = null;
 let inventarioSincronizado = true;
 
 window.cargarDatos = async function() {
-    await cargarInventario();
+    await cargarInventario(true);
     await cargarVentas();
     actualizarEstadisticas();
     document.getElementById('fecha-hoy').textContent = getFechaActualChile();
     showTab('ventas');
+    inventarioSincronizado = true;
+    actualizarIndicadorSincronizacion();
 };
 
 window.actualizarInventarioCompleto = async function() {
