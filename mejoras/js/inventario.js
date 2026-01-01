@@ -94,6 +94,17 @@ function actualizarInventarioIncremental(nuevosDatos) {
     actualizarEstadisticas();
 }
 
+async function editarInventario(codigo) {
+    productoEditando = inventario.find(p => p.codigo_barras === codigo);
+    if (!productoEditando) return;
+    document.getElementById('editCodigo').value = productoEditando.codigo_barras;
+    document.getElementById('editDescripcion').value = productoEditando.descripcion || '';
+    document.getElementById('editCantidad').value = productoEditando.cantidad;
+    document.getElementById('editCosto').value = productoEditando.costo || 0;
+    document.getElementById('editPrecio').value = productoEditando.precio || 0;
+    openModal('modalInventario');
+}
+
 async function guardarInventario() {
     const descripcion = document.getElementById('editDescripcion').value;
     const cantidad = parseInt(document.getElementById('editCantidad').value);
