@@ -686,6 +686,106 @@ tr:hover {
     background: var(--gray-400);
 }
 
+/* ========== BOTÓN SINCRONIZACIÓN ========== */
+.sync-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 15px 0 20px 0;
+    flex-wrap: wrap;
+}
+
+#sync-inventario-btn {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+#sync-inventario-btn:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
+}
+
+#sync-inventario-btn:active {
+    transform: translateY(0);
+}
+
+#sync-inventario-btn i {
+    font-size: 16px;
+}
+
+/* Indicador de sincronización necesaria */
+#inventario-needs-sync {
+    display: none;
+    padding: 8px 15px;
+    background: #fef3c7;
+    color: #92400e;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    animation: pulse 2s infinite;
+    border: 1px solid #fbbf24;
+}
+
+#inventario-needs-sync i {
+    margin-right: 8px;
+    color: #d97706;
+}
+
+/* Animación para el indicador */
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Efecto de carga para botón */
+.sync-loading {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.sync-loading i {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Indicador de última sincronización */
+.last-sync-info {
+    font-size: 12px;
+    color: var(--gray-500);
+    margin-left: 10px;
+    padding: 4px 8px;
+    background: var(--light);
+    border-radius: 4px;
+    border-left: 3px solid var(--success);
+}
+
 /* ========== RESPONSIVE ========== */
 @media (max-width: 1024px) {
     .container {
