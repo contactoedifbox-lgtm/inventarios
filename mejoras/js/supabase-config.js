@@ -7,3 +7,10 @@ let productoEditando = null;
 let ventaEditando = null;
 let productoSeleccionado = null;
 let currentUser = null;
+window.cargarDatos = async function() {
+    await cargarInventario();
+    await cargarVentas();
+    actualizarEstadisticas();
+    document.getElementById('fecha-hoy').textContent = getFechaActualChile();
+    showTab('ventas');
+};
