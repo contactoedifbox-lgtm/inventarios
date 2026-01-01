@@ -74,8 +74,6 @@ async function eliminarVenta(codigo, fechaVenta, cantidad) {
     try {
         showNotification('🔄 Eliminando venta MEJORAS...', 'info');
         
-        console.log('Iniciando eliminación:', { codigo, fechaVenta, cantidad });
-        
         // 1. PRIMERO: Obtener información del producto
         const { data: producto, error: errorProducto } = await supabaseClient
             .from('inventario_mejoras')
@@ -88,16 +86,11 @@ async function eliminarVenta(codigo, fechaVenta, cantidad) {
             throw new Error(`Producto ${codigo} no encontrado en inventario`);
         }
         
-        console.log('Producto encontrado:', producto);
-        
         // Calcular nuevo stock
         const stockActual = parseInt(producto.cantidad) || 0;
         const nuevoStock = stockActual + parseInt(cantidad);
         
-        console.log('Cálculo de stock:', { stockActual, cantidad, nuevoStock });
-        
         // 2. SEGUNDO: Eliminar la venta
-        console.log('Eliminando venta...');
         const { error: errorEliminar } = await supabaseClient
             .from('ventas_mejoras')
             .delete()
@@ -109,10 +102,7 @@ async function eliminarVenta(codigo, fechaVenta, cantidad) {
             throw errorEliminar;
         }
         
-        console.log('Venta eliminada correctamente');
-        
-        // 3. TERCERO: Actualizar inventario
-        console.log('Actualizando inventario...');
+        // 3. TERCERO: Actualizar inventario en Supabase
         const { error: errorInventario } = await supabaseClient
             .from('inventario_mejoras')
             .update({ 
@@ -126,24 +116,19 @@ async function eliminarVenta(codigo, fechaVenta, cantidad) {
             throw errorInventario;
         }
         
-        console.log('Inventario actualizado correctamente');
-        
         // 4. CUARTO: Actualizar array local de inventario
         const productoIndex = inventario.findIndex(p => p.codigo_barras === codigo);
         if (productoIndex !== -1) {
             inventario[productoIndex].cantidad = nuevoStock;
             inventario[productoIndex].fecha_actualizacion = new Date().toISOString();
+            actualizarFilaInventario(codigo);
         }
         
-        // 5. QUINTO: Recargar datos COMPLETOS desde Supabase
-        // Esto es necesario porque las vistas pueden tener caché
-        await cargarVentas();  // Recargar desde vista_ventas_mejoras
-        await cargarInventario(); // Recargar desde vista_inventario_mejoras
+        // 5. QUINTO: Recargar ventas desde Supabase
+        await cargarVentas();
         actualizarEstadisticas();
         
         showNotification(`✅ Venta eliminada. Stock de ${producto.descripcion || codigo} restaurado: ${stockActual} → ${nuevoStock} unidades`, 'success');
-        
-        console.log('Eliminación completada exitosamente');
         
     } catch (error) {
         console.error('Error completo eliminando venta:', error);
@@ -202,16 +187,15 @@ async function guardarVenta() {
             p_nuevo_descuento: nuevoDescuento
         });
         if (error) throw error;
-        console.log('Respuesta de Supabase:', data);
         if (data && data.success) {
             showNotification('✅ Venta MEJORAS actualizada correctamente', 'success');
             closeModal('modalVenta');
+            
             await cargarVentas();
-            await cargarInventario();
+            await actualizarFilaInventario(ventaEditando.codigo_barras);
             actualizarEstadisticas();
         } else {
             const mensajeError = data?.error || 'Error desconocido';
-            console.error('Error en respuesta:', data);
             showNotification('❌ Error: ' + mensajeError, 'error');
         }
     } catch (error) {
@@ -373,9 +357,14 @@ async function guardarNuevaVenta() {
             })
             .eq('barcode', codigoBarras);
         if (errorInventario) throw errorInventario;
+        
         showNotification('✅ Venta MEJORAS registrada correctamente', 'success');
         closeModal('modalAgregarVenta');
-        cargarDatos();
+        
+        await cargarVentas();
+        await actualizarFilaInventario(codigoBarras);
+        actualizarEstadisticas();
+        
     } catch (error) {
         console.warn('Error online, guardando offline:', error);
         guardarVentaOffline(ventaData);
