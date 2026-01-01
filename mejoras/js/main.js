@@ -47,4 +47,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, 60000);
     checkAuth();
+    
+    document.getElementById('recargarInventarioBtn').addEventListener('click', cargarInventario);
 });
