@@ -3,7 +3,6 @@ const SUPABASE_KEY = 'sb_publishable_791W4BHb07AeA_DX2EWZCQ_Fxlzv30o';
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let inventario = [];
 let ventas = [];
-let productoEditando = null;
 let currentUser = null;
 let inventarioSincronizado = true;
 
@@ -40,28 +39,47 @@ function actualizarIndicadorSincronizacion() {
 window.marcarInventarioComoNoSincronizado = function() {
     inventarioSincronizado = false;
     actualizarIndicadorSincronizacion();
-}
+};
 
 window.editarInventario = async function(codigo) {
-    productoEditando = inventario.find(p => p.codigo_barras === codigo);
-    if (!productoEditando) return;
-    document.getElementById('editCodigo').value = productoEditando.codigo_barras;
-    document.getElementById('editDescripcion').value = productoEditando.descripcion || '';
-    document.getElementById('editCantidad').value = productoEditando.cantidad;
-    document.getElementById('editCosto').value = productoEditando.costo || 0;
-    document.getElementById('editPrecio').value = productoEditando.precio || 0;
+    window.productoEditando = inventario.find(p => p.codigo_barras === codigo);
+    if (!window.productoEditando) {
+        console.error('Producto no encontrado:', codigo);
+        showNotification('❌ Producto no encontrado', 'error');
+        return;
+    }
+    document.getElementById('editCodigo').value = window.productoEditando.codigo_barras;
+    document.getElementById('editDescripcion').value = window.productoEditando.descripcion || '';
+    document.getElementById('editCantidad').value = window.productoEditando.cantidad;
+    document.getElementById('editCosto').value = window.productoEditando.costo || 0;
+    document.getElementById('editPrecio').value = window.productoEditando.precio || 0;
     openModal('modalInventario');
+    console.log('Producto para editar:', window.productoEditando);
 };
 
 window.guardarInventario = async function() {
+    if (!window.productoEditando) {
+        showNotification('❌ Error: No hay producto seleccionado para editar', 'error');
+        console.error('productoEditando es null o undefined');
+        return;
+    }
+    
     const descripcion = document.getElementById('editDescripcion').value;
     const cantidad = parseInt(document.getElementById('editCantidad').value);
     const costo = parseFloat(document.getElementById('editCosto').value);
     const precio = parseFloat(document.getElementById('editPrecio').value);
     
+    console.log('Guardando producto:', {
+        codigo: window.productoEditando.codigo_barras,
+        descripcion,
+        cantidad,
+        costo,
+        precio
+    });
+    
     try {
         const { data, error } = await supabaseClient.rpc('editar_inventario_mejoras', {
-            p_barcode: productoEditando.codigo_barras,
+            p_barcode: window.productoEditando.codigo_barras,
             p_descripcion: descripcion,
             p_cantidad: cantidad,
             p_costo: costo,
@@ -74,7 +92,7 @@ window.guardarInventario = async function() {
             showNotification('✅ Producto actualizado', 'success');
             closeModal('modalInventario');
             
-            const productoIndex = inventario.findIndex(p => p.codigo_barras === productoEditando.codigo_barras);
+            const productoIndex = inventario.findIndex(p => p.codigo_barras === window.productoEditando.codigo_barras);
             if (productoIndex !== -1) {
                 inventario[productoIndex].descripcion = descripcion;
                 inventario[productoIndex].cantidad = cantidad;
@@ -84,6 +102,7 @@ window.guardarInventario = async function() {
             }
             
             await cargarInventario(false);
+            window.productoEditando = null;
             
         } else {
             showNotification('❌ Error: ' + (data?.message || 'Desconocido'), 'error');
