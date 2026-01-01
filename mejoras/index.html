@@ -384,11 +384,11 @@
     <!-- Nuestros archivos JavaScript -->
     <!-- Importante: El ORDEN es crucial -->
     <script src="js/supabase-config.js"></script>
-    <script src="js/utils.js"></script>
+    <script src="js/utils.js"></script> <!-- utils.js debe ir PRIMERO después de supabase-config -->
     <script src="js/auth.js"></script>
-    <script src="js/inventario.js"></script>
-    <script src="js/ventas.js"></script>
     <script src="js/offline.js"></script>
+    <script src="js/inventario.js"></script> <!-- inventario.js necesita funciones de utils.js -->
+    <script src="js/ventas.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>
