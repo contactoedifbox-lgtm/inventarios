@@ -191,10 +191,24 @@ async function eliminarVenta(codigo, fechaVenta, cantidad) {
 }
 
 async function editarVenta(codigo, fechaVenta) {
+    console.log('=== INICIANDO editarVenta ===');
+    console.log('Buscando venta:', { codigo, fechaVenta });
+    
     ventaEditando = ventas.find(v => v.codigo_barras === codigo && v.fecha_venta === fechaVenta);
-    if (!ventaEditando) return;
+    
+    if (!ventaEditando) {
+        console.error('❌ Venta no encontrada en array ventas');
+        console.log('Total ventas en array:', ventas.length);
+        console.log('Primeras 5 ventas:', ventas.slice(0, 5));
+        showNotification('❌ Error: Venta no encontrada', 'error');
+        return;
+    }
+    
+    console.log('✅ Venta encontrada:', ventaEditando);
+    
     const producto = inventario.find(p => p.codigo_barras === codigo);
     const stockActual = producto ? producto.cantidad : 0;
+    
     document.getElementById('editVentaCodigo').value = ventaEditando.codigo_barras;
     document.getElementById('editVentaFecha').value = formatoHoraChile(ventaEditando.fecha_venta);
     document.getElementById('editVentaDescripcion').value = ventaEditando.descripcion || '';
@@ -202,6 +216,7 @@ async function editarVenta(codigo, fechaVenta) {
     document.getElementById('editVentaDescuento').value = parseFloat(ventaEditando.descuento || 0).toFixed(2);
     document.getElementById('editVentaCantidad').value = ventaEditando.cantidad;
     document.getElementById('editVentaDescripcion').placeholder = `Descripción | Stock actual: ${stockActual} unidades`;
+    
     calcularNuevoTotalConDescuento();
     openModal('modalVenta');
 }
@@ -216,9 +231,22 @@ function calcularNuevoTotalConDescuento() {
 }
 
 async function guardarVenta() {
+    // VERIFICAR SI ventaEditando EXISTE
+    if (!ventaEditando || !ventaEditando.codigo_barras) {
+        console.error('Error: ventaEditando no está definido:', ventaEditando);
+        showNotification('❌ Error: No hay venta seleccionada para editar', 'error');
+        return;
+    }
+    
     const nuevaCantidad = parseInt(document.getElementById('editVentaCantidad').value);
     const precio = parseFloat(document.getElementById('editVentaPrecio').value);
     const nuevoDescuento = parseFloat(document.getElementById('editVentaDescuento').value) || 0;
+
+    console.log('=== INICIANDO guardarVenta ===');
+    console.log('ventaEditando:', ventaEditando);
+    console.log('Código barras:', ventaEditando.codigo_barras);
+    console.log('Cantidad anterior:', ventaEditando.cantidad);
+    console.log('Cantidad nueva:', nuevaCantidad);
     
     if (nuevaCantidad <= 0) {
         showNotification('❌ La cantidad debe ser mayor a 0', 'error');
