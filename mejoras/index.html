@@ -4,35 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel de Control - Inventario y Ventas MEJORAS</title>
-    
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Supabase JS -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    
-    <!-- Nuestros archivos CSS -->
     <link rel="stylesheet" href="css/login.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <!-- ========== LOGIN CONTAINER ========== -->
     <div id="login-container">
         <div class="login-box">
             <h2><i class="fas fa-lock"></i> Acceso Cliente - MEJORAS</h2>
             <p class="login-subtitle">Ingresa tus credenciales para acceder al panel</p>
-            
             <div id="login-error" class="error">
                 Credenciales incorrectas. Intenta nuevamente.
             </div>
-            
             <input type="email" id="login-email" placeholder="Correo electrónico">
             <input type="password" id="login-password" placeholder="Contraseña">
-            
             <button id="login-button">
                 <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
             </button>
-            
             <div class="login-info">
                 <p><i class="fas fa-info-circle"></i> <strong>Sistema Veterinario - Acceso Restringido</strong></p>
                 <p>Panel de MEJORAS - Solo personal autorizado</p>
@@ -40,10 +29,8 @@
         </div>
     </div>
     
-    <!-- ========== APP CONTAINER (oculto hasta login) ========== -->
     <div id="app-container" class="app-container">
         <div class="container">
-            <!-- Header -->
             <div class="header">
                 <div>
                     <h1><i class="fas fa-warehouse"></i> Sistema de Inventario y Ventas - MEJORAS</h1>
@@ -69,7 +56,6 @@
                 </div>
             </div>
             
-            <!-- Stats Cards -->
             <div class="stats">
                 <div class="stat-card">
                     <div class="stat-icon icon-inventory">
@@ -111,7 +97,6 @@
                 </div>
             </div>
             
-            <!-- Tabs -->
             <div class="tabs">
                 <button class="tab-btn active" id="tab-ventas-btn">
                     <i class="fas fa-shopping-cart"></i> Ventas
@@ -121,13 +106,20 @@
                 </button>
             </div>
             
-            <!-- Search -->
             <div class="search-box">
                 <i class="fas fa-search"></i>
                 <input type="text" id="searchInput" placeholder="Buscar por código de barras o descripción...">
             </div>
+            
+            <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+                <button onclick="forzarSincronizacionInventario()" class="action-btn" style="background: #3b82f6;">
+                    <i class="fas fa-sync-alt"></i> Actualizar inventario completo
+                </button>
+                <span id="inventario-needs-sync" style="display: none; padding: 5px 10px; background: #fef3c7; color: #92400e; border-radius: 4px; font-size: 14px;">
+                    <i class="fas fa-exclamation-triangle"></i> Inventario necesita sincronización
+                </span>
+            </div>
 
-            <!-- Ventas Tab -->
             <div id="tab-ventas" class="tab-content active">
                 <div class="table-container">
                     <table id="tablaVentas">
@@ -143,14 +135,11 @@
                                 <th>Acciones</th>
                             </tr>
                         </thead>
-                        <tbody id="ventasBody">
-                            <!-- Los datos se cargarán aquí -->
-                        </tbody>
+                        <tbody id="ventasBody"></tbody>
                     </table>
                 </div>
             </div>
             
-            <!-- Inventario Tab -->
             <div id="tab-inventario" class="tab-content">
                 <div class="table-container">
                     <table id="tablaInventario">
@@ -165,16 +154,13 @@
                                 <th>Acciones</th>
                             </tr>
                         </thead>
-                        <tbody id="inventarioBody">
-                            <!-- Los datos se cargarán aquí -->
-                        </tbody>
+                        <tbody id="inventarioBody"></tbody>
                     </table>
                 </div>
             </div>
             
         </div>
         
-        <!-- Modal Editar Inventario -->
         <div id="modalInventario" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
@@ -214,7 +200,6 @@
             </div>
         </div>
         
-        <!-- Modal Editar Venta -->
         <div id="modalVenta" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
@@ -263,7 +248,6 @@
             </div>
         </div>
         
-        <!-- Modal Agregar Venta -->
         <div id="modalAgregarVenta" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
@@ -276,9 +260,7 @@
                             <label>Buscar Producto</label>
                             <input type="text" id="buscarProducto" placeholder="Escribe código o descripción..." 
                                    class="search-product-input">
-                            <div id="resultadosBusqueda" class="search-results">
-                                <!-- Resultados aparecen aquí -->
-                            </div>
+                            <div id="resultadosBusqueda" class="search-results"></div>
                         </div>
                         
                         <div class="form-group" id="infoProducto">
@@ -325,7 +307,6 @@
             </div>
         </div>
 
-        <!-- ========== MODAL PARA ENCARGOS PENDIENTES ========== -->
         <div id="modalEncargos" class="modal">
             <div class="modal-content modal-wide">
                 <div class="modal-header">
@@ -350,9 +331,7 @@
                                     <th>Costo</th>
                                 </tr>
                             </thead>
-                            <tbody id="lista-encargos">
-                                <!-- Los encargos se cargarán aquí -->
-                            </tbody>
+                            <tbody id="lista-encargos"></tbody>
                         </table>
                     </div>
                     
@@ -372,17 +351,13 @@
             </div>
         </div>
         
-        <!-- Notificación -->
         <div id="notification" class="notification"></div>
         
-        <!-- Badge offline -->
         <div id="offlineBadge" class="offline-badge">
             📶 <span id="offlineCount">0</span> venta(s) pendientes
         </div>
     </div>
 
-    <!-- Nuestros archivos JavaScript -->
-    <!-- Importante: El ORDEN es crucial -->
     <script src="js/supabase-config.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/auth.js"></script>
