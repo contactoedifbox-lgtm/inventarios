@@ -253,13 +253,13 @@ async function guardarVenta() {
         const stockActual = parseInt(productoActual.cantidad);
         const nuevoStock = stockActual - diferencia;
         
-        console.log('Cálculo stock edición:', {
-            stockActual,
-            ventaAnterior: ventaEditando.cantidad,
-            ventaNueva: nuevaCantidad,
-            diferencia,
-            nuevoStock
-        });
+        console.log('=== DEBUG EDICIÓN VENTA ===');
+        console.log('Código producto:', ventaEditando.codigo_barras);
+        console.log('Cantidad anterior:', ventaEditando.cantidad);
+        console.log('Cantidad nueva:', nuevaCantidad);
+        console.log('Diferencia:', diferencia);
+        console.log('Stock actual en Supabase:', stockActual);
+        console.log('Nuevo stock calculado:', nuevoStock);
         
         const { data, error } = await supabaseClient.rpc('editar_cantidad_venta_mejoras', {
             p_barcode: ventaEditando.codigo_barras,
@@ -283,14 +283,22 @@ async function guardarVenta() {
             
             if (errorUpdateInventario) throw errorUpdateInventario;
             
+            console.log('✅ Inventario actualizado en Supabase');
+            
             showNotification('✅ Venta MEJORAS actualizada correctamente', 'success');
             closeModal('modalVenta');
             
             await cargarVentas();
             
+            console.log('Llamando a actualizarFilaInventario...');
+            console.log('Parámetros:', ventaEditando.codigo_barras, nuevoStock);
+            
+            // ACTUALIZAR INCREMENTALMENTE
             actualizarFilaInventario(ventaEditando.codigo_barras, nuevoStock);
             
             actualizarEstadisticas();
+            
+            console.log('✅ Edición completada exitosamente');
             
         } else {
             const mensajeError = data?.error || 'Error desconocido';
