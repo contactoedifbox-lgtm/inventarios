@@ -74,23 +74,15 @@ async function eliminarVenta(codigo, fechaVenta, cantidad) {
     try {
         showNotification('🔄 Eliminando venta MEJORAS...', 'info');
         
-        // 1. PRIMERO: Obtener información del producto
-        const { data: producto, error: errorProducto } = await supabaseClient
-            .from('inventario_mejoras')
-            .select('cantidad, descripcion')
-            .eq('barcode', codigo)
-            .single();
-        
-        if (errorProducto) {
-            console.error('Error obteniendo producto:', errorProducto);
-            throw new Error(`Producto ${codigo} no encontrado en inventario`);
+        const productoIndex = inventario.findIndex(p => p.codigo_barras === codigo);
+        if (productoIndex === -1) {
+            showNotification('❌ Producto no encontrado en inventario', 'error');
+            return;
         }
         
-        // Calcular nuevo stock
-        const stockActual = parseInt(producto.cantidad) || 0;
+        const stockActual = parseInt(inventario[productoIndex].cantidad) || 0;
         const nuevoStock = stockActual + parseInt(cantidad);
         
-        // 2. SEGUNDO: Eliminar la venta
         const { error: errorEliminar } = await supabaseClient
             .from('ventas_mejoras')
             .delete()
@@ -102,7 +94,6 @@ async function eliminarVenta(codigo, fechaVenta, cantidad) {
             throw errorEliminar;
         }
         
-        // 3. TERCERO: Actualizar inventario en Supabase
         const { error: errorInventario } = await supabaseClient
             .from('inventario_mejoras')
             .update({ 
@@ -116,19 +107,15 @@ async function eliminarVenta(codigo, fechaVenta, cantidad) {
             throw errorInventario;
         }
         
-        // 4. CUARTO: Actualizar array local de inventario
-        const productoIndex = inventario.findIndex(p => p.codigo_barras === codigo);
-        if (productoIndex !== -1) {
-            inventario[productoIndex].cantidad = nuevoStock;
-            inventario[productoIndex].fecha_actualizacion = new Date().toISOString();
-            actualizarFilaInventario(codigo);
-        }
+        inventario[productoIndex].cantidad = nuevoStock;
+        inventario[productoIndex].fecha_actualizacion = new Date().toISOString();
         
-        // 5. QUINTO: Recargar ventas desde Supabase
+        mostrarInventario([inventario[productoIndex]], true);
+        
         await cargarVentas();
         actualizarEstadisticas();
         
-        showNotification(`✅ Venta eliminada. Stock de ${producto.descripcion || codigo} restaurado: ${stockActual} → ${nuevoStock} unidades`, 'success');
+        showNotification(`✅ Venta eliminada. Stock de ${inventario[productoIndex].descripcion || codigo} restaurado: ${stockActual} → ${nuevoStock} unidades`, 'success');
         
     } catch (error) {
         console.error('Error completo eliminando venta:', error);
@@ -191,8 +178,16 @@ async function guardarVenta() {
             showNotification('✅ Venta MEJORAS actualizada correctamente', 'success');
             closeModal('modalVenta');
             
+            const productoIndex = inventario.findIndex(p => p.codigo_barras === ventaEditando.codigo_barras);
+            if (productoIndex !== -1) {
+                const diferenciaCantidad = ventaEditando.cantidad - nuevaCantidad;
+                inventario[productoIndex].cantidad += diferenciaCantidad;
+                inventario[productoIndex].fecha_actualizacion = new Date().toISOString();
+                
+                mostrarInventario([inventario[productoIndex]], true);
+            }
+            
             await cargarVentas();
-            await actualizarFilaInventario(ventaEditando.codigo_barras);
             actualizarEstadisticas();
         } else {
             const mensajeError = data?.error || 'Error desconocido';
@@ -361,8 +356,15 @@ async function guardarNuevaVenta() {
         showNotification('✅ Venta MEJORAS registrada correctamente', 'success');
         closeModal('modalAgregarVenta');
         
+        const productoIndex = inventario.findIndex(p => p.codigo_barras === codigoBarras);
+        if (productoIndex !== -1) {
+            inventario[productoIndex].cantidad = nuevoStock;
+            inventario[productoIndex].fecha_actualizacion = new Date().toISOString();
+            
+            mostrarInventario([inventario[productoIndex]], true);
+        }
+        
         await cargarVentas();
-        await actualizarFilaInventario(codigoBarras);
         actualizarEstadisticas();
         
     } catch (error) {
@@ -415,7 +417,7 @@ function mostrarReporteEncargos() {
             <td style="padding: 12px; color: #dc2626;">${totalUnidadesPendientes} unidades</td>
             <td style="padding: 12px; color: #dc2626;">
                 <div>Inversión total:</div>
-                <div style="font-size: 18px;">$${inversionTotal.toFixed(2)}</div>
+                    <div style="font-size: 18px;">$${inversionTotal.toFixed(2)}</div>
             </td>
         </tr>
     `;
