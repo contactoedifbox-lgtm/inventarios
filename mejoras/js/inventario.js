@@ -2,34 +2,52 @@ async function cargarInventario(forzarCompleto = false) {
     try {
         if (forzarCompleto) {
             showNotification('🔄 Cargando inventario COMPLETO MEJORAS...', 'info');
-        } else {
-            showNotification('🔄 Actualizando inventario MEJORAS...', 'info');
-        }
-        
-        let query = supabaseClient
-            .from('vista_inventario_mejoras')
-            .select('*');
+            const { data, error } = await supabaseClient
+                .from('vista_inventario_mejoras')
+                .select('*')
+                .order('fecha_actualizacion', { ascending: false });
+                
+            if (error) throw error;
             
-        if (!forzarCompleto && inventario.length > 0) {
-            const ultimaActualizacion = inventario.length > 0 ? 
-                Math.max(...inventario.map(p => new Date(p.fecha_actualizacion || 0).getTime())) : 0;
-            
-            const fechaLimite = new Date(ultimaActualizacion - 5 * 60 * 1000).toISOString();
-            query = query.gte('fecha_actualizacion', fechaLimite);
-        }
-        
-        const { data, error } = await query.order('fecha_actualizacion', { ascending: false });
-        
-        if (error) throw error;
-        
-        if (forzarCompleto) {
             inventario = data;
             mostrarInventario(inventario);
+            showNotification(`✅ Inventario MEJORAS cargado (${data.length} productos)`, 'success');
+            
         } else {
-            actualizarInventarioIncremental(data);
+            showNotification('🔄 Actualizando inventario MEJORAS...', 'info');
+            
+            if (inventario.length === 0) {
+                const { data, error } = await supabaseClient
+                    .from('vista_inventario_mejoras')
+                    .select('*')
+                    .order('fecha_actualizacion', { ascending: false });
+                    
+                if (error) throw error;
+                
+                inventario = data;
+                mostrarInventario(inventario);
+                showNotification(`✅ Inventario MEJORAS cargado (${data.length} productos)`, 'success');
+                
+            } else {
+                const ultimaActualizacion = Math.max(...inventario.map(p => new Date(p.fecha_actualizacion || 0).getTime()));
+                const fechaLimite = new Date(ultimaActualizacion - 5 * 60 * 1000).toISOString();
+                
+                const { data, error } = await supabaseClient
+                    .from('vista_inventario_mejoras')
+                    .select('*')
+                    .gte('fecha_actualizacion', fechaLimite)
+                    .order('fecha_actualizacion', { ascending: false });
+                    
+                if (error) throw error;
+                
+                actualizarInventarioIncremental(data);
+                showNotification(`✅ Inventario MEJORAS actualizado (${data.length} productos modificados)`, 'success');
+                
+                if (data.length > 0) {
+                    marcarInventarioComoNoSincronizado();
+                }
+            }
         }
-        
-        showNotification('✅ Inventario MEJORAS actualizado', 'success');
         
     } catch (error) {
         console.error('Error cargando inventario MEJORAS:', error);
@@ -56,6 +74,34 @@ function mostrarInventario(data, actualizarSoloFila = null) {
                 return;
             }
         }
+        
+        const stockBadge = getStockBadge(actualizarSoloFila.cantidad);
+        const fecha = formatoHoraChile(actualizarSoloFila.fecha_actualizacion);
+        const row = `
+            <tr>
+                <td><strong>${actualizarSoloFila.codigo_barras}</strong></td>
+                <td>${actualizarSoloFila.descripcion || '<span style="color: #94a3b8;">Sin descripción</span>'}</td>
+                <td><span class="stock-badge ${stockBadge.class}">${actualizarSoloFila.cantidad} unidades</span></td>
+                <td>$${parseFloat(actualizarSoloFila.costo || 0).toFixed(2)}</td>
+                <td><strong>$${parseFloat(actualizarSoloFila.precio || 0).toFixed(2)}</strong></td>
+                <td>${fecha}</td>
+                <td>
+                    <button class="action-btn btn-edit" data-codigo="${actualizarSoloFila.codigo_barras}">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                </td>
+            </tr>
+        `;
+        tbody.innerHTML += row;
+        
+        const nuevoBoton = tbody.querySelector(`button[data-codigo="${actualizarSoloFila.codigo_barras}"]`);
+        if (nuevoBoton) {
+            nuevoBoton.addEventListener('click', function() {
+                const codigo = this.getAttribute('data-codigo');
+                editarInventario(codigo);
+            });
+        }
+        
     } else {
         tbody.innerHTML = '';
         data.forEach(item => {
