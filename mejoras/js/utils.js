@@ -101,7 +101,8 @@ function openModal(modalId) {
 
 function closeModal(modalId) {
     document.getElementById(modalId).style.display = 'none';
-    productoEditando = null;
+    // Solo reiniciar ventaEditando y productoSeleccionado
+    // productoEditando solo se reinicia después de guardar exitosamente
     ventaEditando = null;
     productoSeleccionado = null;
 }
