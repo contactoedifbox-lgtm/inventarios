@@ -4,13 +4,11 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let inventario = [];
 let ventas = [];
 let productoEditando = null;
-let ventaEditando = null;
-let productoSeleccionado = null;
 let currentUser = null;
 let inventarioSincronizado = true;
 
 window.cargarDatos = async function() {
-    await cargarInventario(true);
+    await cargarInventario();
     await cargarVentas();
     actualizarEstadisticas();
     document.getElementById('fecha-hoy').textContent = getFechaActualChile();
