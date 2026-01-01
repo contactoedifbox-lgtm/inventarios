@@ -14,6 +14,82 @@ async function cargarVentas() {
     }
 }
 
+async function sincronizarVentasPendientes() {
+    if (!navigator.onLine) {
+        showNotification('❌ No hay conexión a internet', 'error');
+        return;
+    }
+    
+    const ventasPendientes = JSON.parse(localStorage.getItem('ventas_offline_mejoras') || '[]');
+    if (ventasPendientes.length === 0) {
+        showNotification('✅ No hay ventas pendientes por sincronizar - MEJORAS', 'success');
+        return;
+    }
+    
+    showNotification(`🔄 Sincronizando ${ventasPendientes.length} ventas pendientes MEJORAS...`, 'info');
+    const exitosas = [];
+    const fallidas = [];
+    
+    for (const venta of ventasPendientes) {
+        try {
+            const ventaParaSubir = {
+                barcode: venta.barcode,
+                cantidad: venta.cantidad,
+                precio_unitario: venta.precio_unitario,
+                descuento: venta.descuento || 0,
+                descripcion: venta.descripcion || '',
+                fecha_venta: venta.fecha_venta
+            };
+            
+            const { error: errorVenta } = await supabaseClient
+                .from('ventas_mejoras')
+                .insert([ventaParaSubir]);
+            
+            if (!errorVenta) {
+                const producto = inventario.find(p => p.codigo_barras === venta.barcode);
+                if (producto) {
+                    const nuevoStock = producto.cantidad - venta.cantidad;
+                    await supabaseClient
+                        .from('inventario_mejoras')
+                        .update({ 
+                            cantidad: nuevoStock,
+                            fecha_actualizacion: getHoraChileISO()
+                        })
+                        .eq('barcode', venta.barcode);
+                }
+                exitosas.push(venta);
+                await actualizarFilaInventario(venta.barcode);
+            } else {
+                console.error('Error insertando venta MEJORAS:', errorVenta);
+                fallidas.push(venta);
+            }
+        } catch (error) {
+            console.error('Error sincronizando venta MEJORAS:', error);
+            fallidas.push(venta);
+        }
+    }
+    
+    localStorage.setItem('ventas_offline_mejoras', JSON.stringify(fallidas));
+    const inventarioOffline = JSON.parse(localStorage.getItem('inventario_offline_mejoras') || '{}');
+    
+    exitosas.forEach(venta => {
+        delete inventarioOffline[venta.barcode];
+    });
+    
+    localStorage.setItem('inventario_offline_mejoras', JSON.stringify(inventarioOffline));
+    
+    if (exitosas.length > 0) {
+        showNotification(`✅ ${exitosas.length} ventas MEJORAS sincronizadas exitosamente`, 'success');
+        await cargarVentas();
+    }
+    
+    if (fallidas.length > 0) {
+        showNotification(`⚠️ ${fallidas.length} ventas MEJORAS no se pudieron sincronizar`, 'warning');
+    }
+    
+    actualizarBadgeOffline();
+}
+
 function mostrarVentas(data) {
     const tbody = document.getElementById('ventasBody');
     tbody.innerHTML = '';
@@ -76,7 +152,6 @@ async function eliminarVenta(codigo, fechaVenta, cantidad) {
         
         console.log('Iniciando eliminación:', { codigo, fechaVenta, cantidad });
         
-        // 1. PRIMERO: Obtener información del producto
         const { data: producto, error: errorProducto } = await supabaseClient
             .from('inventario_mejoras')
             .select('cantidad, descripcion')
@@ -90,13 +165,11 @@ async function eliminarVenta(codigo, fechaVenta, cantidad) {
         
         console.log('Producto encontrado:', producto);
         
-        // Calcular nuevo stock
         const stockActual = parseInt(producto.cantidad) || 0;
         const nuevoStock = stockActual + parseInt(cantidad);
         
         console.log('Cálculo de stock:', { stockActual, cantidad, nuevoStock });
         
-        // 2. SEGUNDO: Eliminar la venta
         console.log('Eliminando venta...');
         const { error: errorEliminar } = await supabaseClient
             .from('ventas_mejoras')
@@ -111,7 +184,6 @@ async function eliminarVenta(codigo, fechaVenta, cantidad) {
         
         console.log('Venta eliminada correctamente');
         
-        // 3. TERCERO: Actualizar inventario
         console.log('Actualizando inventario...');
         const { error: errorInventario } = await supabaseClient
             .from('inventario_mejoras')
@@ -128,17 +200,14 @@ async function eliminarVenta(codigo, fechaVenta, cantidad) {
         
         console.log('Inventario actualizado correctamente');
         
-        // 4. CUARTO: Actualizar array local de inventario
         const productoIndex = inventario.findIndex(p => p.codigo_barras === codigo);
         if (productoIndex !== -1) {
             inventario[productoIndex].cantidad = nuevoStock;
             inventario[productoIndex].fecha_actualizacion = new Date().toISOString();
         }
         
-        // 5. QUINTO: Recargar datos COMPLETOS desde Supabase
-        // Esto es necesario porque las vistas pueden tener caché
-        await cargarVentas();  // Recargar desde vista_ventas_mejoras
-        await cargarInventario(); // Recargar desde vista_inventario_mejoras
+        await cargarVentas();
+        await actualizarFilaInventario(codigo);
         actualizarEstadisticas();
         
         showNotification(`✅ Venta eliminada. Stock de ${producto.descripcion || codigo} restaurado: ${stockActual} → ${nuevoStock} unidades`, 'success');
@@ -180,19 +249,23 @@ async function guardarVenta() {
     const nuevaCantidad = parseInt(document.getElementById('editVentaCantidad').value);
     const precio = parseFloat(document.getElementById('editVentaPrecio').value);
     const nuevoDescuento = parseFloat(document.getElementById('editVentaDescuento').value) || 0;
+    
     if (nuevaCantidad <= 0) {
         showNotification('❌ La cantidad debe ser mayor a 0', 'error');
         return;
     }
+    
     if (nuevoDescuento < 0) {
         showNotification('❌ El descuento no puede ser negativo', 'error');
         return;
     }
+    
     const subtotal = nuevaCantidad * precio;
     if (nuevoDescuento > subtotal) {
         showNotification(`❌ El descuento ($${nuevoDescuento.toFixed(2)}) no puede ser mayor al subtotal ($${subtotal.toFixed(2)})`, 'error');
         return;
     }
+    
     try {
         showNotification('🔄 Actualizando venta MEJORAS...', 'info');
         const { data, error } = await supabaseClient.rpc('editar_cantidad_venta_mejoras', {
@@ -201,14 +274,18 @@ async function guardarVenta() {
             p_nueva_cantidad: nuevaCantidad,
             p_nuevo_descuento: nuevoDescuento
         });
+        
         if (error) throw error;
+        
         console.log('Respuesta de Supabase:', data);
         if (data && data.success) {
             showNotification('✅ Venta MEJORAS actualizada correctamente', 'success');
             closeModal('modalVenta');
+            
             await cargarVentas();
-            await cargarInventario();
+            await actualizarFilaInventario(ventaEditando.codigo_barras);
             actualizarEstadisticas();
+            
         } else {
             const mensajeError = data?.error || 'Error desconocido';
             console.error('Error en respuesta:', data);
@@ -318,6 +395,7 @@ async function guardarNuevaVenta() {
     const descuento = parseFloat(document.getElementById('ventaDescuento').value) || 0;
     const descripcion = document.getElementById('ventaDescripcion').value;
     const codigoBarras = productoSeleccionado.codigo_barras;
+    
     if (cantidad <= 0) {
         showNotification('❌ La cantidad debe ser mayor a 0', 'error');
         return;
@@ -339,6 +417,7 @@ async function guardarNuevaVenta() {
         showNotification(`❌ Stock insuficiente. Disponible: ${productoSeleccionado.cantidad}`, 'error');
         return;
     }
+    
     const ventaData = {
         barcode: codigoBarras,
         cantidad: cantidad,
@@ -347,6 +426,7 @@ async function guardarNuevaVenta() {
         descripcion: descripcion || productoSeleccionado.descripcion || '',
         fecha_venta: getHoraChileISO()
     };
+    
     if (!navigator.onLine) {
         if (ventaData.descuento === undefined) {
             ventaData.descuento = descuento || 0;
@@ -358,12 +438,16 @@ async function guardarNuevaVenta() {
         actualizarVistaInventarioLocal();
         return;
     }
+    
     try {
+        showNotification('🔄 Registrando venta MEJORAS...', 'info');
         const { data: ventaInsertada, error: errorVenta } = await supabaseClient
             .from('ventas_mejoras')
             .insert([ventaData])
             .select();
+        
         if (errorVenta) throw errorVenta;
+        
         const nuevoStock = productoSeleccionado.cantidad - cantidad;
         const { error: errorInventario } = await supabaseClient
             .from('inventario_mejoras')
@@ -372,10 +456,16 @@ async function guardarNuevaVenta() {
                 fecha_actualizacion: getHoraChileISO()
             })
             .eq('barcode', codigoBarras);
+        
         if (errorInventario) throw errorInventario;
+        
         showNotification('✅ Venta MEJORAS registrada correctamente', 'success');
         closeModal('modalAgregarVenta');
-        cargarDatos();
+        
+        await cargarVentas();
+        await actualizarFilaInventario(codigoBarras);
+        actualizarEstadisticas();
+        
     } catch (error) {
         console.warn('Error online, guardando offline:', error);
         guardarVentaOffline(ventaData);
