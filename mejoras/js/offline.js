@@ -59,7 +59,6 @@ async function sincronizarVentasPendientes() {
     showNotification(`🔄 Sincronizando ${ventasPendientes.length} ventas pendientes MEJORAS...`, 'info');
     const exitosas = [];
     const fallidas = [];
-    const productosActualizar = new Set();
     
     for (const venta of ventasPendientes) {
         try {
@@ -77,9 +76,9 @@ async function sincronizarVentasPendientes() {
                 .insert([ventaParaSubir]);
                 
             if (!errorVenta) {
-                const producto = inventario.find(p => p.codigo_barras === venta.barcode);
-                if (producto) {
-                    const nuevoStock = producto.cantidad - venta.cantidad;
+                const productoIndex = inventario.findIndex(p => p.codigo_barras === venta.barcode);
+                if (productoIndex !== -1) {
+                    const nuevoStock = inventario[productoIndex].cantidad - venta.cantidad;
                     const { error: errorInventario } = await supabaseClient
                         .from('inventario_mejoras')
                         .update({ 
@@ -89,7 +88,9 @@ async function sincronizarVentasPendientes() {
                         .eq('barcode', venta.barcode);
                         
                     if (!errorInventario) {
-                        productosActualizar.add(venta.barcode);
+                        inventario[productoIndex].cantidad = nuevoStock;
+                        inventario[productoIndex].fecha_actualizacion = new Date().toISOString();
+                        mostrarInventario([inventario[productoIndex]], true);
                     }
                 }
                 exitosas.push(venta);
@@ -109,10 +110,6 @@ async function sincronizarVentasPendientes() {
         delete inventarioOffline[venta.barcode];
     });
     localStorage.setItem('inventario_offline_mejoras', JSON.stringify(inventarioOffline));
-    
-    for (const codigo of productosActualizar) {
-        await actualizarFilaInventario(codigo);
-    }
     
     if (exitosas.length > 0) {
         showNotification(`✅ ${exitosas.length} ventas MEJORAS sincronizadas exitosamente`, 'success');
