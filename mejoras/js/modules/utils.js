@@ -6,6 +6,49 @@ const DateTimeUtils = {
         const horaChile = new Date(ahora.getTime() + Constants.TIMEZONE_OFFSET * 60 * 60 * 1000);
         return horaChile.toISOString();
     },
+
+    getCurrentChileISO() {
+        const ahora = new Date();
+        const horaChile = new Date(ahora.getTime() + Constants.TIMEZONE_OFFSET * 60 * 60 * 1000);
+        return horaChile.toISOString();
+    },
+    
+    formatToChileTime(dateString) {
+        if (!dateString) return 'Sin fecha';
+        
+        try {
+            let fecha = new Date(dateString);
+            if (isNaN(fecha.getTime())) return 'Fecha inválida';
+            
+            fecha = new Date(fecha.getTime() + Constants.TIMEZONE_OFFSET * 60 * 60 * 1000);
+            
+            const dia = fecha.getDate().toString().padStart(2, '0');
+            const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
+            const año = fecha.getFullYear();
+            const hora = fecha.getHours().toString().padStart(2, '0');
+            const minutos = fecha.getMinutes().toString().padStart(2, '0');
+            const segundos = fecha.getSeconds().toString().padStart(2, '0');
+            
+            return `${dia}/${mes}/${año} ${hora}:${minutos}:${segundos}`;
+        } catch (error) {
+            return dateString || 'Sin fecha';
+        }
+    },
+    
+    formatDateTimeForSupabase() {
+        const now = new Date();
+        const horaChile = new Date(now.getTime() + Constants.TIMEZONE_OFFSET * 60 * 60 * 1000);
+        
+        const year = horaChile.getFullYear();
+        const month = String(horaChile.getMonth() + 1).padStart(2, '0');
+        const day = String(horaChile.getDate()).padStart(2, '0');
+        const hours = String(horaChile.getHours()).padStart(2, '0');
+        const minutes = String(horaChile.getMinutes()).padStart(2, '0');
+        const seconds = String(horaChile.getSeconds()).padStart(2, '0');
+        const milliseconds = String(horaChile.getMilliseconds()).padStart(3, '0');
+        
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`;
+    },
     
     formatToChileTime(dateString) {
         if (!dateString) return 'Sin fecha';
