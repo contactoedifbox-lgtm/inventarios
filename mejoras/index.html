@@ -4,39 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel de Control - Inventario y Ventas Veterinaria</title>
-    
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Nuestros archivos CSS -->
     <link rel="stylesheet" href="css/login.css">
     <link rel="stylesheet" href="css/style.css">
-    
-    <!-- Preload para mejor performance -->
     <link rel="preconnect" href="https://qnhmfvtqgwtlckcvzbhq.supabase.co">
 </head>
 <body>
-    <!-- ========== LOGIN CONTAINER ========== -->
     <div id="login-container">
         <div class="login-box">
             <h2><i class="fas fa-lock"></i> Acceso Sistema Veterinaria</h2>
             <p class="login-subtitle">Ingresa tus credenciales para acceder al panel</p>
-            
             <div class="login-error">
                 Credenciales incorrectas. Intenta nuevamente.
             </div>
-            
             <div class="login-loading">
                 <i class="fas fa-spinner"></i> Verificando...
             </div>
-            
             <input type="email" id="login-email" placeholder="Correo electrónico" autocomplete="username">
             <input type="password" id="login-password" placeholder="Contraseña" autocomplete="current-password">
-            
             <button id="login-button">
                 <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
             </button>
-            
             <div class="login-info">
                 <p><i class="fas fa-info-circle"></i> <strong>Sistema Veterinario - Acceso Restringido</strong></p>
                 <p>Panel de administración - Solo personal autorizado</p>
@@ -44,10 +32,8 @@
         </div>
     </div>
     
-    <!-- ========== APP CONTAINER (oculto hasta login) ========== -->
     <div id="app-container" class="app-container">
         <div class="container">
-            <!-- Header -->
             <div class="header">
                 <div>
                     <h1><i class="fas fa-warehouse"></i> Sistema de Inventario y Ventas Veterinaria</h1>
@@ -62,6 +48,9 @@
                     </div>
                     <button id="agregar-venta-btn" class="header-btn primary">
                         <i class="fas fa-plus-circle"></i> Agregar Venta
+                    </button>
+                    <button id="agregar-venta-multiple-btn" class="header-btn success">
+                        <i class="fas fa-cart-plus"></i> Venta Múltiple
                     </button>
                     <button id="exportar-excel-btn" class="header-btn success">
                         <i class="fas fa-file-excel"></i> Exportar a Excel
@@ -79,7 +68,6 @@
                 </div>
             </div>
             
-            <!-- Stats Cards -->
             <div class="stats">
                 <div class="stat-card">
                     <div class="stat-icon icon-inventory">
@@ -121,7 +109,6 @@
                 </div>
             </div>
             
-            <!-- Tabs -->
             <div class="tabs">
                 <button class="tab-btn active" id="tab-ventas-btn">
                     <i class="fas fa-shopping-cart"></i> Ventas
@@ -131,13 +118,11 @@
                 </button>
             </div>
             
-            <!-- Search -->
             <div class="search-box">
                 <i class="fas fa-search"></i>
                 <input type="text" id="searchInput" placeholder="Buscar por código de barras o descripción..." autocomplete="off">
             </div>
 
-            <!-- Ventas Tab -->
             <div id="tab-ventas" class="tab-content active">
                 <div class="table-container">
                     <table id="tablaVentas">
@@ -154,7 +139,6 @@
                             </tr>
                         </thead>
                         <tbody id="ventasBody">
-                            <!-- Los datos se cargarán aquí -->
                             <tr>
                                 <td colspan="8" style="text-align: center; padding: 40px; color: #64748b;">
                                     <i class="fas fa-spinner fa-spin"></i> Cargando ventas...
@@ -165,7 +149,6 @@
                 </div>
             </div>
             
-            <!-- Inventario Tab -->
             <div id="tab-inventario" class="tab-content">
                 <div class="table-container">
                     <table id="tablaInventario">
@@ -181,7 +164,6 @@
                             </tr>
                         </thead>
                         <tbody id="inventarioBody">
-                            <!-- Los datos se cargarán aquí -->
                             <tr>
                                 <td colspan="7" style="text-align: center; padding: 40px; color: #64748b;">
                                     <i class="fas fa-spinner fa-spin"></i> Cargando inventario...
@@ -191,10 +173,8 @@
                     </table>
                 </div>
             </div>
-            
         </div>
         
-        <!-- Modal Editar Inventario -->
         <div id="modalInventario" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
@@ -234,7 +214,6 @@
             </div>
         </div>
         
-        <!-- Modal Editar Venta -->
         <div id="modalVenta" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
@@ -283,7 +262,6 @@
             </div>
         </div>
         
-        <!-- Modal Agregar Venta -->
         <div id="modalAgregarVenta" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
@@ -294,10 +272,8 @@
                     <form id="formAgregarVenta">
                         <div class="form-group">
                             <label>Buscar Producto</label>
-                            <input type="text" id="buscarProducto" placeholder="Escribe código o descripción..." 
-                                   class="search-product-input" autocomplete="off">
+                            <input type="text" id="buscarProducto" placeholder="Escribe código o descripción..." class="search-product-input" autocomplete="off">
                             <div id="resultadosBusqueda" class="search-results">
-                                <!-- Resultados aparecen aquí -->
                             </div>
                         </div>
                         
@@ -345,7 +321,77 @@
             </div>
         </div>
 
-        <!-- ========== MODAL PARA ENCARGOS PENDIENTES ========== -->
+        <div id="modalVentaMultiple" class="modal">
+            <div class="modal-content modal-wide">
+                <div class="modal-header">
+                    <h2><i class="fas fa-cart-plus"></i> Venta Múltiple</h2>
+                    <button class="modal-close">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="multiple-sale-header">
+                        <div class="sale-id-display">
+                            <span>ID Venta:</span>
+                            <strong id="ventaMultipleId">Generando...</strong>
+                        </div>
+                        <div class="sale-date-display">
+                            <span>Fecha:</span>
+                            <strong id="ventaMultipleFecha">Cargando...</strong>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="search-multiple-container">
+                            <input type="text" id="buscarProductoMultiple" placeholder="Buscar producto por código o nombre..." class="search-product-input" autocomplete="off">
+                            <div id="resultadosBusquedaMultiple" class="search-results"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="multiple-items-container">
+                        <div class="items-table-header">
+                            <div style="width: 30px;">#</div>
+                            <div style="flex: 2;">Producto</div>
+                            <div style="flex: 1;">Cantidad</div>
+                            <div style="flex: 1;">Precio</div>
+                            <div style="flex: 1;">Descuento</div>
+                            <div style="flex: 1;">Subtotal</div>
+                            <div style="width: 50px;"></div>
+                        </div>
+                        
+                        <div id="itemsListContainer" class="items-list-container">
+                            <div class="empty-items-message">
+                                <i class="fas fa-cart-plus"></i>
+                                <p>Agrega productos usando la búsqueda arriba</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="multiple-sale-summary">
+                        <div class="summary-row">
+                            <span>Subtotal:</span>
+                            <span id="multipleSubtotal">$0.00</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>Descuento Total:</span>
+                            <span id="multipleDescuentoTotal">$0.00</span>
+                        </div>
+                        <div class="summary-row total-row">
+                            <span>TOTAL VENTA:</span>
+                            <span id="multipleTotalVenta">$0.00</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Notas adicionales (opcional)</label>
+                        <textarea id="ventaMultipleNotas" rows="2" placeholder="Notas sobre esta venta..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="action-btn btn-cancel" id="cancel-multiple-sale">Cancelar</button>
+                    <button class="action-btn btn-save" id="save-multiple-sale">Guardar Venta Múltiple</button>
+                </div>
+            </div>
+        </div>
+
         <div id="modalEncargos" class="modal">
             <div class="modal-content modal-wide">
                 <div class="modal-header">
@@ -371,7 +417,6 @@
                                 </tr>
                             </thead>
                             <tbody id="lista-encargos">
-                                <!-- Los encargos se cargarán aquí -->
                                 <tr>
                                     <td colspan="4" style="text-align: center; padding: 40px; color: #64748b;">
                                         No hay encargos pendientes
@@ -397,16 +442,13 @@
             </div>
         </div>
         
-        <!-- Notificación -->
         <div id="notification" class="notification"></div>
         
-        <!-- Badge offline -->
         <div id="offlineBadge" class="offline-badge">
             📶 <span id="offlineCount">0</span> venta(s) pendientes
         </div>
     </div>
 
-    <!-- Nuestro archivo JavaScript principal -->
     <script type="module" src="js/app.js"></script>
 </body>
 </html>
