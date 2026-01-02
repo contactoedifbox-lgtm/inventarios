@@ -31,6 +31,16 @@ class ModalManager {
                 firstInput.focus();
             }
         }, 100);
+        
+        // Para el modal de venta múltiple, ajustar el scroll
+        if (modalId === Constants.MODAL_IDS.MULTIPLE_SALE) {
+            setTimeout(() => {
+                const lineasContainer = modal.querySelector('#lineas-venta-container');
+                if (lineasContainer) {
+                    lineasContainer.scrollTop = 0;
+                }
+            }, 200);
+        }
     }
     
     close(modalId) {
@@ -48,6 +58,15 @@ class ModalManager {
             this.open(previousModal.id);
         } else {
             document.body.style.overflow = '';
+        }
+        
+        // Limpiar búsquedas pendientes si es el modal de venta múltiple
+        if (modalId === Constants.MODAL_IDS.MULTIPLE_SALE) {
+            const searchResults = modal.querySelectorAll('.search-results-linea');
+            searchResults.forEach(result => {
+                result.style.display = 'none';
+                result.innerHTML = '';
+            });
         }
     }
     
