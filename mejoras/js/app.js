@@ -30,7 +30,21 @@ class InventarioApp {
             setupSalesEventListeners();
             setupInventoryEventListeners();
             setupOfflineMonitoring();
+            
+            this.setupTestButton();
         });
+    }
+    
+    setupTestButton() {
+        const ventaMultipleBtn = document.getElementById('agregar-venta-multiple-btn');
+        if (ventaMultipleBtn) {
+            ventaMultipleBtn.addEventListener('click', () => {
+                console.log('Botón Venta Múltiple clickeado');
+                modalManager.open('modalVentaMultiple');
+            });
+        } else {
+            console.error('Botón agregar-venta-multiple-btn no encontrado');
+        }
     }
     
     setupUIComponents() {
