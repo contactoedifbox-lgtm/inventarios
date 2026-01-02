@@ -6,37 +6,9 @@ import { setupSalesEventListeners } from './modules/ventas.js';
 import { setupInventoryEventListeners } from './modules/inventario.js';
 import { setupOfflineMonitoring } from './modules/offline.js';
 
-// ========== CÓDIGO TEMPORAL PARA PROBAR ==========
-// ELIMINAR ESTO DESPUÉS DE QUE FUNCIONE
-
-console.log('=== VERIFICANDO MODAL VENTA MÚLTIPLE ===');
-
-// Esperar a que el DOM cargue
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM cargado');
-    
-    // Buscar el botón y el modal
-    const botonVentaMultiple = document.getElementById('agregar-venta-multiple-btn');
-    const modalVentaMultiple = document.getElementById('modalVentaMultiple');
-    
-    console.log('Botón encontrado:', !!botonVentaMultiple);
-    console.log('Modal encontrado:', !!modalVentaMultiple);
-    
-    // Si ambos existen, agregar event listener
-    if (botonVentaMultiple && modalVentaMultiple) {
-        botonVentaMultiple.addEventListener('click', function() {
-            console.log('¡Botón Venta Múltiple clickeado!');
-            modalVentaMultiple.style.display = 'flex';
-            console.log('Modal debería estar visible ahora');
-        });
-        
-        console.log('✅ Event listener agregado correctamente');
-    } else {
-        console.error('❌ ERROR: No se encontraron los elementos');
-        if (!botonVentaMultiple) console.error('Falta: botón con id="agregar-venta-multiple-btn"');
-        if (!modalVentaMultiple) console.error('Falta: modal con id="modalVentaMultiple"');
-    }
-});
+// ========== IMPORTAR MÓDULOS NUEVOS ==========
+import { setupMultipleSalesEventListeners, openMultipleSaleModal } from './modules/ventas-multiples.js';
+import { updateSalesTableView } from './ui/sales-table.js';
 
 class InventarioApp {
     constructor() {
@@ -55,6 +27,7 @@ class InventarioApp {
         window.addEventListener('offline', this.handleOfflineStatus.bind(this));
         
         document.addEventListener('DOMContentLoaded', () => {
+            // Configurar event listeners existentes
             setupAuthEventListeners();
             modalManager.setupModalCloseEvents();
             setupTabNavigation();
@@ -62,6 +35,25 @@ class InventarioApp {
             setupSalesEventListeners();
             setupInventoryEventListeners();
             setupOfflineMonitoring();
+            
+            // ========== CONFIGURAR NUEVOS EVENT LISTENERS ==========
+            
+            // 1. Botón para abrir modal de venta múltiple
+            const agregarVentaMultipleBtn = document.getElementById('agregar-venta-multiple-btn');
+            if (agregarVentaMultipleBtn) {
+                agregarVentaMultipleBtn.addEventListener('click', openMultipleSaleModal);
+                console.log('✅ Event listener agregado: agregar-venta-multiple-btn');
+            }
+            
+            // 2. Configurar event listeners del modal de venta múltiple
+            setupMultipleSalesEventListeners();
+            
+            // 3. Cambiar visualización de ventas a modo agrupado por defecto
+            setTimeout(() => {
+                updateSalesTableView(true); // true = modo agrupado
+            }, 1000);
+            
+            console.log('✅ Todos los event listeners configurados');
         });
     }
     
@@ -80,6 +72,7 @@ class InventarioApp {
     updateDateTimeDisplays() {
         const fechaHoyElement = document.getElementById('fecha-hoy');
         const fechaVentaActualElement = document.getElementById('fechaVentaActual');
+        const fechaVentaMultipleElement = document.getElementById('fecha-venta-multiple');
         
         if (fechaHoyElement) {
             import('./modules/utils.js').then(({ DateTimeUtils }) => {
@@ -90,6 +83,12 @@ class InventarioApp {
         if (fechaVentaActualElement && modalManager.isOpen('modalAgregarVenta')) {
             import('./modules/utils.js').then(({ DateTimeUtils }) => {
                 fechaVentaActualElement.textContent = DateTimeUtils.getCurrentChileDate();
+            });
+        }
+        
+        if (fechaVentaMultipleElement && modalManager.isOpen('modalVentaMultiple')) {
+            import('./modules/utils.js').then(({ DateTimeUtils }) => {
+                fechaVentaMultipleElement.textContent = DateTimeUtils.getCurrentChileDate();
             });
         }
     }
