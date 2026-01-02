@@ -1,3 +1,4 @@
+console.log('FASE 1: Constantes cargadas correctamente');
 import { supabaseClient, StateManager, Constants } from '../config/supabase-config.js';
 import { DateTimeUtils, InventoryUtils, StringUtils } from './utils.js';
 import notificationManager from '../ui/notifications.js';
