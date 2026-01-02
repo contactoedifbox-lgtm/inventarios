@@ -63,6 +63,9 @@
                     <button id="agregar-venta-btn" class="header-btn primary">
                         <i class="fas fa-plus-circle"></i> Agregar Venta
                     </button>
+                    <button id="agregar-venta-multiple-btn" class="header-btn success">
+                        <i class="fas fa-cart-plus"></i> Venta Múltiple
+                    </button>
                     <button id="exportar-excel-btn" class="header-btn success">
                         <i class="fas fa-file-excel"></i> Exportar a Excel
                     </button>
@@ -344,6 +347,171 @@
                 </div>
             </div>
         </div>
+
+        <!-- ========== MODAL PARA VENTAS MÚLTIPLES ========== -->
+<div id="modalVentaMultiple" class="modal">
+    <div class="modal-content modal-wide">
+        <div class="modal-header">
+            <h2><i class="fas fa-cart-plus"></i> Venta Múltiple</h2>
+            <button class="modal-close">×</button>
+        </div>
+        <div class="modal-body">
+            <!-- Contador de líneas -->
+            <div class="venta-multiple-header">
+                <div class="venta-counter">
+                    <i class="fas fa-list-ol"></i>
+                    <span id="contador-lineas">1</span> producto(s) en la venta
+                </div>
+                <button id="agregar-linea-btn" class="action-btn btn-edit">
+                    <i class="fas fa-plus"></i> Agregar otro producto
+                </button>
+            </div>
+            
+            <!-- Contenedor de líneas dinámicas -->
+            <div id="lineas-venta-container">
+                <!-- Las líneas se agregarán dinámicamente aquí -->
+                <!-- Línea 1 (inicial) -->
+                <div class="venta-linea" data-linea-id="1">
+                    <div class="linea-header">
+                        <span class="linea-numero">Producto 1</span>
+                        <button class="linea-remove-btn" data-linea="1" style="display: none;">
+                            <i class="fas fa-times"></i> Quitar
+                        </button>
+                    </div>
+                    
+                    <div class="linea-body">
+                        <!-- Búsqueda de producto -->
+                        <div class="form-group">
+                            <label>Buscar Producto</label>
+                            <div class="search-wrapper">
+                                <input type="text" 
+                                       class="search-product-input linea-busqueda" 
+                                       data-linea="1"
+                                       placeholder="Escribe código o descripción..." 
+                                       autocomplete="off">
+                                <div class="search-results-linea" data-linea="1"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Información del producto seleccionado -->
+                        <div class="producto-info-linea" data-linea="1" style="display: none;">
+                            <div class="producto-selected">
+                                <p><strong>Producto:</strong> <span class="producto-nombre"></span></p>
+                                <p><strong>Código:</strong> <span class="producto-codigo"></span></p>
+                                <p><strong>Stock disponible:</strong> <span class="producto-stock"></span></p>
+                                <p><strong>Precio actual:</strong> $<span class="producto-precio"></span></p>
+                            </div>
+                        </div>
+                        
+                        <!-- Campos de la venta -->
+                        <div class="linea-fields">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Cantidad</label>
+                                    <input type="number" 
+                                           class="linea-cantidad" 
+                                           data-linea="1" 
+                                           min="1" 
+                                           value="1" 
+                                           required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Precio Unitario</label>
+                                    <input type="number" 
+                                           class="linea-precio" 
+                                           data-linea="1" 
+                                           step="0.01" 
+                                           min="0" 
+                                           required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Descuento ($)</label>
+                                    <input type="number" 
+                                           class="linea-descuento" 
+                                           data-linea="1" 
+                                           step="0.01" 
+                                           min="0" 
+                                           value="0" 
+                                           required>
+                                    <small class="form-help">Monto fijo en pesos</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>Subtotal</label>
+                                    <input type="text" 
+                                           class="linea-subtotal readonly-input" 
+                                           data-linea="1" 
+                                           value="$0.00" 
+                                           readonly>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Descripción (opcional)</label>
+                                <textarea class="linea-descripcion" 
+                                          data-linea="1" 
+                                          rows="2" 
+                                          placeholder="Descripción adicional..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="linea-separator"></div>
+                </div>
+                <!-- Fin Línea 1 -->
+            </div>
+            
+            <!-- Resumen de la venta -->
+            <div class="venta-resumen">
+                <div class="resumen-header">
+                    <h3><i class="fas fa-receipt"></i> Resumen de la Venta</h3>
+                </div>
+                
+                <div class="resumen-body">
+                    <div class="resumen-row">
+                        <span>Subtotal:</span>
+                        <span id="resumen-subtotal">$0.00</span>
+                    </div>
+                    <div class="resumen-row">
+                        <span>Descuento Total:</span>
+                        <span id="resumen-descuento">$0.00</span>
+                    </div>
+                    <div class="resumen-row total">
+                        <span><strong>TOTAL:</strong></span>
+                        <span id="resumen-total"><strong>$0.00</strong></span>
+                    </div>
+                </div>
+                
+                <div class="resumen-footer">
+                    <div class="fecha-venta">
+                        <i class="far fa-calendar"></i>
+                        <span id="fecha-venta-multiple">Cargando fecha...</span>
+                    </div>
+                    <div class="productos-count">
+                        <i class="fas fa-box"></i>
+                        <span id="total-productos-venta">0</span> productos distintos
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Panel de observaciones -->
+            <div class="observaciones-panel">
+                <div class="form-group">
+                    <label><i class="fas fa-sticky-note"></i> Observaciones de la venta</label>
+                    <textarea id="observaciones-venta" 
+                              rows="2" 
+                              placeholder="Observaciones adicionales (cliente, motivo, etc.)..."></textarea>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="action-btn btn-cancel">Cancelar</button>
+            <button class="action-btn btn-success" id="registrar-venta-multiple">
+                <i class="fas fa-check-circle"></i> Registrar Venta Completa
+            </button>
+        </div>
+    </div>
+</div>
 
         <!-- ========== MODAL PARA ENCARGOS PENDIENTES ========== -->
         <div id="modalEncargos" class="modal">
