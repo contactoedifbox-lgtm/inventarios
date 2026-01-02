@@ -5,10 +5,58 @@ import { setupTabNavigation, setupSearch } from './ui/search.js';
 import { setupSalesEventListeners } from './modules/ventas.js';
 import { setupInventoryEventListeners } from './modules/inventario.js';
 import { setupOfflineMonitoring } from './modules/offline.js';
-
-// ========== IMPORTAR MÓDULOS NUEVOS ==========
 import { setupMultipleSalesEventListeners, openMultipleSaleModal } from './modules/ventas-multiples.js';
 import { updateSalesTableView } from './ui/sales-table.js';
+
+// Al inicio del app.js, después de los imports
+console.log('🔍 INICIANDO DIAGNÓSTICO DEL SISTEMA');
+
+// Función para verificar event listeners
+function checkEventListeners() {
+    console.group('🔌 VERIFICANDO EVENT LISTENERS');
+    
+    const criticalButtons = [
+        'agregar-venta-btn',
+        'agregar-venta-multiple-btn',
+        'recarga-inventario-btn',
+        'exportar-excel-btn',
+        'reporte-encargos-btn',
+        'logout-button',
+        'tab-ventas-btn',
+        'tab-inventario-btn'
+    ];
+    
+    criticalButtons.forEach(id => {
+        const btn = document.getElementById(id);
+        if (!btn) {
+            console.error(`❌ Botón #${id}: NO EXISTE en el DOM`);
+        } else {
+            console.log(`✅ Botón #${id}: Existe (click listeners: ${getEventListeners(btn, 'click')})`);
+            // Agregar listener temporal para debug
+            btn.addEventListener('click', function(e) {
+                console.log(`🎯 Botón ${id} clickeado`, e);
+                e.preventDefault();
+                e.stopPropagation();
+            });
+        }
+    });
+    
+    console.groupEnd();
+}
+
+// Función para obtener listeners (simplificada)
+function getEventListeners(element, eventType) {
+    const listeners = element._eventListeners || [];
+    return listeners.filter(l => l.type === eventType).length;
+}
+
+// Patchear addEventListener para debugging
+const originalAddEventListener = EventTarget.prototype.addEventListener;
+EventTarget.prototype.addEventListener = function(type, listener, options) {
+    if (!this._eventListeners) this._eventListeners = [];
+    this._eventListeners.push({ type, listener, options });
+    return originalAddEventListener.call(this, type, listener, options);
+};
 
 class InventarioApp {
     constructor() {
