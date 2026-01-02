@@ -2,6 +2,9 @@ import { supabaseClient, StateManager, Constants } from '../config/supabase-conf
 import { DateTimeUtils, InventoryUtils, StringUtils } from './utils.js';
 import notificationManager from '../ui/notifications.js';
 import modalManager from '../ui/modals.js';
+import { updateSalesTableView } from '../ui/sales-table.js';
+
+// ========== FUNCIONES EXISTENTES (MODIFICADAS) ==========
 
 export async function loadDashboardData() {
     await loadInventoryData();
@@ -263,100 +266,76 @@ export function markInventoryAsNotSynced() {
     updateSyncIndicator();
 }
 
+// ========== FUNCIONES DE VENTAS (MODIFICADAS PARA INTEGRACIÓN) ==========
+
 export async function loadSalesData() {
     try {
         const { data, error } = await supabaseClient
             .from(Constants.API_ENDPOINTS.SALES_VIEW)
             .select('*')
             .order('fecha_venta', { ascending: false })
-            .limit(200);
+            .limit(Constants.LIMITS.MAX_VENTAS_POR_CARGA);
             
         if (error) throw error;
         
         StateManager.setVentas(data);
-        displaySales(StateManager.ventas);
+        
+        // Usar la nueva visualización agrupada
+        updateSalesTableView(true);
+        
+        // Actualizar estadísticas de ventas del día
+        updateSalesStatistics();
+        
     } catch (error) {
         console.error('Error cargando ventas:', error);
         notificationManager.error('Error al cargar ventas');
     }
 }
 
-export function displaySales(data) {
-    const tbody = document.getElementById('ventasBody');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '';
-    
+// Función para actualizar estadísticas de ventas
+function updateSalesStatistics() {
+    const ventas = StateManager.ventas;
     const hoyChile = DateTimeUtils.getTodayChileDate();
-    const ventasHoy = data.filter(v => {
+    
+    const ventasHoy = ventas.filter(v => {
         if (!v.fecha_venta) return false;
         const fechaVenta = v.fecha_venta.split('T')[0];
         return fechaVenta === hoyChile;
     });
     
-    const totalHoy = ventasHoy.reduce((sum, v) => sum + parseFloat(v.total || 0), 0);
+    const totalHoy = ventasHoy.reduce((sum, v) => {
+        const subtotal = (v.cantidad * v.precio_unitario) - (v.descuento || 0);
+        return sum + subtotal;
+    }, 0);
+    
     document.getElementById('ventas-hoy').textContent = `$${totalHoy.toFixed(2)}`;
-    
-    data.forEach(item => {
-        const fecha = DateTimeUtils.formatToChileTime(item.fecha_venta);
-        const descuento = parseFloat(item.descuento || 0);
-        
-        const rowHTML = `
-            <tr>
-                <td>${StringUtils.escapeHTML(item.codigo_barras)}</td>
-                <td>${item.cantidad}</td>
-                <td>$${parseFloat(item.precio_unitario || 0).toFixed(2)}</td>
-                <td>${descuento > 0 ? `-$${descuento.toFixed(2)}` : '$0.00'}</td>
-                <td><strong>$${parseFloat(item.total || 0).toFixed(2)}</strong></td>
-                <td>${StringUtils.escapeHTML(item.descripcion || '')}</td>
-                <td>${fecha}</td>
-                <td>
-                    <button class="action-btn btn-edit" data-codigo="${StringUtils.escapeHTML(item.codigo_barras)}" data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}">
-                        <i class="fas fa-edit"></i> Editar
-                    </button>
-                    <button class="action-btn btn-delete" data-codigo="${StringUtils.escapeHTML(item.codigo_barras)}" data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}" data-cantidad="${item.cantidad}">
-                        <i class="fas fa-trash"></i> Eliminar
-                    </button>
-                </td>
-            </tr>
-        `;
-        
-        tbody.innerHTML += rowHTML;
-    });
-    
-    setupSalesRowEventListeners();
 }
 
-function setupSalesRowEventListeners() {
-    document.querySelectorAll('#ventasBody .btn-edit').forEach(button => {
-        button.addEventListener('click', function() {
-            const codigo = this.getAttribute('data-codigo');
-            const fecha = this.getAttribute('data-fecha');
-            
-            import('./ventas.js').then(module => {
-                module.editSale(codigo, fecha);
-            }).catch(error => {
-                console.error('Error importando ventas.js:', error);
-                notificationManager.error('Error al cargar módulo de ventas');
-            });
-        });
-    });
-    
-    document.querySelectorAll('#ventasBody .btn-delete').forEach(button => {
-        button.addEventListener('click', function() {
-            const codigo = this.getAttribute('data-codigo');
-            const fecha = this.getAttribute('data-fecha');
-            const cantidad = parseInt(this.getAttribute('data-cantidad'));
-            
-            import('./ventas.js').then(module => {
-                module.deleteSale(codigo, fecha, cantidad);
-            }).catch(error => {
-                console.error('Error importando ventas.js:', error);
-                notificationManager.error('Error al cargar módulo de ventas');
-            });
-        });
-    });
+// ========== FUNCIONES DE VISUALIZACIÓN (MANTENIDAS PARA COMPATIBILIDAD) ==========
+
+// Función mantenida para compatibilidad con módulo de ventas.js
+export function displaySales(data) {
+    // Esta función ya no se usa directamente, pero se mantiene por compatibilidad
+    // La visualización real ahora está en sales-table.js
+    updateSalesTableView(true);
 }
+
+// ========== FUNCIONES DE NAVEGACIÓN ==========
+
+function showTab(tabName) {
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+    document.getElementById(`tab-${tabName}`).classList.add('active');
+    
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    
+    if (tabName === 'ventas') {
+        document.getElementById('tab-ventas-btn').classList.add('active');
+    } else {
+        document.getElementById('tab-inventario-btn').classList.add('active');
+    }
+}
+
+// ========== CONFIGURACIÓN DE EVENT LISTENERS ==========
 
 export function setupInventoryEventListeners() {
     const closeBtn = document.getElementById('close-modal-inventario');
@@ -383,18 +362,5 @@ export function setupInventoryEventListeners() {
             StateManager.inventarioSincronizado = true;
             updateSyncIndicator();
         });
-    }
-}
-
-function showTab(tabName) {
-    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-    document.getElementById(`tab-${tabName}`).classList.add('active');
-    
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    
-    if (tabName === 'ventas') {
-        document.getElementById('tab-ventas-btn').classList.add('active');
-    } else {
-        document.getElementById('tab-inventario-btn').classList.add('active');
     }
 }
