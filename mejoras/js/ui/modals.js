@@ -1,4 +1,5 @@
-import Constants from '../config/constants.js';
+import { Constants } from '../config/supabase-config.js';
+import { StringUtils } from '../modules/utils.js';
 
 class ModalManager {
     constructor() {
@@ -23,6 +24,7 @@ class ModalManager {
         
         document.body.style.overflow = 'hidden';
         
+        // Enfocar el primer campo input del modal
         setTimeout(() => {
             const firstInput = modal.querySelector('input, textarea, select');
             if (firstInput && !firstInput.readOnly) {
@@ -62,6 +64,7 @@ class ModalManager {
     }
     
     setupModalCloseEvents() {
+        // Botones con clase modal-close
         document.querySelectorAll('.modal-close').forEach(button => {
             button.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -72,6 +75,7 @@ class ModalManager {
             });
         });
         
+        // Botones con clase btn-cancel
         document.querySelectorAll('.btn-cancel').forEach(button => {
             button.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -82,6 +86,7 @@ class ModalManager {
             });
         });
         
+        // Botones con id que empieza con close-modal-
         document.querySelectorAll('[id^="close-modal-"]').forEach(button => {
             button.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -92,12 +97,14 @@ class ModalManager {
             });
         });
         
+        // Cerrar con Escape
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.currentModal) {
                 this.closeCurrent();
             }
         });
         
+        // Cerrar haciendo clic fuera del modal
         document.addEventListener('click', (e) => {
             if (this.currentModal && e.target === this.currentModal) {
                 this.closeCurrent();
@@ -114,9 +121,11 @@ class ModalManager {
             currentElement = currentElement.parentElement;
         }
         
+        // Si no encuentra por ID, buscar por data-modal-id
         const modalId = element.closest('[data-modal-id]')?.getAttribute('data-modal-id');
         if (modalId) return modalId;
         
+        // Buscar el modal más cercano
         const modal = element.closest('.modal');
         return modal ? modal.id : null;
     }
@@ -124,7 +133,7 @@ class ModalManager {
     setModalContent(modalId, content) {
         const modal = document.getElementById(modalId);
         if (modal) {
-            modal.innerHTML = content;
+            StringUtils.safeInnerHTML(modal, content);
         }
     }
     
