@@ -1,4 +1,6 @@
-import { createClient } from 'https://unpkg.com/@supabase/supabase-js@2';
+// Importar Supabase usando ES Modules
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
 import Constants from './constants.js';
 
 const SUPABASE_URL = 'https://qnhmfvtqgwtlckcvzbhq.supabase.co';
