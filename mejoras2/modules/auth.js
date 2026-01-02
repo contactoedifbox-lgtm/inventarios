@@ -1,6 +1,5 @@
 import { supabaseClient, StateManager } from '../config/supabase-config.js';
-import NotificationManager from '../ui/notifications.js';
-import { loadDashboardData } from './inventario.js';
+import notificationManager from '../ui/notifications.js';
 
 export async function checkAuth() {
     try {
@@ -11,6 +10,7 @@ export async function checkAuth() {
         if (session) {
             StateManager.currentUser = session.user;
             showApp();
+            const { loadDashboardData } = await import('./inventario.js');
             await loadDashboardData();
         } else {
             showLogin();
@@ -26,7 +26,7 @@ export async function loginUser() {
     const password = document.getElementById('login-password').value;
     
     if (!email || !password) {
-        NotificationManager.error('Por favor ingresa email y contraseña');
+        notificationManager.error('Por favor ingresa email y contraseña');
         return;
     }
     
@@ -40,12 +40,13 @@ export async function loginUser() {
         
         StateManager.currentUser = data.user;
         showApp();
+        const { loadDashboardData } = await import('./inventario.js');
         await loadDashboardData();
         
-        NotificationManager.success('Sesión iniciada correctamente');
+        notificationManager.success('Sesión iniciada correctamente');
     } catch (error) {
         console.error('Error de login:', error);
-        NotificationManager.error('Credenciales incorrectas o error de conexión');
+        notificationManager.error('Credenciales incorrectas o error de conexión');
     }
 }
 
@@ -55,10 +56,10 @@ export async function logoutUser() {
         StateManager.currentUser = null;
         StateManager.clearState();
         showLogin();
-        NotificationManager.info('Sesión cerrada correctamente');
+        notificationManager.info('Sesión cerrada correctamente');
     } catch (error) {
         console.error('Error cerrando sesión:', error);
-        NotificationManager.error('Error al cerrar sesión');
+        notificationManager.error('Error al cerrar sesión');
     }
 }
 
