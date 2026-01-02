@@ -54,7 +54,7 @@ export async function saveSale() {
     }
     
     try {
-        notificationManager.info('🔄 Actualizando venta MEJORAS...');
+        notificationManager.info('🔄 Actualizando venta...');
         
         const { data, error } = await supabaseClient.rpc(Constants.RPC_FUNCTIONS.EDIT_SALE, {
             p_barcode: StateManager.ventaEditando.codigo_barras,
@@ -68,7 +68,7 @@ export async function saveSale() {
         if (data && data.success) {
             updateLocalInventoryAfterSaleEdit(nuevaCantidad);
             
-            notificationManager.success('✅ Venta MEJORAS actualizada correctamente');
+            notificationManager.success('✅ Venta actualizada correctamente');
             modalManager.close(Constants.MODAL_IDS.SALE);
             
             const { loadSalesData } = await import('./inventario.js');
@@ -83,8 +83,8 @@ export async function saveSale() {
             notificationManager.error('❌ Error: ' + mensajeError);
         }
     } catch (error) {
-        console.error('Error completo al actualizar venta MEJORAS:', error);
-        notificationManager.error('❌ Error al actualizar la venta MEJORAS: ' + error.message);
+        console.error('Error completo al actualizar venta:', error);
+        notificationManager.error('❌ Error al actualizar la venta: ' + error.message);
     }
 }
 
@@ -112,7 +112,7 @@ export async function deleteSale(codigoBarras, fechaVenta, cantidad) {
     }
     
     try {
-        notificationManager.info('🔄 Eliminando venta MEJORAS...');
+        notificationManager.info('🔄 Eliminando venta...');
         
         const productoIndex = StateManager.getInventario().findIndex(p => p.codigo_barras === codigoBarras);
         if (productoIndex === -1) {
@@ -212,10 +212,10 @@ export function openAddSaleModal() {
     
     if (!navigator.onLine) {
         document.getElementById('modalAgregarVenta').classList.add('offline-mode');
-        document.querySelector('#modalAgregarVenta .modal-header h2').innerHTML = '<i class="fas fa-wifi-slash"></i> Agregar Venta (Modo Offline) - MEJORAS';
+        document.querySelector('#modalAgregarVenta .modal-header h2').innerHTML = '<i class="fas fa-wifi-slash"></i> Agregar Venta (Modo Offline)';
     } else {
         document.getElementById('modalAgregarVenta').classList.remove('offline-mode');
-        document.querySelector('#modalAgregarVenta .modal-header h2').textContent = 'Agregar Venta Manual - MEJORAS';
+        document.querySelector('#modalAgregarVenta .modal-header h2').textContent = 'Agregar Venta Manual';
     }
     
     modalManager.open(Constants.MODAL_IDS.ADD_SALE);
@@ -377,7 +377,7 @@ export async function saveNewSale() {
         
         updateLocalInventoryRow(codigoBarras, nuevoStock);
         
-        notificationManager.success('✅ Venta MEJORAS registrada correctamente');
+        notificationManager.success('✅ Venta registrada correctamente');
         modalManager.close(Constants.MODAL_IDS.ADD_SALE);
         
         const { loadSalesData } = await import('./inventario.js');
@@ -407,7 +407,7 @@ export async function showPendingOrdersReport() {
     const encargos = inventario.filter(producto => producto.cantidad < 0);
     
     if (encargos.length === 0) {
-        notificationManager.success('✅ No hay encargos pendientes - MEJORAS');
+        notificationManager.success('✅ No hay encargos pendientes');
         return;
     }
     
@@ -450,7 +450,7 @@ export async function showPendingOrdersReport() {
     
     const totalRow = `
         <tr style="background: #f8fafc; font-weight: bold;">
-            <td style="padding: 12px; color: #475569;" colspan="2">TOTAL GENERAL - MEJORAS</td>
+            <td style="padding: 12px; color: #475569;" colspan="2">TOTAL GENERAL</td>
             <td style="padding: 12px; color: #dc2626;">${totalUnidadesPendientes} unidades</td>
             <td style="padding: 12px; color: #dc2626;">
                 <div>Inversión total:</div>
@@ -462,7 +462,7 @@ export async function showPendingOrdersReport() {
     tbody.innerHTML += totalRow;
     
     modalManager.open(Constants.MODAL_IDS.ORDERS);
-    notificationManager.success(`💰 Inversión requerida MEJORAS: $${inversionTotal.toFixed(2)} para ${encargos.length} productos`);
+    notificationManager.success(`💰 Inversión requerida: $${inversionTotal.toFixed(2)} para ${encargos.length} productos`);
 }
 
 export function exportToExcel() {
@@ -471,10 +471,10 @@ export function exportToExcel() {
     
     if (tabActiva.includes('inventario')) {
         data = StateManager.getInventario();
-        filename = 'inventario_mejoras.xlsx';
+        filename = 'inventario.xlsx';
     } else {
         data = StateManager.ventas;
-        filename = 'ventas_mejoras.xlsx';
+        filename = 'ventas.xlsx';
     }
     
     if (data.length === 0) {
@@ -513,7 +513,7 @@ export function exportToExcel() {
     
     window.URL.revokeObjectURL(url);
     
-    notificationManager.success('Archivo MEJORAS exportado correctamente');
+    notificationManager.success('Archivo exportado correctamente');
 }
 
 export function setupSalesEventListeners() {
