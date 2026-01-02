@@ -96,11 +96,11 @@ export async function syncPendingSales() {
     );
     
     if (ventasPendientes.length === 0) {
-        notificationManager.success('✅ No hay ventas pendientes por sincronizar - MEJORAS');
+        notificationManager.success('✅ No hay ventas pendientes por sincronizar');
         return;
     }
     
-    notificationManager.info(`🔄 Sincronizando ${ventasPendientes.length} ventas pendientes MEJORAS...`);
+    notificationManager.info(`🔄 Sincronizando ${ventasPendientes.length} ventas pendientes...`);
     
     const exitosas = [];
     const fallidas = [];
@@ -151,11 +151,11 @@ export async function syncPendingSales() {
                 }
                 exitosas.push(venta);
             } else {
-                console.error('Error insertando venta MEJORAS:', errorVenta);
+                console.error('Error insertando venta:', errorVenta);
                 fallidas.push(venta);
             }
         } catch (error) {
-            console.error('Error sincronizando venta MEJORAS:', error);
+            console.error('Error sincronizando venta:', error);
             fallidas.push(venta);
         }
     }
@@ -179,7 +179,7 @@ export async function syncPendingSales() {
     );
     
     if (exitosas.length > 0) {
-        notificationManager.success(`✅ ${exitosas.length} ventas MEJORAS sincronizadas exitosamente`);
+        notificationManager.success(`✅ ${exitosas.length} ventas sincronizadas exitosamente`);
         
         const { loadSalesData } = await import('./inventario.js');
         await loadSalesData();
@@ -188,7 +188,7 @@ export async function syncPendingSales() {
     }
     
     if (fallidas.length > 0) {
-        notificationManager.warning(`⚠️ ${fallidas.length} ventas MEJORAS no se pudieron sincronizar`);
+        notificationManager.warning(`⚠️ ${fallidas.length} ventas no se pudieron sincronizar`);
     }
     
     updateOfflineBadge();
