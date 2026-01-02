@@ -3,9 +3,10 @@ import { DateTimeUtils, InventoryUtils, StringUtils } from './utils.js';
 import notificationManager from '../ui/notifications.js';
 import modalManager from '../ui/modals.js';
 
-// Función para editar una venta
+// ========== FUNCIONES PARA VENTAS INDIVIDUALES (COMPATIBILIDAD) ==========
+
+// Función para editar una venta individual
 export async function editSale(codigoBarras, fechaVenta) {
-    // Buscar la venta usando el valor EXACTO de fecha_venta
     const venta = StateManager.ventas.find(v => 
         v.codigo_barras === codigoBarras && v.fecha_venta === fechaVenta
     );
@@ -151,13 +152,11 @@ export async function deleteSale(codigoBarras, fechaVenta, cantidad) {
         });
         
         // ELIMINAR de la tabla VENTAS (no de la vista)
-        const { error: errorEliminar, count } = await supabaseClient
+        const { error: errorEliminar } = await supabaseClient
             .from(Constants.API_ENDPOINTS.SALES_TABLE)
             .delete()
             .eq('barcode', codigoBarras)
             .eq('fecha_venta', fechaVentaExacta);
-        
-        console.log('Resultado eliminación:', { errorEliminar, count });
         
         if (errorEliminar) {
             console.error('Error eliminando venta:', errorEliminar);
@@ -195,8 +194,8 @@ export async function deleteSale(codigoBarras, fechaVenta, cantidad) {
             StateManager.ventas.splice(ventaIndex, 1);
         }
         
-        // Actualizar la tabla de ventas
-        displaySales(StateManager.ventas);
+        // Recargar ventas
+        await reloadSalesData();
         
         // Actualizar estadísticas
         const { updateStatistics } = await import('./inventario.js');
@@ -250,12 +249,18 @@ async function reloadSalesData() {
             .from(Constants.API_ENDPOINTS.SALES_VIEW)
             .select('*')
             .order('fecha_venta', { ascending: false })
-            .limit(200);
+            .limit(Constants.LIMITS.MAX_VENTAS_POR_CARGA);
             
         if (error) throw error;
         
         StateManager.setVentas(data);
-        displaySales(data);
+        
+        // Usar la nueva visualización agrupada
+        const { updateSalesTableView } = await import('../ui/sales-table.js');
+        updateSalesTableView(true);
+        
+        // Actualizar estadísticas de ventas del día
+        updateSalesStatistics();
         
         return data;
     } catch (error) {
@@ -265,90 +270,37 @@ async function reloadSalesData() {
     }
 }
 
-// Función para mostrar ventas en la tabla
-export function displaySales(data) {
-    const tbody = document.getElementById('ventasBody');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '';
-    
-    if (data.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="8" style="text-align: center; padding: 40px; color: #64748b;">
-                    <i class="fas fa-inbox"></i> No hay ventas registradas
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
+// Función para actualizar estadísticas de ventas
+function updateSalesStatistics() {
+    const ventas = StateManager.ventas;
     const hoyChile = DateTimeUtils.getTodayChileDate();
-    const ventasHoy = data.filter(v => {
+    
+    const ventasHoy = ventas.filter(v => {
         if (!v.fecha_venta) return false;
         const fechaVenta = v.fecha_venta.split('T')[0];
         return fechaVenta === hoyChile;
     });
     
-    const totalHoy = ventasHoy.reduce((sum, v) => sum + parseFloat(v.total || 0), 0);
+    const totalHoy = ventasHoy.reduce((sum, v) => {
+        const subtotal = (v.cantidad * v.precio_unitario) - (v.descuento || 0);
+        return sum + subtotal;
+    }, 0);
+    
     const ventasHoyElement = document.getElementById('ventas-hoy');
     if (ventasHoyElement) {
         ventasHoyElement.textContent = `$${totalHoy.toFixed(2)}`;
     }
-    
-    data.forEach(item => {
-        const fechaFormateada = DateTimeUtils.formatToChileTime(item.fecha_venta);
-        const descuento = parseFloat(item.descuento || 0);
-        
-        const rowHTML = `
-            <tr>
-                <td>${StringUtils.escapeHTML(item.codigo_barras)}</td>
-                <td>${item.cantidad}</td>
-                <td>$${parseFloat(item.precio_unitario || 0).toFixed(2)}</td>
-                <td>${descuento > 0 ? `-$${descuento.toFixed(2)}` : '$0.00'}</td>
-                <td><strong>$${parseFloat(item.total || 0).toFixed(2)}</strong></td>
-                <td>${StringUtils.escapeHTML(item.descripcion || '')}</td>
-                <td>${fechaFormateada}</td>
-                <td>
-                    <button class="action-btn btn-edit" 
-                            data-codigo="${StringUtils.escapeHTML(item.codigo_barras)}" 
-                            data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}">
-                        <i class="fas fa-edit"></i> Editar
-                    </button>
-                    <button class="action-btn btn-delete" 
-                            data-codigo="${StringUtils.escapeHTML(item.codigo_barras)}" 
-                            data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}" 
-                            data-cantidad="${item.cantidad}">
-                        <i class="fas fa-trash"></i> Eliminar
-                    </button>
-                </td>
-            </tr>
-        `;
-        
-        tbody.innerHTML += rowHTML;
-    });
-    
-    setupSalesRowEventListeners();
 }
 
-function setupSalesRowEventListeners() {
-    document.querySelectorAll('#ventasBody .btn-edit').forEach(button => {
-        button.addEventListener('click', function() {
-            const codigo = this.getAttribute('data-codigo');
-            const fecha = this.getAttribute('data-fecha');
-            editSale(codigo, fecha);
-        });
-    });
-    
-    document.querySelectorAll('#ventasBody .btn-delete').forEach(button => {
-        button.addEventListener('click', function() {
-            const codigo = this.getAttribute('data-codigo');
-            const fecha = this.getAttribute('data-fecha');
-            const cantidad = parseInt(this.getAttribute('data-cantidad'));
-            deleteSale(codigo, fecha, cantidad);
-        });
-    });
+// Función para mostrar ventas en la tabla (mantenida para compatibilidad)
+export function displaySales(data) {
+    // Esta función ya no se usa directamente, pero se mantiene por compatibilidad
+    // La visualización real ahora está en sales-table.js
+    const { updateSalesTableView } = import('../ui/sales-table.js');
+    updateSalesTableView(true);
 }
+
+// ========== FUNCIONES PARA VENTAS INDIVIDUALES ==========
 
 // Función para abrir el modal de agregar venta
 export function openAddSaleModal() {
@@ -490,7 +442,10 @@ export async function saveNewSale() {
         precio_unitario: precio,
         descuento: descuento,
         descripcion: descripcion || StateManager.productoSeleccionado.descripcion || '',
-        fecha_venta: DateTimeUtils.getCurrentChileISO()
+        fecha_venta: DateTimeUtils.getCurrentChileISO(),
+        // Para compatibilidad con ventas múltiples
+        id_venta_agrupada: `IND-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        numero_linea: 1
     };
     
     if (!navigator.onLine) {
@@ -560,6 +515,8 @@ export async function saveNewSale() {
         updateLocalInventoryView();
     }
 }
+
+// ========== FUNCIONES DE REPORTES Y EXPORTACIÓN ==========
 
 // Función para mostrar el reporte de encargos pendientes
 export async function showPendingOrdersReport() {
@@ -676,6 +633,8 @@ export function exportToExcel() {
     
     notificationManager.success('Archivo exportado correctamente');
 }
+
+// ========== CONFIGURACIÓN DE EVENT LISTENERS ==========
 
 // Funciones auxiliares para configuración de event listeners
 function setupModalEventListeners() {
