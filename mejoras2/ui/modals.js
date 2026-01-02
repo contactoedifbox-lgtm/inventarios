@@ -105,4 +105,5 @@ class ModalManager {
     }
 }
 
-export default new ModalManager();
+const modalManager = new ModalManager();
+export default modalManager;
