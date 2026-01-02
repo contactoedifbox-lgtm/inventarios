@@ -41,16 +41,26 @@ class InventarioApp {
             // 1. Botón para abrir modal de venta múltiple
             const agregarVentaMultipleBtn = document.getElementById('agregar-venta-multiple-btn');
             if (agregarVentaMultipleBtn) {
-                agregarVentaMultipleBtn.addEventListener('click', openMultipleSaleModal);
+                agregarVentaMultipleBtn.addEventListener('click', () => {
+                    console.log('Botón venta múltiple clickeado');
+                    openMultipleSaleModal();
+                });
                 console.log('✅ Event listener agregado: agregar-venta-multiple-btn');
             }
             
             // 2. Configurar event listeners del modal de venta múltiple
-            setupMultipleSalesEventListeners();
+            setTimeout(() => {
+                setupMultipleSalesEventListeners();
+            }, 500);
             
             // 3. Cambiar visualización de ventas a modo agrupado por defecto
             setTimeout(() => {
-                updateSalesTableView(true); // true = modo agrupado
+                try {
+                    updateSalesTableView(true); // true = modo agrupado
+                    console.log('✅ Visualización de ventas configurada en modo agrupado');
+                } catch (error) {
+                    console.error('Error configurando vista de ventas:', error);
+                }
             }, 1000);
             
             console.log('✅ Todos los event listeners configurados');
@@ -108,4 +118,7 @@ class InventarioApp {
     }
 }
 
-new InventarioApp();
+// Inicializar la aplicación
+document.addEventListener('DOMContentLoaded', () => {
+    new InventarioApp();
+});
