@@ -1,4 +1,4 @@
-import { Constants } from '../config/constants.js';
+import Constants from '../config/constants.js';
 
 class ModalManager {
     constructor() {
