@@ -1,5 +1,5 @@
 import { supabaseClient, StateManager, Constants } from '../config/supabase-config.js';
-import { DateTimeUtils, InventoryUtils, StringUtils } from './utils.js';
+import { DateTimeUtils, InventoryUtils, StringUtils } from './utils-v2.js';
 import notificationManager from '../ui/notifications.js';
 import modalManager from '../ui/modals.js';
 
@@ -280,8 +280,14 @@ export function displaySales(data) {
         button.addEventListener('click', function() {
             const codigo = this.getAttribute('data-codigo');
             const fecha = this.getAttribute('data-fecha');
-            const { editSale } = await import('./ventas.js');
-            editSale(codigo, fecha);
+            
+            // Importación dinámica para evitar dependencia circular
+            import('./ventas.js').then(module => {
+                module.editSale(codigo, fecha);
+            }).catch(error => {
+                console.error('Error importando ventas.js:', error);
+                notificationManager.error('Error al cargar módulo de ventas');
+            });
         });
     });
     
@@ -290,8 +296,14 @@ export function displaySales(data) {
             const codigo = this.getAttribute('data-codigo');
             const fecha = this.getAttribute('data-fecha');
             const cantidad = parseInt(this.getAttribute('data-cantidad'));
-            const { deleteSale } = await import('./ventas.js');
-            deleteSale(codigo, fecha, cantidad);
+            
+            // Importación dinámica para evitar dependencia circular
+            import('./ventas.js').then(module => {
+                module.deleteSale(codigo, fecha, cantidad);
+            }).catch(error => {
+                console.error('Error importando ventas.js:', error);
+                notificationManager.error('Error al cargar módulo de ventas');
+            });
         });
     });
 }
@@ -321,5 +333,19 @@ export function setupInventoryEventListeners() {
             StateManager.inventarioSincronizado = true;
             updateSyncIndicator();
         });
+    }
+}
+
+// Función para mostrar pestañas (necesaria para showTab)
+function showTab(tabName) {
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+    document.getElementById(`tab-${tabName}`).classList.add('active');
+    
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    
+    if (tabName === 'ventas') {
+        document.getElementById('tab-ventas-btn').classList.add('active');
+    } else {
+        document.getElementById('tab-inventario-btn').classList.add('active');
     }
 }
