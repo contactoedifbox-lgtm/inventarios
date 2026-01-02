@@ -74,8 +74,8 @@ export async function saveSale() {
             notificationManager.success('✅ Venta actualizada correctamente');
             modalManager.close(Constants.MODAL_IDS.SALE);
             
-            const { loadSalesData } = await import('./inventario.js');
-            await loadSalesData();
+            // Recargar ventas para reflejar cambios
+            await reloadSalesData();
             const { updateStatistics } = await import('./inventario.js');
             updateStatistics();
             
@@ -158,8 +158,20 @@ export async function deleteSale(codigoBarras, fechaVenta, cantidad) {
         
         updateLocalInventoryRow(codigoBarras, nuevoStock);
         
-        const { loadSalesData } = await import('./inventario.js');
-        await loadSalesData();
+        // ELIMINAR LA VENTA DEL STATE Y ACTUALIZAR LA TABLA
+        // 1. Remover la venta del StateManager
+        const ventaIndex = StateManager.ventas.findIndex(v => 
+            v.codigo_barras === codigoBarras && v.fecha_venta === fechaVenta
+        );
+        
+        if (ventaIndex !== -1) {
+            StateManager.ventas.splice(ventaIndex, 1);
+        }
+        
+        // 2. Actualizar la tabla de ventas
+        await reloadSalesData();
+        
+        // 3. Actualizar estadísticas
         const { updateStatistics } = await import('./inventario.js');
         updateStatistics();
         
@@ -199,6 +211,91 @@ function updateLocalInventoryRow(codigoBarras, nuevoStock) {
             break;
         }
     }
+}
+
+// Función para recargar datos de ventas
+async function reloadSalesData() {
+    try {
+        const { data, error } = await supabaseClient
+            .from(Constants.API_ENDPOINTS.SALES_VIEW)
+            .select('*')
+            .order('fecha_venta', { ascending: false })
+            .limit(200);
+            
+        if (error) throw error;
+        
+        StateManager.setVentas(data);
+        displaySales(StateManager.ventas);
+    } catch (error) {
+        console.error('Error recargando ventas:', error);
+        notificationManager.error('Error al recargar ventas');
+    }
+}
+
+// Función para mostrar ventas en la tabla
+export function displaySales(data) {
+    const tbody = document.getElementById('ventasBody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    const hoyChile = DateTimeUtils.getTodayChileDate();
+    const ventasHoy = data.filter(v => {
+        if (!v.fecha_venta) return false;
+        const fechaVenta = v.fecha_venta.split('T')[0];
+        return fechaVenta === hoyChile;
+    });
+    
+    const totalHoy = ventasHoy.reduce((sum, v) => sum + parseFloat(v.total || 0), 0);
+    document.getElementById('ventas-hoy').textContent = `$${totalHoy.toFixed(2)}`;
+    
+    data.forEach(item => {
+        const fecha = DateTimeUtils.formatToChileTime(item.fecha_venta);
+        const descuento = parseFloat(item.descuento || 0);
+        
+        const rowHTML = `
+            <tr>
+                <td>${StringUtils.escapeHTML(item.codigo_barras)}</td>
+                <td>${item.cantidad}</td>
+                <td>$${parseFloat(item.precio_unitario || 0).toFixed(2)}</td>
+                <td>${descuento > 0 ? `-$${descuento.toFixed(2)}` : '$0.00'}</td>
+                <td><strong>$${parseFloat(item.total || 0).toFixed(2)}</strong></td>
+                <td>${StringUtils.escapeHTML(item.descripcion || '')}</td>
+                <td>${fecha}</td>
+                <td>
+                    <button class="action-btn btn-edit" data-codigo="${StringUtils.escapeHTML(item.codigo_barras)}" data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button class="action-btn btn-delete" data-codigo="${StringUtils.escapeHTML(item.codigo_barras)}" data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}" data-cantidad="${item.cantidad}">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </td>
+            </tr>
+        `;
+        
+        tbody.innerHTML += rowHTML;
+    });
+    
+    setupSalesRowEventListeners();
+}
+
+function setupSalesRowEventListeners() {
+    document.querySelectorAll('#ventasBody .btn-edit').forEach(button => {
+        button.addEventListener('click', function() {
+            const codigo = this.getAttribute('data-codigo');
+            const fecha = this.getAttribute('data-fecha');
+            editSale(codigo, fecha);
+        });
+    });
+    
+    document.querySelectorAll('#ventasBody .btn-delete').forEach(button => {
+        button.addEventListener('click', function() {
+            const codigo = this.getAttribute('data-codigo');
+            const fecha = this.getAttribute('data-fecha');
+            const cantidad = parseInt(this.getAttribute('data-cantidad'));
+            deleteSale(codigo, fecha, cantidad);
+        });
+    });
 }
 
 // Función para abrir el modal de agregar venta
@@ -386,11 +483,12 @@ export async function saveNewSale() {
         
         updateLocalInventoryRow(codigoBarras, nuevoStock);
         
+        // Recargar ventas después de agregar una nueva
+        await reloadSalesData();
+        
         notificationManager.success('✅ Venta registrada correctamente');
         modalManager.close(Constants.MODAL_IDS.ADD_SALE);
         
-        const { loadSalesData } = await import('./inventario.js');
-        await loadSalesData();
         const { updateStatistics } = await import('./inventario.js');
         updateStatistics();
         
