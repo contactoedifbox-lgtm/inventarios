@@ -7,20 +7,20 @@ const Constants = {
     },
     
     LOCAL_STORAGE_KEYS: {
-        OFFLINE_SALES: 'ventas_offline_mejoras',
-        OFFLINE_INVENTORY: 'inventario_offline_mejoras'
+        OFFLINE_SALES: 'ventas_offline_cliente',
+        OFFLINE_INVENTORY: 'inventario_offline_cliente'
     },
     
     API_ENDPOINTS: {
-        INVENTORY_VIEW: 'vista_inventario_mejoras',
-        SALES_VIEW: 'vista_ventas_mejoras',
-        SALES_TABLE: 'ventas_mejoras',
-        INVENTORY_TABLE: 'inventario_mejoras'
+        INVENTORY_VIEW: 'vista_inventario_cliente',
+        SALES_VIEW: 'vista_ventas_cliente',
+        SALES_TABLE: 'ventas',
+        INVENTORY_TABLE: 'inventario'
     },
     
     RPC_FUNCTIONS: {
-        EDIT_INVENTORY: 'editar_inventario_mejoras',
-        EDIT_SALE: 'editar_cantidad_venta_mejoras'
+        EDIT_INVENTORY: 'editar_inventario_cliente',
+        EDIT_SALE: 'editar_cantidad_venta'
     },
     
     NOTIFICATION_TYPES: {
