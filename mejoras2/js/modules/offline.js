@@ -1,6 +1,7 @@
 import { StateManager, Constants } from '../config/supabase-config.js';
 import { DateTimeUtils } from './utils.js';
 import notificationManager from '../ui/notifications.js';
+import { supabaseClient } from '../config/supabase-config.js';
 
 export function saveSaleOffline(saleData) {
     const ventaParaGuardar = {
@@ -49,7 +50,7 @@ export function updateLocalInventory(barcode, change) {
     );
 }
 
-export function updateLocalInventoryView() {
+export async function updateLocalInventoryView() {
     const inventarioOffline = JSON.parse(
         localStorage.getItem(Constants.LOCAL_STORAGE_KEYS.OFFLINE_INVENTORY) || '{}'
     );
@@ -142,7 +143,10 @@ export async function syncPendingSales() {
                         });
                         
                         const { displayInventory } = await import('./inventario.js');
-                        displayInventory([StateManager.getProducto(venta.barcode)], true);
+                        const producto = StateManager.getProducto(venta.barcode);
+                        if (producto) {
+                            displayInventory([producto]);
+                        }
                     }
                 }
                 exitosas.push(venta);
