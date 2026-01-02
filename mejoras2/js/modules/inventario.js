@@ -93,14 +93,18 @@ export function displayInventory(data) {
         tbody.innerHTML += rowHTML;
     });
     
+    setupInventoryRowEventListeners();
+    
+    document.getElementById('total-productos').textContent = StateManager.getInventario().length;
+}
+
+function setupInventoryRowEventListeners() {
     document.querySelectorAll('#inventarioBody .btn-edit').forEach(button => {
         button.addEventListener('click', function() {
             const codigo = this.getAttribute('data-codigo');
             editInventory(codigo);
         });
     });
-    
-    document.getElementById('total-productos').textContent = StateManager.getInventario().length;
 }
 
 function updateInventoryIncremental(nuevosDatos) {
@@ -166,6 +170,7 @@ export async function saveInventory() {
             notificationManager.success('✅ Producto actualizado');
             modalManager.close(Constants.MODAL_IDS.INVENTORY);
             
+            // Actualización incremental - solo esta fila
             StateManager.updateInventoryItem(StateManager.productoEditando.codigo_barras, {
                 descripcion: descripcion,
                 cantidad: cantidad,
@@ -174,7 +179,11 @@ export async function saveInventory() {
                 fecha_actualizacion: new Date().toISOString()
             });
             
-            await loadInventoryData(false);
+            // Actualizar solo la fila en la tabla
+            updateSingleInventoryRow(StateManager.productoEditando.codigo_barras);
+            
+            // Actualizar estadísticas
+            updateStatistics();
             
         } else {
             notificationManager.error('❌ Error: ' + (data?.message || 'Desconocido'));
@@ -183,6 +192,45 @@ export async function saveInventory() {
         console.error('Error actualizando inventario MEJORAS:', error);
         notificationManager.error('❌ Error al actualizar');
     }
+}
+
+function updateSingleInventoryRow(codigoBarras) {
+    const producto = StateManager.getProducto(codigoBarras);
+    if (!producto) return;
+    
+    const tbody = document.getElementById('inventarioBody');
+    if (!tbody) return;
+    
+    const filas = tbody.getElementsByTagName('tr');
+    
+    for (let fila of filas) {
+        const codigoCelda = fila.cells[0].textContent.trim();
+        if (codigoCelda === codigoBarras) {
+            const stockBadge = InventoryUtils.getStockStatus(producto.cantidad);
+            const fecha = DateTimeUtils.formatToChileTime(producto.fecha_actualizacion);
+            
+            fila.cells[1].innerHTML = producto.descripcion ? 
+                StringUtils.escapeHTML(producto.descripcion) : 
+                '<span style="color: #94a3b8;">Sin descripción</span>';
+            
+            fila.cells[2].innerHTML = `<span class="stock-badge ${stockBadge.class}">${producto.cantidad} unidades</span>`;
+            fila.cells[3].textContent = `$${parseFloat(producto.costo || 0).toFixed(2)}`;
+            fila.cells[4].innerHTML = `<strong>$${parseFloat(producto.precio || 0).toFixed(2)}</strong>`;
+            fila.cells[5].textContent = fecha;
+            
+            // Actualizar el botón de editar
+            const editButton = fila.cells[6].querySelector('.btn-edit');
+            if (editButton) {
+                editButton.setAttribute('data-codigo', producto.codigo_barras);
+                // Remover listeners antiguos y añadir nuevos
+                editButton.replaceWith(editButton.cloneNode(true));
+            }
+            break;
+        }
+    }
+    
+    // Re-configurar listeners
+    setupInventoryRowEventListeners();
 }
 
 export function updateStatistics() {
@@ -276,6 +324,10 @@ export function displaySales(data) {
         tbody.innerHTML += rowHTML;
     });
     
+    setupSalesRowEventListeners();
+}
+
+function setupSalesRowEventListeners() {
     document.querySelectorAll('#ventasBody .btn-edit').forEach(button => {
         button.addEventListener('click', function() {
             const codigo = this.getAttribute('data-codigo');
