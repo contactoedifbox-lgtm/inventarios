@@ -1,0 +1,18 @@
+inventarios/mejoras/
+│
+├── index.html                    (≈ 400 líneas) - SOLO HTML
+│
+├── css/
+│   ├── style.css                 (≈ 250 líneas) - Estilos principales
+│   └── login.css                 (≈ 50 líneas)  - Estilos login
+│
+├── js/
+│   ├── main.js                   (≈ 200 líneas) - Eventos principales
+│   ├── supabase-config.js        (≈ 100 líneas) - Config Supabase
+│   ├── auth.js                   (≈ 100 líneas) - Login/Logout
+│   ├── inventario.js             (≈ 150 líneas) - Funciones inventario
+│   ├── ventas.js                 (≈ 300 líneas) - Funciones ventas (el más grande)
+│   ├── offline.js                (≈ 150 líneas) - Funciones offline
+│   └── utils.js                  (≈ 80 líneas)  - Funciones utilitarias
+│
+└── assets/                       (vacío por ahora)
