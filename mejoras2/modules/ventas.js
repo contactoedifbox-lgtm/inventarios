@@ -43,10 +43,11 @@ export async function saveSale() {
     }
     
     const nuevaCantidad = parseInt(document.getElementById('editVentaCantidad').value);
-    const precio = parseFloat(document.getElementById('editVentaPrecio').value);
     const nuevoDescuento = parseFloat(document.getElementById('editVentaDescuento').value) || 0;
     
-    const validation = InventoryUtils.validateSaleData(nuevaCantidad, precio, nuevoDescuento);
+    const precioActual = parseFloat(document.getElementById('editVentaPrecio').value) || 0;
+    
+    const validation = InventoryUtils.validateSaleData(nuevaCantidad, precioActual, nuevoDescuento);
     if (!validation.isValid) {
         validation.errors.forEach(error => notificationManager.error(error));
         return;
@@ -196,28 +197,332 @@ function updateLocalInventoryRow(codigoBarras, nuevoStock) {
     }
 }
 
+export function openAddSaleModal() {
+    StateManager.productoSeleccionado = null;
+    document.getElementById('buscarProducto').value = '';
+    document.getElementById('resultadosBusqueda').innerHTML = '';
+    document.getElementById('resultadosBusqueda').style.display = 'none';
+    document.getElementById('infoProducto').style.display = 'none';
+    document.getElementById('ventaCantidad').value = 1;
+    document.getElementById('ventaPrecio').value = '';
+    document.getElementById('ventaDescuento').value = 0;
+    document.getElementById('ventaDescripcion').value = '';
+    document.getElementById('ventaTotal').textContent = '$0.00';
+    document.getElementById('fechaVentaActual').textContent = DateTimeUtils.getCurrentChileDate();
+    
+    if (!navigator.onLine) {
+        document.getElementById('modalAgregarVenta').classList.add('offline-mode');
+        document.querySelector('#modalAgregarVenta .modal-header h2').innerHTML = '<i class="fas fa-wifi-slash"></i> Agregar Venta (Modo Offline) - MEJORAS';
+    } else {
+        document.getElementById('modalAgregarVenta').classList.remove('offline-mode');
+        document.querySelector('#modalAgregarVenta .modal-header h2').textContent = 'Agregar Venta Manual - MEJORAS';
+    }
+    
+    modalManager.open(Constants.MODAL_IDS.ADD_SALE);
+}
+
+export function searchProducts() {
+    const termino = document.getElementById('buscarProducto').value.trim().toLowerCase();
+    const resultadosDiv = document.getElementById('resultadosBusqueda');
+    
+    if (!resultadosDiv) return;
+    
+    if (termino.length < 2) {
+        resultadosDiv.innerHTML = '';
+        resultadosDiv.style.display = 'none';
+        return;
+    }
+    
+    const inventario = StateManager.getInventario();
+    const resultados = inventario.filter(p => 
+        p.codigo_barras.toLowerCase().includes(termino) ||
+        (p.descripcion && p.descripcion.toLowerCase().includes(termino))
+    ).slice(0, 10);
+    
+    if (resultados.length === 0) {
+        resultadosDiv.innerHTML = '<div style="padding: 10px; color: #64748b;">No se encontraron productos</div>';
+        resultadosDiv.style.display = 'block';
+        return;
+    }
+    
+    let html = '';
+    resultados.forEach(producto => {
+        html += `
+            <div style="padding: 10px; border-bottom: 1px solid #e2e8f0; cursor: pointer;"
+                 data-codigo="${StringUtils.escapeHTML(producto.codigo_barras)}">
+                <div><strong>${StringUtils.escapeHTML(producto.codigo_barras)}</strong></div>
+                <div style="color: #475569; font-size: 14px;">${StringUtils.escapeHTML(producto.descripcion || 'Sin descripción')}</div>
+                <div style="color: #64748b; font-size: 12px;">
+                    Stock: ${producto.cantidad} | Precio: $${parseFloat(producto.precio || 0).toFixed(2)}
+                </div>
+            </div>
+        `;
+    });
+    
+    resultadosDiv.innerHTML = html;
+    resultadosDiv.style.display = 'block';
+    
+    document.querySelectorAll('#resultadosBusqueda div').forEach(div => {
+        div.addEventListener('click', function() {
+            const codigo = this.getAttribute('data-codigo');
+            selectProduct(codigo);
+        });
+    });
+}
+
+export function selectProduct(codigoBarras) {
+    StateManager.productoSeleccionado = StateManager.getProducto(codigoBarras);
+    
+    if (StateManager.productoSeleccionado) {
+        document.getElementById('productoCodigo').textContent = StateManager.productoSeleccionado.codigo_barras;
+        document.getElementById('productoNombre').textContent = StateManager.productoSeleccionado.descripcion || 'Sin descripción';
+        document.getElementById('productoStock').textContent = StateManager.productoSeleccionado.cantidad;
+        document.getElementById('productoPrecio').textContent = parseFloat(StateManager.productoSeleccionado.precio || 0).toFixed(2);
+        document.getElementById('ventaPrecio').value = parseFloat(StateManager.productoSeleccionado.precio || 0).toFixed(2);
+        document.getElementById('ventaDescuento').value = 0;
+        document.getElementById('ventaDescripcion').value = StateManager.productoSeleccionado.descripcion || '';
+        
+        const ventaCantidadInput = document.getElementById('ventaCantidad');
+        if (ventaCantidadInput) {
+            ventaCantidadInput.max = StateManager.productoSeleccionado.cantidad;
+            ventaCantidadInput.setAttribute('max', StateManager.productoSeleccionado.cantidad);
+        }
+        
+        document.getElementById('resultadosBusqueda').style.display = 'none';
+        document.getElementById('infoProducto').style.display = 'block';
+        calculateSaleTotal();
+    }
+}
+
+export function calculateSaleTotal() {
+    const cantidad = parseInt(document.getElementById('ventaCantidad').value) || 0;
+    const precio = parseFloat(document.getElementById('ventaPrecio').value) || 0;
+    const descuento = parseFloat(document.getElementById('ventaDescuento').value) || 0;
+    
+    const { total } = InventoryUtils.calculateSaleTotal(cantidad, precio, descuento);
+    document.getElementById('ventaTotal').textContent = `$${total.toFixed(2)}`;
+}
+
+export async function saveNewSale() {
+    if (!StateManager.productoSeleccionado) {
+        notificationManager.error('❌ Primero selecciona un producto');
+        return;
+    }
+    
+    const cantidad = parseInt(document.getElementById('ventaCantidad').value);
+    const precio = parseFloat(document.getElementById('ventaPrecio').value);
+    const descuento = parseFloat(document.getElementById('ventaDescuento').value) || 0;
+    const descripcion = document.getElementById('ventaDescripcion').value.trim();
+    const codigoBarras = StateManager.productoSeleccionado.codigo_barras;
+    
+    const validation = InventoryUtils.validateSaleData(cantidad, precio, descuento);
+    if (!validation.isValid) {
+        validation.errors.forEach(error => notificationManager.error(error));
+        return;
+    }
+    
+    if (cantidad > StateManager.productoSeleccionado.cantidad) {
+        notificationManager.error(`❌ Stock insuficiente. Disponible: ${StateManager.productoSeleccionado.cantidad}`);
+        return;
+    }
+    
+    const ventaData = {
+        barcode: codigoBarras,
+        cantidad: cantidad,
+        precio_unitario: precio,
+        descuento: descuento,
+        descripcion: descripcion || StateManager.productoSeleccionado.descripcion || '',
+        fecha_venta: DateTimeUtils.getCurrentChileISO()
+    };
+    
+    if (!navigator.onLine) {
+        const { saveSaleOffline } = await import('./offline.js');
+        saveSaleOffline(ventaData);
+        
+        const { updateLocalInventory } = await import('./offline.js');
+        updateLocalInventory(codigoBarras, -cantidad);
+        
+        notificationManager.warning('📴 Venta guardada localmente. Se sincronizará cuando haya internet');
+        modalManager.close(Constants.MODAL_IDS.ADD_SALE);
+        
+        const { updateLocalInventoryView } = await import('./offline.js');
+        updateLocalInventoryView();
+        return;
+    }
+    
+    try {
+        const { data: ventaInsertada, error: errorVenta } = await supabaseClient
+            .from(Constants.API_ENDPOINTS.SALES_TABLE)
+            .insert([ventaData])
+            .select();
+            
+        if (errorVenta) throw errorVenta;
+        
+        const nuevoStock = StateManager.productoSeleccionado.cantidad - cantidad;
+        
+        const { error: errorInventario } = await supabaseClient
+            .from(Constants.API_ENDPOINTS.INVENTORY_TABLE)
+            .update({ 
+                cantidad: nuevoStock,
+                fecha_actualizacion: DateTimeUtils.getCurrentChileISO()
+            })
+            .eq('barcode', codigoBarras);
+            
+        if (errorInventario) throw errorInventario;
+        
+        StateManager.updateInventoryItem(codigoBarras, {
+            cantidad: nuevoStock,
+            fecha_actualizacion: new Date().toISOString()
+        });
+        
+        updateLocalInventoryRow(codigoBarras, nuevoStock);
+        
+        notificationManager.success('✅ Venta MEJORAS registrada correctamente');
+        modalManager.close(Constants.MODAL_IDS.ADD_SALE);
+        
+        const { loadSalesData } = await import('./inventario.js');
+        await loadSalesData();
+        const { updateStatistics } = await import('./inventario.js');
+        updateStatistics();
+        
+    } catch (error) {
+        console.warn('Error online, guardando offline:', error);
+        
+        const { saveSaleOffline } = await import('./offline.js');
+        saveSaleOffline(ventaData);
+        
+        const { updateLocalInventory } = await import('./offline.js');
+        updateLocalInventory(codigoBarras, -cantidad);
+        
+        notificationManager.warning('⚠️ Error de conexión. Venta guardada localmente');
+        modalManager.close(Constants.MODAL_IDS.ADD_SALE);
+        
+        const { updateLocalInventoryView } = await import('./offline.js');
+        updateLocalInventoryView();
+    }
+}
+
+export async function showPendingOrdersReport() {
+    const inventario = StateManager.getInventario();
+    const encargos = inventario.filter(producto => producto.cantidad < 0);
+    
+    if (encargos.length === 0) {
+        notificationManager.success('✅ No hay encargos pendientes - MEJORAS');
+        return;
+    }
+    
+    document.getElementById('total-encargos').textContent = encargos.length;
+    const tbody = document.getElementById('lista-encargos');
+    
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    let totalUnidadesPendientes = 0;
+    let inversionTotal = 0;
+    
+    encargos.forEach(producto => {
+        const cantidadPendiente = Math.abs(producto.cantidad);
+        const costoUnitario = parseFloat(producto.costo || 0);
+        const costoProducto = cantidadPendiente * costoUnitario;
+        
+        totalUnidadesPendientes += cantidadPendiente;
+        inversionTotal += costoProducto;
+        
+        const row = `
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 12px;"><strong>${StringUtils.escapeHTML(producto.codigo_barras)}</strong></td>
+                <td style="padding: 12px;">${StringUtils.escapeHTML(producto.descripcion || '<span style="color: #94a3b8;">Sin descripción</span>')}</td>
+                <td style="padding: 12px;">
+                    <span style="padding: 4px 10px; background: #fee2e2; color: #dc2626; border-radius: 20px; font-weight: bold;">
+                        ${cantidadPendiente} unidades
+                    </span>
+                </td>
+                <td style="padding: 12px;">
+                    <div>$${costoUnitario.toFixed(2)} c/u</div>
+                    <div style="font-size: 12px; color: #64748b;">Total: $${costoProducto.toFixed(2)}</div>
+                </td>
+            </tr>
+        `;
+        
+        tbody.innerHTML += row;
+    });
+    
+    const totalRow = `
+        <tr style="background: #f8fafc; font-weight: bold;">
+            <td style="padding: 12px; color: #475569;" colspan="2">TOTAL GENERAL - MEJORAS</td>
+            <td style="padding: 12px; color: #dc2626;">${totalUnidadesPendientes} unidades</td>
+            <td style="padding: 12px; color: #dc2626;">
+                <div>Inversión total:</div>
+                <div style="font-size: 18px;">$${inversionTotal.toFixed(2)}</div>
+            </td>
+        </tr>
+    `;
+    
+    tbody.innerHTML += totalRow;
+    
+    modalManager.open(Constants.MODAL_IDS.ORDERS);
+    notificationManager.success(`💰 Inversión requerida MEJORAS: $${inversionTotal.toFixed(2)} para ${encargos.length} productos`);
+}
+
+export function exportToExcel() {
+    const tabActiva = document.querySelector('.tab-btn.active').textContent.toLowerCase();
+    let data, filename;
+    
+    if (tabActiva.includes('inventario')) {
+        data = StateManager.getInventario();
+        filename = 'inventario_mejoras.xlsx';
+    } else {
+        data = StateManager.ventas;
+        filename = 'ventas_mejoras.xlsx';
+    }
+    
+    if (data.length === 0) {
+        notificationManager.warning('No hay datos para exportar');
+        return;
+    }
+    
+    let csv = '';
+    
+    if (data.length > 0) {
+        const headers = Object.keys(data[0]);
+        csv += headers.join(',') + '\n';
+        
+        data.forEach(item => {
+            const row = headers.map(header => {
+                let value = item[header];
+                if (typeof value === 'string' && value.includes(',')) {
+                    value = `"${value}"`;
+                }
+                if (value === null || value === undefined) {
+                    value = '';
+                }
+                return value;
+            });
+            csv += row.join(',') + '\n';
+        });
+    }
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    
+    a.href = url;
+    a.download = filename;
+    a.click();
+    
+    window.URL.revokeObjectURL(url);
+    
+    notificationManager.success('Archivo MEJORAS exportado correctamente');
+}
+
 export function setupSalesEventListeners() {
     setupModalEventListeners();
     setupAddSaleEventListeners();
+    setupOtherEventListeners();
 }
 
 function setupModalEventListeners() {
-    const closeBtn = document.getElementById('close-modal-venta');
-    const cancelBtn = document.getElementById('cancel-venta');
-    const saveBtn = document.getElementById('save-venta');
-    
-    if (closeBtn) {
-        closeBtn.addEventListener('click', () => modalManager.close(Constants.MODAL_IDS.SALE));
-    }
-    
-    if (cancelBtn) {
-        cancelBtn.addEventListener('click', () => modalManager.close(Constants.MODAL_IDS.SALE));
-    }
-    
-    if (saveBtn) {
-        saveBtn.addEventListener('click', saveSale);
-    }
-    
     const editCantidad = document.getElementById('editVentaCantidad');
     const editDescuento = document.getElementById('editVentaDescuento');
     
@@ -228,28 +533,19 @@ function setupModalEventListeners() {
     if (editDescuento) {
         editDescuento.addEventListener('input', calculateNewTotalWithDiscount);
     }
+    
+    const editPrecio = document.getElementById('editVentaPrecio');
+    if (editPrecio) {
+        editPrecio.addEventListener('input', calculateNewTotalWithDiscount);
+        editPrecio.readOnly = true;
+        editPrecio.style.cursor = 'not-allowed';
+    }
 }
 
 function setupAddSaleEventListeners() {
     const agregarVentaBtn = document.getElementById('agregar-venta-btn');
-    const closeBtn = document.getElementById('close-modal-agregar-venta');
-    const cancelBtn = document.getElementById('cancel-agregar-venta');
-    const saveBtn = document.getElementById('save-agregar-venta');
-    
     if (agregarVentaBtn) {
         agregarVentaBtn.addEventListener('click', openAddSaleModal);
-    }
-    
-    if (closeBtn) {
-        closeBtn.addEventListener('click', () => modalManager.close(Constants.MODAL_IDS.ADD_SALE));
-    }
-    
-    if (cancelBtn) {
-        cancelBtn.addEventListener('click', () => modalManager.close(Constants.MODAL_IDS.ADD_SALE));
-    }
-    
-    if (saveBtn) {
-        saveBtn.addEventListener('click', saveNewSale);
     }
     
     const buscarProducto = document.getElementById('buscarProducto');
@@ -271,5 +567,28 @@ function setupAddSaleEventListeners() {
     
     if (ventaDescuento) {
         ventaDescuento.addEventListener('input', calculateSaleTotal);
+    }
+}
+
+function setupOtherEventListeners() {
+    const exportarExcelBtn = document.getElementById('exportar-excel-btn');
+    const reporteEncargosBtn = document.getElementById('reporte-encargos-btn');
+    const closeEncargosBtn = document.getElementById('close-modal-encargos');
+    const cancelEncargosBtn = document.getElementById('cancel-encargos');
+    
+    if (exportarExcelBtn) {
+        exportarExcelBtn.addEventListener('click', exportToExcel);
+    }
+    
+    if (reporteEncargosBtn) {
+        reporteEncargosBtn.addEventListener('click', showPendingOrdersReport);
+    }
+    
+    if (closeEncargosBtn) {
+        closeEncargosBtn.addEventListener('click', () => modalManager.close(Constants.MODAL_IDS.ORDERS));
+    }
+    
+    if (cancelEncargosBtn) {
+        cancelEncargosBtn.addEventListener('click', () => modalManager.close(Constants.MODAL_IDS.ORDERS));
     }
 }
