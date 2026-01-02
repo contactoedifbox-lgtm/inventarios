@@ -709,6 +709,242 @@ tr:hover {
     background: var(--gray-400);
 }
 
+.multiple-sale-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--light);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid var(--gray-200);
+}
+
+.sale-id-display, .sale-date-display {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.sale-id-display span, .sale-date-display span {
+    font-size: 12px;
+    color: var(--gray-500);
+}
+
+.sale-id-display strong, .sale-date-display strong {
+    font-size: 16px;
+    color: var(--dark);
+}
+
+.search-multiple-container {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.multiple-items-container {
+    border: 1px solid var(--gray-200);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.items-table-header {
+    display: flex;
+    background: var(--light);
+    padding: 12px 15px;
+    font-weight: 600;
+    color: var(--gray-600);
+    font-size: 14px;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.items-list-container {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.empty-items-message {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--gray-400);
+}
+
+.empty-items-message i {
+    font-size: 48px;
+    margin-bottom: 10px;
+}
+
+.empty-items-message p {
+    font-size: 14px;
+}
+
+.multiple-item-row {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid var(--gray-200);
+    transition: background-color 0.2s;
+}
+
+.multiple-item-row:hover {
+    background-color: var(--light);
+}
+
+.multiple-item-row:last-child {
+    border-bottom: none;
+}
+
+.item-number {
+    width: 30px;
+    text-align: center;
+    font-weight: 600;
+    color: var(--gray-500);
+}
+
+.item-product-info {
+    flex: 2;
+    padding-right: 15px;
+}
+
+.item-product-code {
+    font-weight: 600;
+    color: var(--dark);
+    margin-bottom: 3px;
+    font-size: 14px;
+}
+
+.item-product-name {
+    color: var(--gray-600);
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.item-product-stock {
+    color: var(--gray-500);
+    font-size: 12px;
+}
+
+.item-quantity {
+    flex: 1;
+}
+
+.item-quantity input {
+    width: 80px;
+    padding: 8px;
+    text-align: center;
+    border: 1px solid var(--gray-300);
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.item-price {
+    flex: 1;
+}
+
+.item-price input {
+    width: 100px;
+    padding: 8px;
+    text-align: right;
+    border: 1px solid var(--gray-300);
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.item-discount {
+    flex: 1;
+}
+
+.item-discount input {
+    width: 100px;
+    padding: 8px;
+    text-align: right;
+    border: 1px solid var(--gray-300);
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.item-subtotal {
+    flex: 1;
+    text-align: right;
+    font-weight: 600;
+    color: var(--dark);
+    font-size: 14px;
+    padding-right: 10px;
+}
+
+.item-remove {
+    width: 50px;
+    text-align: center;
+}
+
+.remove-item-btn {
+    background: var(--danger);
+    color: white;
+    border: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.remove-item-btn:hover {
+    background: #dc2626;
+}
+
+.multiple-sale-summary {
+    background: var(--light);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid var(--gray-200);
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+.summary-row span:first-child {
+    color: var(--gray-600);
+}
+
+.summary-row span:last-child {
+    color: var(--dark);
+    font-weight: 500;
+}
+
+.total-row {
+    border-top: 2px solid var(--gray-300);
+    padding-top: 15px;
+    margin-top: 15px;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.total-row span:last-child {
+    color: var(--primary);
+    font-size: 20px;
+}
+
+.stock-warning {
+    background: #fee2e2;
+    border: 1px solid var(--danger);
+}
+
+.stock-warning .item-product-stock {
+    color: var(--danger);
+    font-weight: 600;
+}
+
 @media (max-width: 1024px) {
     .container {
         padding: 15px;
@@ -727,6 +963,29 @@ tr:hover {
     
     .stats {
         grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .multiple-item-row {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .item-product-info {
+        flex: 0 0 100%;
+    }
+    
+    .item-quantity,
+    .item-price,
+    .item-discount,
+    .item-subtotal {
+        flex: 1;
+        min-width: calc(25% - 10px);
+    }
+    
+    .item-remove {
+        position: absolute;
+        right: 15px;
+        top: 15px;
     }
 }
 
@@ -782,6 +1041,44 @@ tr:hover {
     .search-results {
         position: relative;
     }
+    
+    .multiple-sale-header {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
+    .items-table-header {
+        display: none;
+    }
+    
+    .multiple-item-row {
+        position: relative;
+        padding: 15px 50px 15px 15px;
+    }
+    
+    .item-number {
+        display: none;
+    }
+    
+    .item-product-info {
+        flex: 0 0 100%;
+        margin-bottom: 10px;
+    }
+    
+    .item-quantity,
+    .item-price,
+    .item-discount {
+        flex: 1;
+        min-width: calc(33.333% - 10px);
+    }
+    
+    .item-subtotal {
+        flex: 0 0 100%;
+        text-align: left;
+        margin-top: 10px;
+        padding-right: 0;
+    }
 }
 
 @media (max-width: 480px) {
@@ -824,5 +1121,23 @@ tr:hover {
     .header-btn {
         width: 100%;
         justify-content: center;
+    }
+    
+    .multiple-item-row {
+        padding: 15px 40px 15px 15px;
+    }
+    
+    .item-quantity,
+    .item-price,
+    .item-discount {
+        min-width: calc(50% - 5px);
+    }
+    
+    .item-discount {
+        order: 3;
+    }
+    
+    .item-subtotal {
+        order: 4;
     }
 }
