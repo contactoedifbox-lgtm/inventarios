@@ -5,7 +5,11 @@ import modalManager from '../ui/modals.js';
 
 // Función para editar una venta
 export async function editSale(codigoBarras, fechaVenta) {
-    const venta = StateManager.getVenta(codigoBarras, fechaVenta);
+    // Buscar la venta usando el valor EXACTO de fecha_venta
+    const venta = StateManager.ventas.find(v => 
+        v.codigo_barras === codigoBarras && v.fecha_venta === fechaVenta
+    );
+    
     if (!venta) {
         notificationManager.error('Venta no encontrada');
         return;
@@ -109,7 +113,7 @@ function updateLocalInventoryAfterSaleEdit(nuevaCantidad) {
     }
 }
 
-// Función para eliminar una venta
+// Función para eliminar una venta - CORREGIDA
 export async function deleteSale(codigoBarras, fechaVenta, cantidad) {
     if (!confirm(`¿Estás seguro de eliminar esta venta?\nCódigo: ${codigoBarras}\nCantidad: ${cantidad}\n\nEsta acción devolverá ${cantidad} unidades al inventario.`)) {
         return;
@@ -117,6 +121,16 @@ export async function deleteSale(codigoBarras, fechaVenta, cantidad) {
     
     try {
         notificationManager.info('🔄 Eliminando venta...');
+        
+        // Primero, buscar la venta COMPLETA en StateManager para obtener el valor EXACTO de fecha_venta
+        const ventaEncontrada = StateManager.ventas.find(v => 
+            v.codigo_barras === codigoBarras && v.fecha_venta === fechaVenta
+        );
+        
+        if (!ventaEncontrada) {
+            notificationManager.error('❌ Venta no encontrada en los datos locales');
+            return;
+        }
         
         const productoIndex = StateManager.getInventario().findIndex(p => p.codigo_barras === codigoBarras);
         if (productoIndex === -1) {
@@ -127,17 +141,30 @@ export async function deleteSale(codigoBarras, fechaVenta, cantidad) {
         const stockActual = parseInt(StateManager.getInventario()[productoIndex].cantidad) || 0;
         const nuevoStock = stockActual + parseInt(cantidad);
         
-        const { error: errorEliminar } = await supabaseClient
+        // Usar el valor EXACTO de fecha_venta de la venta encontrada
+        const fechaVentaExacta = ventaEncontrada.fecha_venta;
+        
+        console.log('Eliminando venta con:', {
+            barcode: codigoBarras,
+            fecha_venta: fechaVentaExacta,
+            fechaVentaParam: fechaVenta
+        });
+        
+        // ELIMINAR de la tabla VENTAS (no de la vista)
+        const { error: errorEliminar, count } = await supabaseClient
             .from(Constants.API_ENDPOINTS.SALES_TABLE)
             .delete()
             .eq('barcode', codigoBarras)
-            .eq('fecha_venta', fechaVenta);
+            .eq('fecha_venta', fechaVentaExacta);
+        
+        console.log('Resultado eliminación:', { errorEliminar, count });
         
         if (errorEliminar) {
             console.error('Error eliminando venta:', errorEliminar);
             throw errorEliminar;
         }
         
+        // ACTUALIZAR inventario
         const { error: errorInventario } = await supabaseClient
             .from(Constants.API_ENDPOINTS.INVENTORY_TABLE)
             .update({ 
@@ -151,6 +178,7 @@ export async function deleteSale(codigoBarras, fechaVenta, cantidad) {
             throw errorInventario;
         }
         
+        // Actualizar StateManager local
         StateManager.updateInventoryItem(codigoBarras, {
             cantidad: nuevoStock,
             fecha_actualizacion: new Date().toISOString()
@@ -158,30 +186,32 @@ export async function deleteSale(codigoBarras, fechaVenta, cantidad) {
         
         updateLocalInventoryRow(codigoBarras, nuevoStock);
         
-        // ELIMINAR LA VENTA DEL STATE Y ACTUALIZAR LA TABLA
-        // 1. Remover la venta del StateManager
+        // Remover la venta del StateManager
         const ventaIndex = StateManager.ventas.findIndex(v => 
-            v.codigo_barras === codigoBarras && v.fecha_venta === fechaVenta
+            v.codigo_barras === codigoBarras && v.fecha_venta === fechaVentaExacta
         );
         
         if (ventaIndex !== -1) {
             StateManager.ventas.splice(ventaIndex, 1);
         }
         
-        // 2. Actualizar la tabla de ventas
-        await reloadSalesData();
+        // Actualizar la tabla de ventas
+        displaySales(StateManager.ventas);
         
-        // 3. Actualizar estadísticas
+        // Actualizar estadísticas
         const { updateStatistics } = await import('./inventario.js');
         updateStatistics();
         
         const producto = StateManager.getProducto(codigoBarras);
         const nombreProducto = producto ? producto.descripcion || codigoBarras : codigoBarras;
-        notificationManager.success(`✅ Venta eliminada. Stock de ${nombreProducto} restaurado: ${stockActual} → ${nuevoStock} unidades`);
+        notificationManager.success(`✅ Venta eliminada correctamente. Stock de ${nombreProducto} restaurado: ${stockActual} → ${nuevoStock} unidades`);
         
     } catch (error) {
         console.error('Error completo eliminando venta:', error);
         notificationManager.error('❌ Error al eliminar la venta: ' + error.message);
+        
+        // Forzar recarga completa de ventas
+        await reloadSalesData();
     }
 }
 
@@ -213,7 +243,7 @@ function updateLocalInventoryRow(codigoBarras, nuevoStock) {
     }
 }
 
-// Función para recargar datos de ventas
+// Función para recargar datos de ventas desde la vista
 async function reloadSalesData() {
     try {
         const { data, error } = await supabaseClient
@@ -225,10 +255,13 @@ async function reloadSalesData() {
         if (error) throw error;
         
         StateManager.setVentas(data);
-        displaySales(StateManager.ventas);
+        displaySales(data);
+        
+        return data;
     } catch (error) {
         console.error('Error recargando ventas:', error);
         notificationManager.error('Error al recargar ventas');
+        return [];
     }
 }
 
@@ -239,6 +272,17 @@ export function displaySales(data) {
     
     tbody.innerHTML = '';
     
+    if (data.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 40px; color: #64748b;">
+                    <i class="fas fa-inbox"></i> No hay ventas registradas
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
     const hoyChile = DateTimeUtils.getTodayChileDate();
     const ventasHoy = data.filter(v => {
         if (!v.fecha_venta) return false;
@@ -247,10 +291,13 @@ export function displaySales(data) {
     });
     
     const totalHoy = ventasHoy.reduce((sum, v) => sum + parseFloat(v.total || 0), 0);
-    document.getElementById('ventas-hoy').textContent = `$${totalHoy.toFixed(2)}`;
+    const ventasHoyElement = document.getElementById('ventas-hoy');
+    if (ventasHoyElement) {
+        ventasHoyElement.textContent = `$${totalHoy.toFixed(2)}`;
+    }
     
     data.forEach(item => {
-        const fecha = DateTimeUtils.formatToChileTime(item.fecha_venta);
+        const fechaFormateada = DateTimeUtils.formatToChileTime(item.fecha_venta);
         const descuento = parseFloat(item.descuento || 0);
         
         const rowHTML = `
@@ -261,12 +308,17 @@ export function displaySales(data) {
                 <td>${descuento > 0 ? `-$${descuento.toFixed(2)}` : '$0.00'}</td>
                 <td><strong>$${parseFloat(item.total || 0).toFixed(2)}</strong></td>
                 <td>${StringUtils.escapeHTML(item.descripcion || '')}</td>
-                <td>${fecha}</td>
+                <td>${fechaFormateada}</td>
                 <td>
-                    <button class="action-btn btn-edit" data-codigo="${StringUtils.escapeHTML(item.codigo_barras)}" data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}">
+                    <button class="action-btn btn-edit" 
+                            data-codigo="${StringUtils.escapeHTML(item.codigo_barras)}" 
+                            data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}">
                         <i class="fas fa-edit"></i> Editar
                     </button>
-                    <button class="action-btn btn-delete" data-codigo="${StringUtils.escapeHTML(item.codigo_barras)}" data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}" data-cantidad="${item.cantidad}">
+                    <button class="action-btn btn-delete" 
+                            data-codigo="${StringUtils.escapeHTML(item.codigo_barras)}" 
+                            data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}" 
+                            data-cantidad="${item.cantidad}">
                         <i class="fas fa-trash"></i> Eliminar
                     </button>
                 </td>
