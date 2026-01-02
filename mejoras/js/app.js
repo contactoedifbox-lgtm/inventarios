@@ -5,8 +5,6 @@ import { setupTabNavigation, setupSearch } from './ui/search.js';
 import { setupSalesEventListeners } from './modules/ventas.js';
 import { setupInventoryEventListeners } from './modules/inventario.js';
 import { setupOfflineMonitoring } from './modules/offline.js';
-import multipleSalesManager from './modules/ventas-multiples.js';
-import salesTableManager from './ui/sales-table.js';
 
 class InventarioApp {
     constructor() {
@@ -32,78 +30,37 @@ class InventarioApp {
             setupSalesEventListeners();
             setupInventoryEventListeners();
             setupOfflineMonitoring();
-            this.setupMultipleSales();
-            this.setupEnhancedSalesTable();
+            this.setupMultipleSalesButton();
         });
     }
     
-    setupMultipleSales() {
+    setupMultipleSalesButton() {
         const ventaMultipleBtn = document.getElementById('agregar-venta-multiple-btn');
         if (ventaMultipleBtn) {
             ventaMultipleBtn.addEventListener('click', () => {
-                multipleSalesManager.openModal();
+                console.log('Botón Venta Múltiple clickeado - Cargando módulo...');
+                
+                import('./modules/ventas-multiples.js')
+                    .then(module => {
+                        console.log('Módulo cargado exitosamente:', module);
+                        module.openMultipleSaleModal();
+                    })
+                    .catch(error => {
+                        console.error('Error cargando módulo:', error);
+                        
+                        const modal = document.getElementById('modalVentaMultiple');
+                        if (modal) {
+                            modal.style.display = 'flex';
+                            console.log('Modal abierto directamente');
+                        }
+                    });
             });
+        } else {
+            console.error('Botón agregar-venta-multiple-btn no encontrado');
         }
     }
     
-    setupEnhancedSalesTable() {
-        const exportBtn = document.getElementById('exportar-excel-btn');
-        if (exportBtn) {
-            exportBtn.addEventListener('click', () => {
-                salesTableManager.exportGroupedToCSV();
-            });
-        }
-    }
-    
-    setupUIComponents() {
-        this.setupRealTimeClock();
-    }
-    
-    setupRealTimeClock() {
-        setInterval(() => {
-            this.updateDateTimeDisplays();
-        }, 60000);
-        
-        this.updateDateTimeDisplays();
-    }
-    
-    updateDateTimeDisplays() {
-        const fechaHoyElement = document.getElementById('fecha-hoy');
-        const fechaVentaActualElement = document.getElementById('fechaVentaActual');
-        const fechaMultipleElement = document.getElementById('ventaMultipleFecha');
-        
-        if (fechaHoyElement) {
-            import('./modules/utils.js').then(({ DateTimeUtils }) => {
-                fechaHoyElement.textContent = DateTimeUtils.getCurrentChileDate();
-            });
-        }
-        
-        if (fechaVentaActualElement && modalManager.isOpen('modalAgregarVenta')) {
-            import('./modules/utils.js').then(({ DateTimeUtils }) => {
-                fechaVentaActualElement.textContent = DateTimeUtils.getCurrentChileDate();
-            });
-        }
-        
-        if (fechaMultipleElement && modalManager.isOpen('modalVentaMultiple')) {
-            import('./modules/utils.js').then(({ DateTimeUtils }) => {
-                fechaMultipleElement.textContent = DateTimeUtils.getCurrentChileDate();
-            });
-        }
-    }
-    
-    handleOnlineStatus() {
-        notificationManager.success('🌐 Conexión a internet restablecida');
-        
-        setTimeout(() => {
-            import('./modules/offline.js').then(({ syncPendingSales }) => {
-                syncPendingSales();
-            });
-        }, 3000);
-    }
-    
-    handleOfflineStatus() {
-        notificationManager.warning('📴 Modo offline activado. Las ventas se guardarán localmente');
-    }
+    // ... resto del código igual ...
 }
 
 new InventarioApp();
