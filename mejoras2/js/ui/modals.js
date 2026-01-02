@@ -23,6 +23,14 @@ class ModalManager {
         this.currentModal = modal;
         
         document.body.style.overflow = 'hidden';
+        
+        // Enfocar el primer campo input del modal
+        setTimeout(() => {
+            const firstInput = modal.querySelector('input, textarea, select');
+            if (firstInput && !firstInput.readOnly) {
+                firstInput.focus();
+            }
+        }, 100);
     }
     
     close(modalId) {
@@ -56,9 +64,8 @@ class ModalManager {
     }
     
     setupModalCloseEvents() {
-        const closeButtons = document.querySelectorAll('[id^="close-modal-"], [class*="modal-close"]');
-        
-        closeButtons.forEach(button => {
+        // Botones con clase modal-close
+        document.querySelectorAll('.modal-close').forEach(button => {
             button.addEventListener('click', (e) => {
                 e.preventDefault();
                 const modalId = this.findParentModalId(button);
@@ -68,12 +75,36 @@ class ModalManager {
             });
         });
         
+        // Botones con clase btn-cancel
+        document.querySelectorAll('.btn-cancel').forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.preventDefault();
+                const modalId = this.findParentModalId(button);
+                if (modalId) {
+                    this.close(modalId);
+                }
+            });
+        });
+        
+        // Botones con id que empieza con close-modal-
+        document.querySelectorAll('[id^="close-modal-"]').forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.preventDefault();
+                const modalId = this.findParentModalId(button);
+                if (modalId) {
+                    this.close(modalId);
+                }
+            });
+        });
+        
+        // Cerrar con Escape
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.currentModal) {
                 this.closeCurrent();
             }
         });
         
+        // Cerrar haciendo clic fuera del modal
         document.addEventListener('click', (e) => {
             if (this.currentModal && e.target === this.currentModal) {
                 this.closeCurrent();
@@ -89,7 +120,14 @@ class ModalManager {
             }
             currentElement = currentElement.parentElement;
         }
-        return null;
+        
+        // Si no encuentra por ID, buscar por data-modal-id
+        const modalId = element.closest('[data-modal-id]')?.getAttribute('data-modal-id');
+        if (modalId) return modalId;
+        
+        // Buscar el modal más cercano
+        const modal = element.closest('.modal');
+        return modal ? modal.id : null;
     }
     
     setModalContent(modalId, content) {
