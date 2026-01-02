@@ -1,1 +1,56 @@
+/* Añadir al final del archivo */
 
+/* Estilos para nuevos componentes */
+.login-error {
+    color: #ef4444;
+    background: #fee2e2;
+    padding: 10px;
+    border-radius: 6px;
+    margin: 10px 0;
+    display: none;
+    font-size: 14px;
+    border-left: 4px solid #ef4444;
+}
+
+/* Eliminar estilos inline duplicados */
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--gray-500);
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.3s;
+}
+
+.modal-close:hover {
+    background: var(--gray-100);
+}
+
+/* Clases consistentes para botones de cierre */
+[class*="modal-close"] {
+    font-family: Arial, sans-serif;
+}
+
+/* Responsive mejorado */
+@media (max-width: 480px) {
+    .modal-content {
+        width: 95%;
+        margin: 10px;
+    }
+    
+    .header-buttons {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .header-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
