@@ -11,6 +11,8 @@ export function saveSaleOffline(saleData) {
         descuento: saleData.descuento || 0,
         descripcion: saleData.descripcion || '',
         fecha_venta: saleData.fecha_venta || DateTimeUtils.getCurrentChileISO(),
+        id_venta_agrupada: saleData.id_venta_agrupada || `OFF-${Date.now()}`,
+        numero_linea: saleData.numero_linea || 1,
         offline_id: Date.now() + Math.random(),
         estado: 'pendiente'
     };
@@ -24,6 +26,28 @@ export function saveSaleOffline(saleData) {
         Constants.LOCAL_STORAGE_KEYS.OFFLINE_SALES, 
         JSON.stringify(ventasPendientes)
     );
+    
+    updateOfflineBadge();
+}
+
+// Función para guardar ventas múltiples offline
+export function saveMultipleSaleOffline(ventaMultipleData) {
+    let ventasMultiplesPendientes = JSON.parse(
+        localStorage.getItem(Constants.LOCAL_STORAGE_KEYS.OFFLINE_MULTIPLE_SALES) || '[]'
+    );
+    
+    ventasMultiplesPendientes.push(ventaMultipleData);
+    localStorage.setItem(
+        Constants.LOCAL_STORAGE_KEYS.OFFLINE_MULTIPLE_SALES,
+        JSON.stringify(ventasMultiplesPendientes)
+    );
+    
+    // Actualizar inventario offline para cada línea
+    if (ventaMultipleData.lineas && ventaMultipleData.lineas.length > 0) {
+        ventaMultipleData.lineas.forEach(linea => {
+            updateLocalInventory(linea.barcode, -linea.cantidad);
+        });
+    }
     
     updateOfflineBadge();
 }
@@ -73,15 +97,21 @@ export function updateOfflineBadge() {
         localStorage.getItem(Constants.LOCAL_STORAGE_KEYS.OFFLINE_SALES) || '[]'
     );
     
+    const ventasMultiplesPendientes = JSON.parse(
+        localStorage.getItem(Constants.LOCAL_STORAGE_KEYS.OFFLINE_MULTIPLE_SALES) || '[]'
+    );
+    
+    const totalPendientes = ventasPendientes.length + ventasMultiplesPendientes.length;
+    
     const badge = document.getElementById('offlineBadge');
     const countSpan = document.getElementById('offlineCount');
     
     if (countSpan) {
-        countSpan.textContent = ventasPendientes.length;
+        countSpan.textContent = totalPendientes;
     }
     
     if (badge) {
-        badge.style.display = ventasPendientes.length > 0 ? 'block' : 'none';
+        badge.style.display = totalPendientes > 0 ? 'block' : 'none';
     }
 }
 
@@ -91,20 +121,29 @@ export async function syncPendingSales() {
         return;
     }
     
+    // Sincronizar ventas individuales
     const ventasPendientes = JSON.parse(
         localStorage.getItem(Constants.LOCAL_STORAGE_KEYS.OFFLINE_SALES) || '[]'
     );
     
-    if (ventasPendientes.length === 0) {
+    // Sincronizar ventas múltiples
+    const ventasMultiplesPendientes = JSON.parse(
+        localStorage.getItem(Constants.LOCAL_STORAGE_KEYS.OFFLINE_MULTIPLE_SALES) || '[]'
+    );
+    
+    const totalPendientes = ventasPendientes.length + ventasMultiplesPendientes.length;
+    
+    if (totalPendientes === 0) {
         notificationManager.success('✅ No hay ventas pendientes por sincronizar');
         return;
     }
     
-    notificationManager.info(`🔄 Sincronizando ${ventasPendientes.length} ventas pendientes...`);
+    notificationManager.info(`🔄 Sincronizando ${totalPendientes} ventas pendientes...`);
     
-    const exitosas = [];
-    const fallidas = [];
+    let exitosas = 0;
+    let fallidas = 0;
     
+    // Sincronizar ventas individuales
     for (const venta of ventasPendientes) {
         try {
             const ventaParaSubir = {
@@ -113,7 +152,9 @@ export async function syncPendingSales() {
                 precio_unitario: venta.precio_unitario,
                 descuento: venta.descuento || 0,
                 descripcion: venta.descripcion || '',
-                fecha_venta: venta.fecha_venta
+                fecha_venta: venta.fecha_venta,
+                id_venta_agrupada: venta.id_venta_agrupada,
+                numero_linea: venta.numero_linea || 1
             };
             
             const { error: errorVenta } = await supabaseClient
@@ -141,57 +182,99 @@ export async function syncPendingSales() {
                             cantidad: nuevoStock,
                             fecha_actualizacion: new Date().toISOString()
                         });
-                        
-                        const { displayInventory } = await import('./inventario.js');
-                        const producto = StateManager.getProducto(venta.barcode);
-                        if (producto) {
-                            displayInventory([producto]);
-                        }
                     }
                 }
-                exitosas.push(venta);
+                exitosas++;
             } else {
                 console.error('Error insertando venta:', errorVenta);
-                fallidas.push(venta);
+                fallidas++;
             }
         } catch (error) {
             console.error('Error sincronizando venta:', error);
-            fallidas.push(venta);
+            fallidas++;
         }
     }
     
-    localStorage.setItem(
-        Constants.LOCAL_STORAGE_KEYS.OFFLINE_SALES, 
-        JSON.stringify(fallidas)
-    );
+    // Sincronizar ventas múltiples
+    for (const ventaMultiple of ventasMultiplesPendientes) {
+        try {
+            let ventasInsertadas = 0;
+            
+            for (const linea of ventaMultiple.lineas) {
+                const ventaData = {
+                    barcode: linea.barcode,
+                    cantidad: linea.cantidad,
+                    precio_unitario: linea.precio_unitario,
+                    descuento: linea.descuento || 0,
+                    descripcion: linea.descripcion || '',
+                    fecha_venta: ventaMultiple.fecha,
+                    id_venta_agrupada: ventaMultiple.id_venta_agrupada,
+                    numero_linea: linea.numero_linea || 1
+                };
+                
+                const { error: errorVenta } = await supabaseClient
+                    .from(Constants.API_ENDPOINTS.SALES_TABLE)
+                    .insert([ventaData]);
+                    
+                if (!errorVenta) {
+                    ventasInsertadas++;
+                    
+                    // Actualizar inventario
+                    const productoIndex = StateManager.getInventario().findIndex(p => 
+                        p.codigo_barras === linea.barcode
+                    );
+                    
+                    if (productoIndex !== -1) {
+                        const nuevoStock = StateManager.getInventario()[productoIndex].cantidad - linea.cantidad;
+                        
+                        await supabaseClient
+                            .from(Constants.API_ENDPOINTS.INVENTORY_TABLE)
+                            .update({ 
+                                cantidad: nuevoStock,
+                                fecha_actualizacion: DateTimeUtils.getCurrentChileISO()
+                            })
+                            .eq('barcode', linea.barcode);
+                    }
+                }
+            }
+            
+            if (ventasInsertadas === ventaMultiple.lineas.length) {
+                exitosas++;
+            } else {
+                fallidas++;
+            }
+            
+        } catch (error) {
+            console.error('Error sincronizando venta múltiple:', error);
+            fallidas++;
+        }
+    }
     
-    const inventarioOffline = JSON.parse(
-        localStorage.getItem(Constants.LOCAL_STORAGE_KEYS.OFFLINE_INVENTORY) || '{}'
-    );
+    // Limpiar localStorage solo de las ventas sincronizadas exitosamente
+    if (exitosas > 0) {
+        // Para simplificar, limpiamos todo si hubo éxito
+        localStorage.setItem(Constants.LOCAL_STORAGE_KEYS.OFFLINE_SALES, JSON.stringify([]));
+        localStorage.setItem(Constants.LOCAL_STORAGE_KEYS.OFFLINE_MULTIPLE_SALES, JSON.stringify([]));
+        localStorage.setItem(Constants.LOCAL_STORAGE_KEYS.OFFLINE_INVENTORY, JSON.stringify({}));
+    }
     
-    exitosas.forEach(venta => {
-        delete inventarioOffline[venta.barcode];
-    });
+    updateOfflineBadge();
     
-    localStorage.setItem(
-        Constants.LOCAL_STORAGE_KEYS.OFFLINE_INVENTORY, 
-        JSON.stringify(inventarioOffline)
-    );
-    
-    if (exitosas.length > 0) {
-        notificationManager.success(`✅ ${exitosas.length} ventas sincronizadas exitosamente`);
+    if (exitosas > 0) {
+        notificationManager.success(`✅ ${exitosas} ventas sincronizadas exitosamente`);
         
-        const { loadSalesData } = await import('./inventario.js');
+        // Recargar datos
+        const { loadInventoryData, loadSalesData } = await import('./inventario.js');
+        await loadInventoryData(true);
         await loadSalesData();
+        
         const { updateStatistics } = await import('./inventario.js');
         updateStatistics();
     }
     
-    if (fallidas.length > 0) {
-        notificationManager.warning(`⚠️ ${fallidas.length} ventas no se pudieron sincronizar`);
+    if (fallidas > 0) {
+        notificationManager.warning(`⚠️ ${fallidas} ventas no se pudieron sincronizar`);
     }
-    
-    updateOfflineBadge();
 }
 
 export function setupOfflineMonitoring() {
