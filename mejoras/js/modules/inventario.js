@@ -18,7 +18,7 @@ export async function loadDashboardData() {
 export async function loadInventoryData(forceComplete = false) {
     try {
         if (forceComplete || StateManager.getInventario().length === 0) {
-            notificationManager.info('🔄 Cargando inventario COMPLETO MEJORAS...');
+            notificationManager.info('🔄 Cargando inventario COMPLETO...');
             
             const { data, error } = await supabaseClient
                 .from(Constants.API_ENDPOINTS.INVENTORY_VIEW)
@@ -29,11 +29,11 @@ export async function loadInventoryData(forceComplete = false) {
             
             StateManager.setInventario(data);
             displayInventory(StateManager.getInventario());
-            notificationManager.success(`✅ Inventario MEJORAS cargado (${data.length} productos)`);
+            notificationManager.success(`✅ Inventario cargado (${data.length} productos)`);
             StateManager.inventarioSincronizado = true;
             
         } else {
-            notificationManager.info('🔄 Actualizando inventario MEJORAS...');
+            notificationManager.info('🔄 Actualizando inventario...');
             
             const ultimaActualizacion = Math.max(...StateManager.getInventario().map(p => 
                 new Date(p.fecha_actualizacion || 0).getTime()
@@ -51,16 +51,16 @@ export async function loadInventoryData(forceComplete = false) {
             
             if (data.length > 0) {
                 updateInventoryIncremental(data);
-                notificationManager.success(`✅ Inventario MEJORAS actualizado (${data.length} productos modificados)`);
+                notificationManager.success(`✅ Inventario actualizado (${data.length} productos modificados)`);
                 markInventoryAsNotSynced();
             } else {
-                notificationManager.success('✅ Inventario MEJORAS ya está actualizado');
+                notificationManager.success('✅ Inventario ya está actualizado');
             }
         }
         
     } catch (error) {
-        console.error('Error cargando inventario MEJORAS:', error);
-        notificationManager.error('Error al cargar inventario MEJORAS');
+        console.error('Error cargando inventario:', error);
+        notificationManager.error('Error al cargar inventario');
     }
 }
 
@@ -189,7 +189,7 @@ export async function saveInventory() {
             notificationManager.error('❌ Error: ' + (data?.message || 'Desconocido'));
         }
     } catch (error) {
-        console.error('Error actualizando inventario MEJORAS:', error);
+        console.error('Error actualizando inventario:', error);
         notificationManager.error('❌ Error al actualizar');
     }
 }
@@ -276,8 +276,8 @@ export async function loadSalesData() {
         StateManager.setVentas(data);
         displaySales(StateManager.ventas);
     } catch (error) {
-        console.error('Error cargando ventas MEJORAS:', error);
-        notificationManager.error('Error al cargar ventas MEJORAS');
+        console.error('Error cargando ventas:', error);
+        notificationManager.error('Error al cargar ventas');
     }
 }
 
@@ -378,7 +378,7 @@ export function setupInventoryEventListeners() {
     
     if (recargaBtn) {
         recargaBtn.addEventListener('click', async () => {
-            notificationManager.info('🔄 Recargando inventario completo MEJORAS...');
+            notificationManager.info('🔄 Recargando inventario completo...');
             await loadInventoryData(true);
             StateManager.inventarioSincronizado = true;
             updateSyncIndicator();
