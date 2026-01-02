@@ -3,586 +3,750 @@ import { DateTimeUtils, InventoryUtils, StringUtils } from './utils.js';
 import notificationManager from '../ui/notifications.js';
 import modalManager from '../ui/modals.js';
 
-class MultipleSalesManager {
-    constructor() {
-        this.items = [];
-        this.currentSaleId = '';
-        this.searchResults = [];
+// ========== VARIABLES GLOBALES DEL MÓDULO ==========
+let lineasVenta = [];
+let idVentaActual = null;
+
+// ========== FUNCIONES PRINCIPALES ==========
+
+// Función para abrir el modal de venta múltiple
+export function openMultipleSaleModal() {
+    console.log('Abriendo modal de venta múltiple');
+    
+    // Reiniciar estado
+    lineasVenta = [];
+    idVentaActual = null;
+    
+    // Generar ID único para esta venta
+    idVentaActual = Constants.VENTA_PREFIX + Date.now();
+    console.log('ID Venta generado:', idVentaActual);
+    
+    // Limpiar contenedor de líneas
+    const contenedor = document.getElementById('lineas-venta-container');
+    if (contenedor) {
+        contenedor.innerHTML = '';
     }
     
-    initialize() {
-        this.generateSaleId();
-        this.updateSaleDate();
-        this.setupEventListeners();
-        this.clearItems();
+    // Agregar primera línea
+    agregarLineaVenta();
+    
+    // Actualizar contador
+    actualizarContadorLineas();
+    
+    // Actualizar fecha
+    actualizarFechaVenta();
+    
+    // Calcular totales
+    calcularResumenVenta();
+    
+    // Abrir modal
+    modalManager.open(Constants.MODAL_IDS.MULTIPLE_SALE);
+}
+
+// Función para agregar una nueva línea de producto
+export function agregarLineaVenta() {
+    const numeroLinea = lineasVenta.length + 1;
+    
+    // Verificar límite máximo
+    if (numeroLinea > Constants.LIMITS.MAX_LINEAS_POR_VENTA) {
+        notificationManager.warning(`Límite máximo: ${Constants.LIMITS.MAX_LINEAS_POR_VENTA} productos por venta`);
+        return;
     }
     
-    generateSaleId() {
-        const today = new Date();
-        const year = today.getFullYear().toString().slice(-2);
-        const month = (today.getMonth() + 1).toString().padStart(2, '0');
-        const day = today.getDate().toString().padStart(2, '0');
+    // Crear objeto de línea
+    const nuevaLinea = {
+        id: Date.now() + numeroLinea, // ID único
+        numero: numeroLinea,
+        producto: null,
+        cantidad: 1,
+        precio: 0,
+        descuento: 0,
+        subtotal: 0,
+        descripcion: ''
+    };
+    
+    // Agregar al array
+    lineasVenta.push(nuevaLinea);
+    
+    // Crear HTML de la línea
+    const htmlLinea = crearHTMLLinea(nuevaLinea);
+    
+    // Agregar al DOM
+    const contenedor = document.getElementById('lineas-venta-container');
+    if (contenedor) {
+        contenedor.insertAdjacentHTML('beforeend', htmlLinea);
         
-        let nextId = localStorage.getItem(Constants.MULTIPLE_SALE.NEXT_ID_KEY) || '001';
-        this.currentSaleId = `${Constants.MULTIPLE_SALE.PREFIX}${year}${month}${day}-${nextId}`;
-        
-        document.getElementById('ventaMultipleId').textContent = this.currentSaleId;
+        // Configurar event listeners para esta línea
+        configurarEventListenersLinea(nuevaLinea.numero);
     }
     
-    updateSaleDate() {
-        const fechaElement = document.getElementById('ventaMultipleFecha');
-        if (fechaElement) {
-            fechaElement.textContent = DateTimeUtils.getCurrentChileDate();
-        }
-    }
+    // Actualizar contador
+    actualizarContadorLineas();
     
-    setupEventListeners() {
-        const buscarInput = document.getElementById('buscarProductoMultiple');
-        const saveButton = document.getElementById('save-multiple-sale');
-        const cancelButton = document.getElementById('cancel-multiple-sale');
-        
-        if (buscarInput) {
-            buscarInput.addEventListener('input', (e) => this.searchProducts(e.target.value));
-            buscarInput.addEventListener('focus', () => this.showSearchResults());
-        }
-        
-        if (saveButton) {
-            saveButton.addEventListener('click', () => this.saveMultipleSale());
-        }
-        
-        if (cancelButton) {
-            cancelButton.addEventListener('click', () => {
-                modalManager.close(Constants.MODAL_IDS.MULTIPLE_SALE);
-                this.clearItems();
-            });
-        }
-        
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.search-multiple-container')) {
-                this.hideSearchResults();
-            }
-        });
-    }
-    
-    searchProducts(term) {
-        const termLower = term.trim().toLowerCase();
-        if (termLower.length < 2) {
-            this.hideSearchResults();
-            return;
-        }
-        
-        const inventario = StateManager.getInventario();
-        this.searchResults = inventario.filter(p => 
-            p.codigo_barras.toLowerCase().includes(termLower) ||
-            (p.descripcion && p.descripcion.toLowerCase().includes(termLower))
-        ).slice(0, 10);
-        
-        this.displaySearchResults();
-    }
-    
-    displaySearchResults() {
-        const resultadosDiv = document.getElementById('resultadosBusquedaMultiple');
-        if (!resultadosDiv) return;
-        
-        if (this.searchResults.length === 0) {
-            resultadosDiv.innerHTML = '<div style="padding: 10px; color: #64748b;">No se encontraron productos</div>';
-            resultadosDiv.style.display = 'block';
-            return;
-        }
-        
-        let html = '';
-        this.searchResults.forEach(producto => {
-            html += `
-                <div style="padding: 10px; border-bottom: 1px solid #e2e8f0; cursor: pointer;"
-                     data-codigo="${StringUtils.escapeHTML(producto.codigo_barras)}">
-                    <div><strong>${StringUtils.escapeHTML(producto.codigo_barras)}</strong></div>
-                    <div style="color: #475569; font-size: 14px;">${StringUtils.escapeHTML(producto.descripcion || 'Sin descripción')}</div>
-                    <div style="color: #64748b; font-size: 12px;">
-                        Stock: ${producto.cantidad} | Precio: $${parseFloat(producto.precio || 0).toFixed(2)}
-                    </div>
-                </div>
-            `;
-        });
-        
-        resultadosDiv.innerHTML = html;
-        resultadosDiv.style.display = 'block';
-        
-        document.querySelectorAll('#resultadosBusquedaMultiple div').forEach(div => {
-            div.addEventListener('click', (e) => {
-                const codigo = e.currentTarget.getAttribute('data-codigo');
-                this.addProductToSale(codigo);
-                this.hideSearchResults();
-            });
-        });
-    }
-    
-    showSearchResults() {
-        const resultadosDiv = document.getElementById('resultadosBusquedaMultiple');
-        if (resultadosDiv && this.searchResults.length > 0) {
-            resultadosDiv.style.display = 'block';
-        }
-    }
-    
-    hideSearchResults() {
-        const resultadosDiv = document.getElementById('resultadosBusquedaMultiple');
-        if (resultadosDiv) {
-            resultadosDiv.style.display = 'none';
-        }
-    }
-    
-    addProductToSale(codigoBarras) {
-        const producto = StateManager.getProducto(codigoBarras);
-        if (!producto) {
-            notificationManager.error('Producto no encontrado');
-            return;
-        }
-        
-        const existingItemIndex = this.items.findIndex(item => item.codigo_barras === codigoBarras);
-        
-        if (existingItemIndex !== -1) {
-            this.items[existingItemIndex].cantidad += 1;
-            this.updateItemRow(existingItemIndex);
-        } else {
-            const newItem = {
-                codigo_barras: producto.codigo_barras,
-                descripcion: producto.descripcion || '',
-                cantidad: Constants.MULTIPLE_SALE.DEFAULT_CANTIDAD,
-                precio_unitario: parseFloat(producto.precio || 0),
-                descuento: Constants.MULTIPLE_SALE.DEFAULT_DESCUENTO,
-                stock_disponible: producto.cantidad,
-                subtotal: parseFloat(producto.precio || 0)
-            };
-            
-            this.items.push(newItem);
-            this.addItemRow(newItem, this.items.length - 1);
-        }
-        
-        this.updateTotals();
-        document.getElementById('buscarProductoMultiple').value = '';
-        document.getElementById('buscarProductoMultiple').focus();
-    }
-    
-    addItemRow(item, index) {
-        const itemsList = document.getElementById('itemsListContainer');
-        
-        if (this.items.length === 1) {
-            itemsList.innerHTML = '';
-        }
-        
-        const itemElement = document.createElement('div');
-        itemElement.className = 'multiple-item-row';
-        itemElement.dataset.index = index;
-        
-        const subtotal = (item.cantidad * item.precio_unitario) - item.descuento;
-        const hasStockWarning = item.cantidad > item.stock_disponible;
-        
-        if (hasStockWarning) {
-            itemElement.classList.add('stock-warning');
-        }
-        
-        itemElement.innerHTML = `
-            <div class="item-number">${index + 1}</div>
-            <div class="item-product-info">
-                <div class="item-product-code">${StringUtils.escapeHTML(item.codigo_barras)}</div>
-                <div class="item-product-name">${StringUtils.escapeHTML(item.descripcion || 'Sin descripción')}</div>
-                <div class="item-product-stock">Stock: ${item.stock_disponible}</div>
-            </div>
-            <div class="item-quantity">
-                <input type="number" 
-                       class="item-cantidad-input" 
-                       value="${item.cantidad}" 
-                       min="1" 
-                       data-index="${index}"
-                       ${hasStockWarning ? 'style="border-color: #ef4444;"' : ''}>
-            </div>
-            <div class="item-price">
-                <input type="number" 
-                       class="item-precio-input" 
-                       value="${item.precio_unitario.toFixed(2)}" 
-                       step="0.01" 
-                       min="0"
-                       data-index="${index}">
-            </div>
-            <div class="item-discount">
-                <input type="number" 
-                       class="item-descuento-input" 
-                       value="${item.descuento.toFixed(2)}" 
-                       step="0.01" 
-                       min="0"
-                       data-index="${index}">
-            </div>
-            <div class="item-subtotal">$${subtotal.toFixed(2)}</div>
-            <div class="item-remove">
-                <button class="remove-item-btn" data-index="${index}">
-                    <i class="fas fa-times"></i>
+    console.log(`Línea ${numeroLinea} agregada`);
+}
+
+// Función para crear el HTML de una línea
+function crearHTMLLinea(linea) {
+    return `
+        <div class="venta-linea" data-linea-id="${linea.numero}">
+            <div class="linea-header">
+                <span class="linea-numero">Producto ${linea.numero}</span>
+                <button class="linea-remove-btn" data-linea="${linea.numero}" ${linea.numero === 1 ? 'style="display: none;"' : ''}>
+                    <i class="fas fa-times"></i> Quitar
                 </button>
             </div>
-        `;
-        
-        itemsList.appendChild(itemElement);
-        
-        this.setupItemEventListeners(itemElement);
-    }
-    
-    updateItemRow(index) {
-        const item = this.items[index];
-        const itemElement = document.querySelector(`.multiple-item-row[data-index="${index}"]`);
-        
-        if (!itemElement) return;
-        
-        const subtotal = (item.cantidad * item.precio_unitario) - item.descuento;
-        const hasStockWarning = item.cantidad > item.stock_disponible;
-        
-        itemElement.querySelector('.item-cantidad-input').value = item.cantidad;
-        itemElement.querySelector('.item-precio-input').value = item.precio_unitario.toFixed(2);
-        itemElement.querySelector('.item-descuento-input').value = item.descuento.toFixed(2);
-        itemElement.querySelector('.item-subtotal').textContent = `$${subtotal.toFixed(2)}`;
-        
-        const stockElement = itemElement.querySelector('.item-product-stock');
-        if (stockElement) {
-            stockElement.textContent = `Stock: ${item.stock_disponible}`;
-        }
-        
-        if (hasStockWarning) {
-            itemElement.classList.add('stock-warning');
-            itemElement.querySelector('.item-cantidad-input').style.borderColor = '#ef4444';
-        } else {
-            itemElement.classList.remove('stock-warning');
-            itemElement.querySelector('.item-cantidad-input').style.borderColor = '';
-        }
-    }
-    
-    setupItemEventListeners(itemElement) {
-        const index = parseInt(itemElement.dataset.index);
-        
-        const cantidadInput = itemElement.querySelector('.item-cantidad-input');
-        const precioInput = itemElement.querySelector('.item-precio-input');
-        const descuentoInput = itemElement.querySelector('.item-descuento-input');
-        const removeButton = itemElement.querySelector('.remove-item-btn');
-        
-        if (cantidadInput) {
-            cantidadInput.addEventListener('input', (e) => {
-                this.updateItemQuantity(index, parseFloat(e.target.value) || 1);
-            });
-        }
-        
-        if (precioInput) {
-            precioInput.addEventListener('input', (e) => {
-                this.updateItemPrice(index, parseFloat(e.target.value) || 0);
-            });
-        }
-        
-        if (descuentoInput) {
-            descuentoInput.addEventListener('input', (e) => {
-                this.updateItemDiscount(index, parseFloat(e.target.value) || 0);
-            });
-        }
-        
-        if (removeButton) {
-            removeButton.addEventListener('click', () => {
-                this.removeItem(index);
-            });
-        }
-    }
-    
-    updateItemQuantity(index, newCantidad) {
-        if (newCantidad < 1) newCantidad = 1;
-        
-        this.items[index].cantidad = newCantidad;
-        this.updateItemRow(index);
-        this.updateTotals();
-    }
-    
-    updateItemPrice(index, newPrecio) {
-        if (newPrecio < 0) newPrecio = 0;
-        
-        this.items[index].precio_unitario = newPrecio;
-        this.updateItemRow(index);
-        this.updateTotals();
-    }
-    
-    updateItemDiscount(index, newDescuento) {
-        if (newDescuento < 0) newDescuento = 0;
-        
-        const item = this.items[index];
-        const maxDescuento = item.cantidad * item.precio_unitario;
-        
-        if (newDescuento > maxDescuento) {
-            newDescuento = maxDescuento;
-            notificationManager.warning('El descuento no puede superar el subtotal');
-        }
-        
-        this.items[index].descuento = newDescuento;
-        this.updateItemRow(index);
-        this.updateTotals();
-    }
-    
-    removeItem(index) {
-        this.items.splice(index, 1);
-        this.refreshItemsList();
-        this.updateTotals();
-    }
-    
-    refreshItemsList() {
-        const itemsList = document.getElementById('itemsListContainer');
-        itemsList.innerHTML = '';
-        
-        if (this.items.length === 0) {
-            itemsList.innerHTML = `
-                <div class="empty-items-message">
-                    <i class="fas fa-cart-plus"></i>
-                    <p>Agrega productos usando la búsqueda arriba</p>
+            
+            <div class="linea-body">
+                <!-- Búsqueda de producto -->
+                <div class="form-group">
+                    <label>Buscar Producto</label>
+                    <div class="search-wrapper">
+                        <input type="text" 
+                               class="search-product-input linea-busqueda" 
+                               data-linea="${linea.numero}"
+                               placeholder="Escribe código o descripción..." 
+                               autocomplete="off">
+                        <div class="search-results-linea" data-linea="${linea.numero}"></div>
+                    </div>
                 </div>
-            `;
-            return;
-        }
-        
-        this.items.forEach((item, index) => {
-            this.addItemRow(item, index);
+                
+                <!-- Información del producto seleccionado -->
+                <div class="producto-info-linea" data-linea="${linea.numero}" style="display: none;">
+                    <div class="producto-selected">
+                        <p><strong>Producto:</strong> <span class="producto-nombre"></span></p>
+                        <p><strong>Código:</strong> <span class="producto-codigo"></span></p>
+                        <p><strong>Stock disponible:</strong> <span class="producto-stock"></span></p>
+                        <p><strong>Precio actual:</strong> $<span class="producto-precio"></span></p>
+                    </div>
+                </div>
+                
+                <!-- Campos de la venta -->
+                <div class="linea-fields">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Cantidad</label>
+                            <input type="number" 
+                                   class="linea-cantidad" 
+                                   data-linea="${linea.numero}" 
+                                   min="1" 
+                                   value="1" 
+                                   required>
+                        </div>
+                        <div class="form-group">
+                            <label>Precio Unitario</label>
+                            <input type="number" 
+                                   class="linea-precio" 
+                                   data-linea="${linea.numero}" 
+                                   step="0.01" 
+                                   min="0" 
+                                   required>
+                        </div>
+                        <div class="form-group">
+                            <label>Descuento ($)</label>
+                            <input type="number" 
+                                   class="linea-descuento" 
+                                   data-linea="${linea.numero}" 
+                                   step="0.01" 
+                                   min="0" 
+                                   value="0" 
+                                   required>
+                            <small class="form-help">Monto fijo en pesos</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Subtotal</label>
+                            <input type="text" 
+                                   class="linea-subtotal readonly-input" 
+                                   data-linea="${linea.numero}" 
+                                   value="$0.00" 
+                                   readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Descripción (opcional)</label>
+                        <textarea class="linea-descripcion" 
+                                  data-linea="${linea.numero}" 
+                                  rows="2" 
+                                  placeholder="Descripción adicional..."></textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="linea-separator"></div>
+        </div>
+    `;
+}
+
+// Función para configurar event listeners de una línea
+function configurarEventListenersLinea(numeroLinea) {
+    // Buscar producto
+    const inputBusqueda = document.querySelector(`.linea-busqueda[data-linea="${numeroLinea}"]`);
+    if (inputBusqueda) {
+        inputBusqueda.addEventListener('input', function() {
+            buscarProductoEnLinea(numeroLinea, this.value);
         });
     }
     
-    updateTotals() {
-        let subtotal = 0;
-        let descuentoTotal = 0;
-        
-        this.items.forEach(item => {
-            const itemSubtotal = item.cantidad * item.precio_unitario;
-            subtotal += itemSubtotal;
-            descuentoTotal += item.descuento;
+    // Cantidad
+    const inputCantidad = document.querySelector(`.linea-cantidad[data-linea="${numeroLinea}"]`);
+    if (inputCantidad) {
+        inputCantidad.addEventListener('input', function() {
+            actualizarLinea(numeroLinea, 'cantidad', parseFloat(this.value) || 1);
         });
-        
-        const total = subtotal - descuentoTotal;
-        
-        document.getElementById('multipleSubtotal').textContent = `$${subtotal.toFixed(2)}`;
-        document.getElementById('multipleDescuentoTotal').textContent = `$${descuentoTotal.toFixed(2)}`;
-        document.getElementById('multipleTotalVenta').textContent = `$${total.toFixed(2)}`;
     }
     
-    validateItems() {
-        const errors = [];
-        
-        if (this.items.length === 0) {
-            errors.push('Debes agregar al menos un producto a la venta');
-            return { isValid: false, errors };
-        }
-        
-        for (let i = 0; i < this.items.length; i++) {
-            const item = this.items[i];
-            
-            if (item.cantidad > item.stock_disponible) {
-                const producto = StateManager.getProducto(item.codigo_barras);
-                const nombre = producto ? producto.descripcion || item.codigo_barras : item.codigo_barras;
-                errors.push(`Stock insuficiente para "${nombre}". Disponible: ${item.stock_disponible}, Solicitado: ${item.cantidad}`);
-            }
-            
-            if (item.cantidad <= 0) {
-                errors.push(`La cantidad para ${item.codigo_barras} debe ser mayor a 0`);
-            }
-            
-            if (item.precio_unitario <= 0) {
-                errors.push(`El precio para ${item.codigo_barras} debe ser mayor a 0`);
-            }
-            
-            if (item.descuento < 0) {
-                errors.push(`El descuento para ${item.codigo_barras} no puede ser negativo`);
-            }
-            
-            const maxDescuento = item.cantidad * item.precio_unitario;
-            if (item.descuento > maxDescuento) {
-                errors.push(`El descuento para ${item.codigo_barras} no puede superar el subtotal ($${maxDescuento.toFixed(2)})`);
-            }
-        }
-        
-        return {
-            isValid: errors.length === 0,
-            errors
-        };
+    // Precio
+    const inputPrecio = document.querySelector(`.linea-precio[data-linea="${numeroLinea}"]`);
+    if (inputPrecio) {
+        inputPrecio.addEventListener('input', function() {
+            actualizarLinea(numeroLinea, 'precio', parseFloat(this.value) || 0);
+        });
     }
     
-    async saveMultipleSale() {
-        const validation = this.validateItems();
-        if (!validation.isValid) {
-            validation.errors.forEach(error => notificationManager.error(error));
-            return;
+    // Descuento
+    const inputDescuento = document.querySelector(`.linea-descuento[data-linea="${numeroLinea}"]`);
+    if (inputDescuento) {
+        inputDescuento.addEventListener('input', function() {
+            actualizarLinea(numeroLinea, 'descuento', parseFloat(this.value) || 0);
+        });
+    }
+    
+    // Descripción
+    const textareaDescripcion = document.querySelector(`.linea-descripcion[data-linea="${numeroLinea}"]`);
+    if (textareaDescripcion) {
+        textareaDescripcion.addEventListener('input', function() {
+            actualizarLinea(numeroLinea, 'descripcion', this.value);
+        });
+    }
+    
+    // Botón quitar
+    const botonQuitar = document.querySelector(`.linea-remove-btn[data-linea="${numeroLinea}"]`);
+    if (botonQuitar) {
+        botonQuitar.addEventListener('click', function() {
+            eliminarLineaVenta(numeroLinea);
+        });
+    }
+}
+
+// Función para buscar producto en una línea específica
+function buscarProductoEnLinea(numeroLinea, termino) {
+    const resultadosDiv = document.querySelector(`.search-results-linea[data-linea="${numeroLinea}"]`);
+    if (!resultadosDiv) return;
+    
+    if (termino.length < 2) {
+        resultadosDiv.innerHTML = '';
+        resultadosDiv.style.display = 'none';
+        return;
+    }
+    
+    const inventario = StateManager.getInventario();
+    const resultados = inventario.filter(p => 
+        p.codigo_barras.toLowerCase().includes(termino.toLowerCase()) ||
+        (p.descripcion && p.descripcion.toLowerCase().includes(termino.toLowerCase()))
+    ).slice(0, 10);
+    
+    if (resultados.length === 0) {
+        resultadosDiv.innerHTML = '<div style="padding: 10px; color: #64748b;">No se encontraron productos</div>';
+        resultadosDiv.style.display = 'block';
+        return;
+    }
+    
+    let html = '';
+    resultados.forEach(producto => {
+        html += `
+            <div style="padding: 10px; border-bottom: 1px solid #e2e8f0; cursor: pointer;"
+                 data-codigo="${StringUtils.escapeHTML(producto.codigo_barras)}"
+                 data-linea="${numeroLinea}">
+                <div><strong>${StringUtils.escapeHTML(producto.codigo_barras)}</strong></div>
+                <div style="color: #475569; font-size: 14px;">${StringUtils.escapeHTML(producto.descripcion || 'Sin descripción')}</div>
+                <div style="color: #64748b; font-size: 12px;">
+                    Stock: ${producto.cantidad} | Precio: $${parseFloat(producto.precio || 0).toFixed(2)}
+                </div>
+            </div>
+        `;
+    });
+    
+    resultadosDiv.innerHTML = html;
+    resultadosDiv.style.display = 'block';
+    
+    // Agregar event listeners a los resultados
+    document.querySelectorAll(`.search-results-linea[data-linea="${numeroLinea}"] div`).forEach(div => {
+        div.addEventListener('click', function() {
+            const codigo = this.getAttribute('data-codigo');
+            seleccionarProductoEnLinea(numeroLinea, codigo);
+            resultadosDiv.style.display = 'none';
+        });
+    });
+}
+
+// Función para seleccionar producto en una línea
+function seleccionarProductoEnLinea(numeroLinea, codigoBarras) {
+    const producto = StateManager.getProducto(codigoBarras);
+    if (!producto) {
+        notificationManager.error('Producto no encontrado');
+        return;
+    }
+    
+    // Actualizar objeto de línea
+    const lineaIndex = lineasVenta.findIndex(l => l.numero === numeroLinea);
+    if (lineaIndex !== -1) {
+        lineasVenta[lineaIndex].producto = producto;
+        lineasVenta[lineaIndex].precio = parseFloat(producto.precio || 0);
+        
+        // Actualizar campos en el DOM
+        const infoDiv = document.querySelector(`.producto-info-linea[data-linea="${numeroLinea}"]`);
+        const nombreSpan = infoDiv.querySelector('.producto-nombre');
+        const codigoSpan = infoDiv.querySelector('.producto-codigo');
+        const stockSpan = infoDiv.querySelector('.producto-stock');
+        const precioSpan = infoDiv.querySelector('.producto-precio');
+        const inputPrecio = document.querySelector(`.linea-precio[data-linea="${numeroLinea}"]`);
+        const inputCantidad = document.querySelector(`.linea-cantidad[data-linea="${numeroLinea}"]`);
+        
+        if (nombreSpan) nombreSpan.textContent = producto.descripcion || 'Sin descripción';
+        if (codigoSpan) codigoSpan.textContent = producto.codigo_barras;
+        if (stockSpan) stockSpan.textContent = producto.cantidad;
+        if (precioSpan) precioSpan.textContent = parseFloat(producto.precio || 0).toFixed(2);
+        if (inputPrecio) inputPrecio.value = parseFloat(producto.precio || 0).toFixed(2);
+        if (inputCantidad) {
+            inputCantidad.max = producto.cantidad;
+            inputCantidad.setAttribute('max', producto.cantidad);
         }
         
-        const notas = document.getElementById('ventaMultipleNotas').value.trim();
+        // Mostrar información del producto
+        infoDiv.style.display = 'block';
         
-        if (!navigator.onLine) {
-            await this.saveMultipleSaleOffline(notas);
+        // Calcular subtotal de esta línea
+        actualizarLinea(numeroLinea, 'precio', parseFloat(producto.precio || 0));
+        
+        // Limpiar campo de búsqueda
+        const inputBusqueda = document.querySelector(`.linea-busqueda[data-linea="${numeroLinea}"]`);
+        if (inputBusqueda) inputBusqueda.value = '';
+        
+        console.log(`Producto seleccionado en línea ${numeroLinea}:`, producto.codigo_barras);
+    }
+}
+
+// Función para actualizar datos de una línea
+function actualizarLinea(numeroLinea, campo, valor) {
+    const lineaIndex = lineasVenta.findIndex(l => l.numero === numeroLinea);
+    if (lineaIndex === -1) return;
+    
+    // Actualizar valor
+    lineasVenta[lineaIndex][campo] = valor;
+    
+    // Si se actualiza cantidad, precio o descuento, recalcular subtotal
+    if (['cantidad', 'precio', 'descuento'].includes(campo)) {
+        calcularSubtotalLinea(numeroLinea);
+    }
+    
+    // Calcular resumen total
+    calcularResumenVenta();
+}
+
+// Función para calcular subtotal de una línea
+function calcularSubtotalLinea(numeroLinea) {
+    const lineaIndex = lineasVenta.findIndex(l => l.numero === numeroLinea);
+    if (lineaIndex === -1) return;
+    
+    const linea = lineasVenta[lineaIndex];
+    const cantidad = parseFloat(linea.cantidad) || 0;
+    const precio = parseFloat(linea.precio) || 0;
+    const descuento = parseFloat(linea.descuento) || 0;
+    
+    // Validar datos
+    if (cantidad <= 0 || precio <= 0) {
+        linea.subtotal = 0;
+        actualizarSubtotalEnDOM(numeroLinea, 0);
+        return;
+    }
+    
+    // Validar stock si hay producto seleccionado
+    if (linea.producto && cantidad > linea.producto.cantidad) {
+        notificationManager.warning(`Stock insuficiente en línea ${numeroLinea}. Disponible: ${linea.producto.cantidad}`);
+        // Ajustar cantidad al máximo disponible
+        linea.cantidad = linea.producto.cantidad;
+        const inputCantidad = document.querySelector(`.linea-cantidad[data-linea="${numeroLinea}"]`);
+        if (inputCantidad) inputCantidad.value = linea.producto.cantidad;
+    }
+    
+    // Calcular subtotal
+    const subtotal = cantidad * precio;
+    const total = Math.max(subtotal - descuento, 0);
+    
+    linea.subtotal = total;
+    
+    // Actualizar en DOM
+    actualizarSubtotalEnDOM(numeroLinea, total);
+}
+
+// Función para actualizar subtotal en el DOM
+function actualizarSubtotalEnDOM(numeroLinea, subtotal) {
+    const inputSubtotal = document.querySelector(`.linea-subtotal[data-linea="${numeroLinea}"]`);
+    if (inputSubtotal) {
+        inputSubtotal.value = `$${subtotal.toFixed(2)}`;
+    }
+}
+
+// Función para eliminar una línea
+function eliminarLineaVenta(numeroLinea) {
+    // No permitir eliminar la primera línea
+    if (numeroLinea === 1) {
+        notificationManager.warning('No se puede eliminar la primera línea de producto');
+        return;
+    }
+    
+    // Confirmar eliminación
+    if (!confirm(`¿Eliminar producto ${numeroLinea} de la venta?`)) {
+        return;
+    }
+    
+    // Eliminar del array
+    lineasVenta = lineasVenta.filter(l => l.numero !== numeroLinea);
+    
+    // Renumerar líneas restantes
+    lineasVenta.forEach((linea, index) => {
+        linea.numero = index + 1;
+    });
+    
+    // Reconstruir todo el DOM (forma más simple)
+    reconstruirLineasEnDOM();
+    
+    // Actualizar contador
+    actualizarContadorLineas();
+    
+    // Calcular totales
+    calcularResumenVenta();
+    
+    console.log(`Línea ${numeroLinea} eliminada`);
+}
+
+// Función para reconstruir todas las líneas en el DOM
+function reconstruirLineasEnDOM() {
+    const contenedor = document.getElementById('lineas-venta-container');
+    if (!contenedor) return;
+    
+    // Limpiar contenedor
+    contenedor.innerHTML = '';
+    
+    // Recrear todas las líneas
+    lineasVenta.forEach(linea => {
+        const htmlLinea = crearHTMLLinea(linea);
+        contenedor.insertAdjacentHTML('beforeend', htmlLinea);
+        
+        // Reconfigurar event listeners
+        configurarEventListenersLinea(linea.numero);
+        
+        // Si la línea tenía producto seleccionado, restaurarlo
+        if (linea.producto) {
+            setTimeout(() => {
+                seleccionarProductoEnLinea(linea.numero, linea.producto.codigo_barras);
+                // Restaurar valores
+                const inputCantidad = document.querySelector(`.linea-cantidad[data-linea="${linea.numero}"]`);
+                const inputPrecio = document.querySelector(`.linea-precio[data-linea="${linea.numero}"]`);
+                const inputDescuento = document.querySelector(`.linea-descuento[data-linea="${linea.numero}"]`);
+                const textareaDescripcion = document.querySelector(`.linea-descripcion[data-linea="${linea.numero}"]`);
+                
+                if (inputCantidad) inputCantidad.value = linea.cantidad;
+                if (inputPrecio) inputPrecio.value = linea.precio.toFixed(2);
+                if (inputDescuento) inputDescuento.value = linea.descuento.toFixed(2);
+                if (textareaDescripcion) textareaDescripcion.value = linea.descripcion;
+                
+                // Recalcular subtotal
+                calcularSubtotalLinea(linea.numero);
+            }, 100);
+        }
+    });
+}
+
+// Función para calcular resumen total de la venta
+function calcularResumenVenta() {
+    let subtotal = 0;
+    let descuentoTotal = 0;
+    let productosDistintos = 0;
+    
+    // Calcular sumatorios
+    lineasVenta.forEach(linea => {
+        if (linea.producto) {
+            productosDistintos++;
+        }
+        subtotal += parseFloat(linea.subtotal) || 0;
+        descuentoTotal += parseFloat(linea.descuento) || 0;
+    });
+    
+    const total = subtotal;
+    
+    // Actualizar DOM
+    const resumenSubtotal = document.getElementById('resumen-subtotal');
+    const resumenDescuento = document.getElementById('resumen-descuento');
+    const resumenTotal = document.getElementById('resumen-total');
+    const totalProductos = document.getElementById('total-productos-venta');
+    
+    if (resumenSubtotal) resumenSubtotal.textContent = `$${subtotal.toFixed(2)}`;
+    if (resumenDescuento) resumenDescuento.textContent = `$${descuentoTotal.toFixed(2)}`;
+    if (resumenTotal) resumenTotal.textContent = `$${total.toFixed(2)}`;
+    if (totalProductos) totalProductos.textContent = productosDistintos;
+}
+
+// Función para actualizar contador de líneas
+function actualizarContadorLineas() {
+    const contador = document.getElementById('contador-lineas');
+    if (contador) {
+        contador.textContent = lineasVenta.length;
+    }
+}
+
+// Función para actualizar fecha de venta
+function actualizarFechaVenta() {
+    const fechaElement = document.getElementById('fecha-venta-multiple');
+    if (fechaElement) {
+        fechaElement.textContent = DateTimeUtils.getCurrentChileDate();
+    }
+}
+
+// ========== FUNCIÓN PRINCIPAL PARA REGISTRAR VENTA ==========
+
+// Función para registrar la venta completa
+export async function registrarVentaMultiple() {
+    console.log('Iniciando registro de venta múltiple...');
+    
+    // Validar que hay al menos una línea con producto
+    const lineasValidas = lineasVenta.filter(l => l.producto && l.cantidad > 0 && l.precio > 0);
+    
+    if (lineasValidas.length === 0) {
+        notificationManager.error('Agrega al menos un producto a la venta');
+        return;
+    }
+    
+    // Validar stock para todas las líneas
+    for (const linea of lineasValidas) {
+        if (linea.cantidad > linea.producto.cantidad) {
+            notificationManager.error(`Stock insuficiente para ${linea.producto.descripcion || linea.producto.codigo_barras}. Disponible: ${linea.producto.cantidad}`);
             return;
         }
+    }
+    
+    // Obtener observaciones
+    const observacionesInput = document.getElementById('observaciones-venta');
+    const observaciones = observacionesInput ? observacionesInput.value.trim() : '';
+    
+    // Verificar conexión
+    if (!navigator.onLine) {
+        notificationManager.warning('Modo offline activado. La venta se guardará localmente');
+        await guardarVentaMultipleOffline(lineasValidas, observaciones);
+        return;
+    }
+    
+    try {
+        notificationManager.info(`🔄 Registrando venta con ${lineasValidas.length} productos...`);
         
-        try {
-            notificationManager.info('🔄 Guardando venta múltiple...');
+        // Insertar cada línea en la base de datos
+        const ventasInsertadas = [];
+        
+        for (let i = 0; i < lineasValidas.length; i++) {
+            const linea = lineasValidas[i];
             
-            const ventaData = this.items.map((item, index) => ({
-                barcode: item.codigo_barras,
-                cantidad: item.cantidad,
-                precio_unitario: item.precio_unitario,
-                descuento: item.descuento,
-                descripcion: item.descripcion || '',
+            const ventaData = {
+                barcode: linea.producto.codigo_barras,
+                cantidad: linea.cantidad,
+                precio_unitario: linea.precio,
+                descuento: linea.descuento,
+                descripcion: linea.descripcion || linea.producto.descripcion || '',
                 fecha_venta: DateTimeUtils.getCurrentChileISO(),
-                id_venta_agrupada: this.currentSaleId,
-                numero_linea: index + 1,
-                notas: notas
-            }));
+                id_venta_agrupada: idVentaActual,
+                numero_linea: i + 1
+            };
             
-            const { error: errorVentas } = await supabaseClient
+            const { data, error } = await supabaseClient
                 .from(Constants.API_ENDPOINTS.SALES_TABLE)
-                .insert(ventaData);
+                .insert([ventaData])
+                .select();
                 
-            if (errorVentas) throw errorVentas;
+            if (error) throw error;
             
-            await this.updateInventoryForMultipleSale();
+            ventasInsertadas.push(ventaData);
             
-            this.incrementNextSaleId();
+            // Actualizar inventario para este producto
+            const nuevoStock = linea.producto.cantidad - linea.cantidad;
             
-            notificationManager.success(`✅ Venta múltiple guardada (ID: ${this.currentSaleId})`);
-            
-            modalManager.close(Constants.MODAL_IDS.MULTIPLE_SALE);
-            this.clearItems();
-            
-            setTimeout(async () => {
-                const { loadSalesData } = await import('./inventario.js');
-                await loadSalesData();
-                const { updateStatistics } = await import('./inventario.js');
-                updateStatistics();
-            }, 1000);
-            
-        } catch (error) {
-            console.error('Error guardando venta múltiple:', error);
-            notificationManager.error('❌ Error al guardar la venta múltiple');
-            
-            await this.saveMultipleSaleOffline(notas);
-        }
-    }
-    
-    async updateInventoryForMultipleSale() {
-        const updates = [];
-        
-        for (const item of this.items) {
-            const producto = StateManager.getProducto(item.codigo_barras);
-            if (producto) {
-                const nuevoStock = producto.cantidad - item.cantidad;
-                
-                updates.push({
-                    barcode: item.codigo_barras,
+            const { error: errorInventario } = await supabaseClient
+                .from(Constants.API_ENDPOINTS.INVENTORY_TABLE)
+                .update({ 
                     cantidad: nuevoStock,
                     fecha_actualizacion: DateTimeUtils.getCurrentChileISO()
-                });
+                })
+                .eq('barcode', linea.producto.codigo_barras);
                 
-                StateManager.updateInventoryItem(item.codigo_barras, {
-                    cantidad: nuevoStock,
-                    fecha_actualizacion: new Date().toISOString()
-                });
-            }
-        }
-        
-        if (updates.length > 0) {
-            for (const update of updates) {
-                const { error } = await supabaseClient
-                    .from(Constants.API_ENDPOINTS.INVENTORY_TABLE)
-                    .update({ 
-                        cantidad: update.cantidad,
-                        fecha_actualizacion: update.fecha_actualizacion
-                    })
-                    .eq('barcode', update.barcode);
-                    
-                if (error) {
-                    console.error(`Error actualizando inventario para ${update.barcode}:`, error);
-                }
+            if (errorInventario) {
+                console.error(`Error actualizando inventario para ${linea.producto.codigo_barras}:`, errorInventario);
+                // Continuar con otros productos aunque falle uno
             }
             
-            const { displayInventory } = await import('./inventario.js');
-            displayInventory(StateManager.getInventario());
+            // Actualizar StateManager local
+            StateManager.updateInventoryItem(linea.producto.codigo_barras, {
+                cantidad: nuevoStock,
+                fecha_actualizacion: new Date().toISOString()
+            });
+            
+            // Actualizar fila en tabla de inventario (si está visible)
+            actualizarFilaInventarioEnDOM(linea.producto.codigo_barras, nuevoStock);
         }
+        
+        // Cerrar modal
+        modalManager.close(Constants.MODAL_IDS.MULTIPLE_SALE);
+        
+        // Mostrar éxito
+        const totalVenta = lineasValidas.reduce((sum, linea) => sum + linea.subtotal, 0);
+        notificationManager.success(`✅ Venta ${idVentaActual} registrada correctamente. Total: $${totalVenta.toFixed(2)}`);
+        
+        // Recargar ventas para mostrar la nueva venta
+        setTimeout(async () => {
+            const { loadSalesData } = await import('./inventario.js');
+            await loadSalesData();
+        }, 1000);
+        
+        // Reiniciar estado
+        lineasVenta = [];
+        idVentaActual = null;
+        
+    } catch (error) {
+        console.error('Error registrando venta múltiple:', error);
+        notificationManager.error('❌ Error al registrar la venta: ' + error.message);
+        
+        // Intentar guardar offline
+        notificationManager.warning('Intentando guardar localmente...');
+        await guardarVentaMultipleOffline(lineasValidas, observaciones);
     }
-    
-    async saveMultipleSaleOffline(notas) {
-        const ventaMultipleOffline = {
-            id: this.currentSaleId,
+}
+
+// Función para guardar venta múltiple offline
+async function guardarVentaMultipleOffline(lineasValidas, observaciones) {
+    try {
+        const ventaOffline = {
+            id: Date.now(),
+            id_venta_agrupada: idVentaActual,
             fecha: DateTimeUtils.getCurrentChileISO(),
-            items: this.items.map(item => ({
-                codigo_barras: item.codigo_barras,
-                cantidad: item.cantidad,
-                precio_unitario: item.precio_unitario,
-                descuento: item.descuento,
-                descripcion: item.descripcion || ''
+            lineas: lineasValidas.map(linea => ({
+                barcode: linea.producto.codigo_barras,
+                cantidad: linea.cantidad,
+                precio_unitario: linea.precio,
+                descuento: linea.descuento,
+                descripcion: linea.descripcion || linea.producto.descripcion || '',
+                producto: linea.producto
             })),
-            notas: notas,
+            observaciones: observaciones,
             estado: 'pendiente'
         };
         
+        // Guardar en localStorage
         let ventasPendientes = JSON.parse(
             localStorage.getItem(Constants.LOCAL_STORAGE_KEYS.OFFLINE_MULTIPLE_SALES) || '[]'
         );
         
-        ventasPendientes.push(ventaMultipleOffline);
+        ventasPendientes.push(ventaOffline);
         localStorage.setItem(
             Constants.LOCAL_STORAGE_KEYS.OFFLINE_MULTIPLE_SALES,
             JSON.stringify(ventasPendientes)
         );
         
-        for (const item of this.items) {
-            let inventarioOffline = JSON.parse(
-                localStorage.getItem(Constants.LOCAL_STORAGE_KEYS.OFFLINE_INVENTORY) || '{}'
-            );
-            
-            if (!inventarioOffline[item.codigo_barras]) {
-                const producto = StateManager.getProducto(item.codigo_barras);
-                inventarioOffline[item.codigo_barras] = producto ? producto.cantidad : 0;
-            }
-            
-            inventarioOffline[item.codigo_barras] -= item.cantidad;
-            
-            localStorage.setItem(
-                Constants.LOCAL_STORAGE_KEYS.OFFLINE_INVENTORY,
-                JSON.stringify(inventarioOffline)
-            );
-        }
+        // Actualizar inventario local
+        lineasValidas.forEach(linea => {
+            const { updateLocalInventory } = import('./offline.js');
+            updateLocalInventory(linea.producto.codigo_barras, -linea.cantidad);
+        });
         
-        notificationManager.warning('📴 Venta múltiple guardada localmente. Se sincronizará cuando haya internet');
-        
+        // Cerrar modal
         modalManager.close(Constants.MODAL_IDS.MULTIPLE_SALE);
-        this.clearItems();
         
-        const { updateLocalInventoryView, updateOfflineBadge } = await import('./offline.js');
+        notificationManager.success(`📴 Venta guardada localmente. ID: ${idVentaActual}`);
+        
+        // Actualizar vista de inventario
+        const { updateLocalInventoryView } = await import('./offline.js');
         updateLocalInventoryView();
-        updateOfflineBadge();
-    }
-    
-    incrementNextSaleId() {
-        let nextId = parseInt(localStorage.getItem(Constants.MULTIPLE_SALE.NEXT_ID_KEY) || '1');
-        nextId++;
-        localStorage.setItem(Constants.MULTIPLE_SALE.NEXT_ID_KEY, nextId.toString().padStart(3, '0'));
-    }
-    
-    clearItems() {
-        this.items = [];
-        this.refreshItemsList();
-        this.updateTotals();
         
-        const buscarInput = document.getElementById('buscarProductoMultiple');
-        const notasInput = document.getElementById('ventaMultipleNotas');
+        // Reiniciar estado
+        lineasVenta = [];
+        idVentaActual = null;
         
-        if (buscarInput) buscarInput.value = '';
-        if (notasInput) notasInput.value = '';
-        
-        this.generateSaleId();
-    }
-    
-    openModal() {
-        this.initialize();
-        modalManager.open(Constants.MODAL_IDS.MULTIPLE_SALE);
+    } catch (error) {
+        console.error('Error guardando venta offline:', error);
+        notificationManager.error('❌ Error al guardar la venta localmente');
     }
 }
 
-const multipleSalesManager = new MultipleSalesManager();
-
-export function openMultipleSaleModal() {
-    multipleSalesManager.openModal();
+// Función para actualizar fila de inventario en el DOM
+function actualizarFilaInventarioEnDOM(codigoBarras, nuevoStock) {
+    const producto = StateManager.getProducto(codigoBarras);
+    if (!producto) return;
+    
+    const tbody = document.getElementById('inventarioBody');
+    if (!tbody) return;
+    
+    const filas = tbody.getElementsByTagName('tr');
+    
+    for (let fila of filas) {
+        const codigoCelda = fila.cells[0].textContent.trim();
+        if (codigoCelda === codigoBarras) {
+            const stockBadge = InventoryUtils.getStockStatus(nuevoStock);
+            const fecha = DateTimeUtils.formatToChileTime(producto.fecha_actualizacion);
+            
+            fila.cells[1].innerHTML = producto.descripcion ? 
+                StringUtils.escapeHTML(producto.descripcion) : 
+                '<span style="color: #94a3b8;">Sin descripción</span>';
+            
+            fila.cells[2].innerHTML = `<span class="stock-badge ${stockBadge.class}">${nuevoStock} unidades</span>`;
+            fila.cells[3].textContent = `$${parseFloat(producto.costo || 0).toFixed(2)}`;
+            fila.cells[4].innerHTML = `<strong>$${parseFloat(producto.precio || 0).toFixed(2)}</strong>`;
+            fila.cells[5].textContent = fecha;
+            break;
+        }
+    }
 }
 
-export default multipleSalesManager;
+// ========== CONFIGURACIÓN DE EVENT LISTENERS ==========
+
+// Función para configurar todos los event listeners del modal
+export function setupMultipleSalesEventListeners() {
+    console.log('Configurando event listeners para ventas múltiples...');
+    
+    // Botón para agregar línea
+    const agregarLineaBtn = document.getElementById('agregar-linea-btn');
+    if (agregarLineaBtn) {
+        agregarLineaBtn.addEventListener('click', agregarLineaVenta);
+        console.log('Event listener agregado: agregar-linea-btn');
+    }
+    
+    // Botón para registrar venta
+    const registrarBtn = document.getElementById('registrar-venta-multiple');
+    if (registrarBtn) {
+        registrarBtn.addEventListener('click', registrarVentaMultiple);
+        console.log('Event listener agregado: registrar-venta-multiple');
+    }
+    
+    // Botón cancelar
+    const cancelarBtn = document.querySelector('#modalVentaMultiple .btn-cancel');
+    if (cancelarBtn) {
+        cancelarBtn.addEventListener('click', () => {
+            modalManager.close(Constants.MODAL_IDS.MULTIPLE_SALE);
+            // Reiniciar estado
+            lineasVenta = [];
+            idVentaActual = null;
+        });
+        console.log('Event listener agregado: botón cancelar');
+    }
+    
+    // Cerrar modal con escape o clic fuera
+    const modal = document.getElementById('modalVentaMultiple');
+    if (modal) {
+        const closeBtn = modal.querySelector('.modal-close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                modalManager.close(Constants.MODAL_IDS.MULTIPLE_SALE);
+                lineasVenta = [];
+                idVentaActual = null;
+            });
+        }
+    }
+    
+    console.log('✅ Event listeners para ventas múltiples configurados');
+}
