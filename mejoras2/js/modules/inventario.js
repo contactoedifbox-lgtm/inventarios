@@ -281,7 +281,6 @@ export function displaySales(data) {
             const codigo = this.getAttribute('data-codigo');
             const fecha = this.getAttribute('data-fecha');
             
-            // Importación dinámica para evitar dependencia circular
             import('./ventas.js').then(module => {
                 module.editSale(codigo, fecha);
             }).catch(error => {
@@ -297,7 +296,6 @@ export function displaySales(data) {
             const fecha = this.getAttribute('data-fecha');
             const cantidad = parseInt(this.getAttribute('data-cantidad'));
             
-            // Importación dinámica para evitar dependencia circular
             import('./ventas.js').then(module => {
                 module.deleteSale(codigo, fecha, cantidad);
             }).catch(error => {
@@ -336,7 +334,6 @@ export function setupInventoryEventListeners() {
     }
 }
 
-// Función para mostrar pestañas (necesaria para showTab)
 function showTab(tabName) {
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
     document.getElementById(`tab-${tabName}`).classList.add('active');
