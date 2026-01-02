@@ -5,38 +5,8 @@ import { setupTabNavigation, setupSearch } from './ui/search.js';
 import { setupSalesEventListeners } from './modules/ventas.js';
 import { setupInventoryEventListeners } from './modules/inventario.js';
 import { setupOfflineMonitoring } from './modules/offline.js';
-
-// ========== CÓDIGO TEMPORAL PARA PROBAR ==========
-// ELIMINAR ESTO DESPUÉS DE QUE FUNCIONE
-
-console.log('=== VERIFICANDO MODAL VENTA MÚLTIPLE ===');
-
-// Esperar a que el DOM cargue
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM cargado');
-    
-    // Buscar el botón y el modal
-    const botonVentaMultiple = document.getElementById('agregar-venta-multiple-btn');
-    const modalVentaMultiple = document.getElementById('modalVentaMultiple');
-    
-    console.log('Botón encontrado:', !!botonVentaMultiple);
-    console.log('Modal encontrado:', !!modalVentaMultiple);
-    
-    // Si ambos existen, agregar event listener
-    if (botonVentaMultiple && modalVentaMultiple) {
-        botonVentaMultiple.addEventListener('click', function() {
-            console.log('¡Botón Venta Múltiple clickeado!');
-            modalVentaMultiple.style.display = 'flex';
-            console.log('Modal debería estar visible ahora');
-        });
-        
-        console.log('✅ Event listener agregado correctamente');
-    } else {
-        console.error('❌ ERROR: No se encontraron los elementos');
-        if (!botonVentaMultiple) console.error('Falta: botón con id="agregar-venta-multiple-btn"');
-        if (!modalVentaMultiple) console.error('Falta: modal con id="modalVentaMultiple"');
-    }
-});
+import multipleSalesManager from './modules/ventas-multiples.js';
+import salesTableManager from './ui/sales-table.js';
 
 class InventarioApp {
     constructor() {
@@ -62,7 +32,27 @@ class InventarioApp {
             setupSalesEventListeners();
             setupInventoryEventListeners();
             setupOfflineMonitoring();
+            this.setupMultipleSales();
+            this.setupEnhancedSalesTable();
         });
+    }
+    
+    setupMultipleSales() {
+        const ventaMultipleBtn = document.getElementById('agregar-venta-multiple-btn');
+        if (ventaMultipleBtn) {
+            ventaMultipleBtn.addEventListener('click', () => {
+                multipleSalesManager.openModal();
+            });
+        }
+    }
+    
+    setupEnhancedSalesTable() {
+        const exportBtn = document.getElementById('exportar-excel-btn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => {
+                salesTableManager.exportGroupedToCSV();
+            });
+        }
     }
     
     setupUIComponents() {
@@ -80,6 +70,7 @@ class InventarioApp {
     updateDateTimeDisplays() {
         const fechaHoyElement = document.getElementById('fecha-hoy');
         const fechaVentaActualElement = document.getElementById('fechaVentaActual');
+        const fechaMultipleElement = document.getElementById('ventaMultipleFecha');
         
         if (fechaHoyElement) {
             import('./modules/utils.js').then(({ DateTimeUtils }) => {
@@ -90,6 +81,12 @@ class InventarioApp {
         if (fechaVentaActualElement && modalManager.isOpen('modalAgregarVenta')) {
             import('./modules/utils.js').then(({ DateTimeUtils }) => {
                 fechaVentaActualElement.textContent = DateTimeUtils.getCurrentChileDate();
+            });
+        }
+        
+        if (fechaMultipleElement && modalManager.isOpen('modalVentaMultiple')) {
+            import('./modules/utils.js').then(({ DateTimeUtils }) => {
+                fechaMultipleElement.textContent = DateTimeUtils.getCurrentChileDate();
             });
         }
     }
