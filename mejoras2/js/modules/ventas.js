@@ -525,6 +525,7 @@ export function setupSalesEventListeners() {
 function setupModalEventListeners() {
     const editCantidad = document.getElementById('editVentaCantidad');
     const editDescuento = document.getElementById('editVentaDescuento');
+    const editPrecio = document.getElementById('editVentaPrecio');
     
     if (editCantidad) {
         editCantidad.addEventListener('input', calculateNewTotalWithDiscount);
@@ -534,18 +535,49 @@ function setupModalEventListeners() {
         editDescuento.addEventListener('input', calculateNewTotalWithDiscount);
     }
     
-    const editPrecio = document.getElementById('editVentaPrecio');
     if (editPrecio) {
         editPrecio.addEventListener('input', calculateNewTotalWithDiscount);
         editPrecio.readOnly = true;
         editPrecio.style.cursor = 'not-allowed';
     }
+    
+    const saveVentaBtn = document.getElementById('save-venta');
+    const cancelVentaBtn = document.querySelector('#modalVenta .btn-cancel');
+    const closeVentaBtn = document.querySelector('#modalVenta .modal-close');
+    
+    if (saveVentaBtn) {
+        saveVentaBtn.addEventListener('click', saveSale);
+    }
+    
+    if (cancelVentaBtn) {
+        cancelVentaBtn.addEventListener('click', () => modalManager.close(Constants.MODAL_IDS.SALE));
+    }
+    
+    if (closeVentaBtn) {
+        closeVentaBtn.addEventListener('click', () => modalManager.close(Constants.MODAL_IDS.SALE));
+    }
 }
 
 function setupAddSaleEventListeners() {
     const agregarVentaBtn = document.getElementById('agregar-venta-btn');
+    const saveAgregarVentaBtn = document.getElementById('save-agregar-venta');
+    const cancelAgregarVentaBtn = document.querySelector('#modalAgregarVenta .btn-cancel');
+    const closeAgregarVentaBtn = document.querySelector('#modalAgregarVenta .modal-close');
+    
     if (agregarVentaBtn) {
         agregarVentaBtn.addEventListener('click', openAddSaleModal);
+    }
+    
+    if (saveAgregarVentaBtn) {
+        saveAgregarVentaBtn.addEventListener('click', saveNewSale);
+    }
+    
+    if (cancelAgregarVentaBtn) {
+        cancelAgregarVentaBtn.addEventListener('click', () => modalManager.close(Constants.MODAL_IDS.ADD_SALE));
+    }
+    
+    if (closeAgregarVentaBtn) {
+        closeAgregarVentaBtn.addEventListener('click', () => modalManager.close(Constants.MODAL_IDS.ADD_SALE));
     }
     
     const buscarProducto = document.getElementById('buscarProducto');
@@ -573,8 +605,8 @@ function setupAddSaleEventListeners() {
 function setupOtherEventListeners() {
     const exportarExcelBtn = document.getElementById('exportar-excel-btn');
     const reporteEncargosBtn = document.getElementById('reporte-encargos-btn');
-    const closeEncargosBtn = document.getElementById('close-modal-encargos');
-    const cancelEncargosBtn = document.getElementById('cancel-encargos');
+    const closeEncargosBtn = document.querySelector('#modalEncargos .modal-close');
+    const cancelEncargosBtn = document.querySelector('#modalEncargos .btn-cancel');
     
     if (exportarExcelBtn) {
         exportarExcelBtn.addEventListener('click', exportToExcel);
