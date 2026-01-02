@@ -3,10 +3,12 @@ import { DateTimeUtils, InventoryUtils, StringUtils } from './utils.js';
 import notificationManager from '../ui/notifications.js';
 import modalManager from '../ui/modals.js';
 
-// ========== FUNCIONES PARA VENTAS INDIVIDUALES (COMPATIBILIDAD) ==========
+// ========== FUNCIONES DE VENTAS INDIVIDUALES ==========
 
-// Función para editar una venta individual
+// Función para editar una venta
 export async function editSale(codigoBarras, fechaVenta) {
+    console.log('✏️ Editando venta:', codigoBarras, fechaVenta);
+    
     const venta = StateManager.ventas.find(v => 
         v.codigo_barras === codigoBarras && v.fecha_venta === fechaVenta
     );
@@ -52,7 +54,6 @@ export async function saveSale() {
     
     const nuevaCantidad = parseInt(document.getElementById('editVentaCantidad').value);
     const nuevoDescuento = parseFloat(document.getElementById('editVentaDescuento').value) || 0;
-    
     const precioActual = parseFloat(document.getElementById('editVentaPrecio').value) || 0;
     
     const validation = InventoryUtils.validateSaleData(nuevaCantidad, precioActual, nuevoDescuento);
@@ -79,7 +80,7 @@ export async function saveSale() {
             notificationManager.success('✅ Venta actualizada correctamente');
             modalManager.close(Constants.MODAL_IDS.SALE);
             
-            // Recargar ventas para reflejar cambios
+            // Recargar ventas
             await reloadSalesData();
             const { updateStatistics } = await import('./inventario.js');
             updateStatistics();
@@ -91,8 +92,8 @@ export async function saveSale() {
             notificationManager.error('❌ Error: ' + mensajeError);
         }
     } catch (error) {
-        console.error('Error completo al actualizar venta:', error);
-        notificationManager.error('❌ Error al actualizar la venta: ' + error.message);
+        console.error('Error actualizando venta:', error);
+        notificationManager.error('❌ Error al actualizar la venta');
     }
 }
 
@@ -114,56 +115,44 @@ function updateLocalInventoryAfterSaleEdit(nuevaCantidad) {
     }
 }
 
-// Función para eliminar una venta - CORREGIDA
+// Función para eliminar una venta
 export async function deleteSale(codigoBarras, fechaVenta, cantidad) {
-    if (!confirm(`¿Estás seguro de eliminar esta venta?\nCódigo: ${codigoBarras}\nCantidad: ${cantidad}\n\nEsta acción devolverá ${cantidad} unidades al inventario.`)) {
+    if (!confirm(`¿Estás seguro de eliminar esta venta?\nCódigo: ${codigoBarras}\nCantidad: ${cantidad}`)) {
         return;
     }
     
     try {
         notificationManager.info('🔄 Eliminando venta...');
         
-        // Primero, buscar la venta COMPLETA en StateManager para obtener el valor EXACTO de fecha_venta
+        // Buscar venta exacta
         const ventaEncontrada = StateManager.ventas.find(v => 
             v.codigo_barras === codigoBarras && v.fecha_venta === fechaVenta
         );
         
         if (!ventaEncontrada) {
-            notificationManager.error('❌ Venta no encontrada en los datos locales');
+            notificationManager.error('❌ Venta no encontrada');
             return;
         }
         
         const productoIndex = StateManager.getInventario().findIndex(p => p.codigo_barras === codigoBarras);
         if (productoIndex === -1) {
-            notificationManager.error('❌ Producto no encontrado en inventario');
+            notificationManager.error('❌ Producto no encontrado');
             return;
         }
         
         const stockActual = parseInt(StateManager.getInventario()[productoIndex].cantidad) || 0;
         const nuevoStock = stockActual + parseInt(cantidad);
         
-        // Usar el valor EXACTO de fecha_venta de la venta encontrada
-        const fechaVentaExacta = ventaEncontrada.fecha_venta;
-        
-        console.log('Eliminando venta con:', {
-            barcode: codigoBarras,
-            fecha_venta: fechaVentaExacta,
-            fechaVentaParam: fechaVenta
-        });
-        
-        // ELIMINAR de la tabla VENTAS (no de la vista)
+        // Eliminar de Supabase
         const { error: errorEliminar } = await supabaseClient
             .from(Constants.API_ENDPOINTS.SALES_TABLE)
             .delete()
             .eq('barcode', codigoBarras)
-            .eq('fecha_venta', fechaVentaExacta);
+            .eq('fecha_venta', fechaVenta);
         
-        if (errorEliminar) {
-            console.error('Error eliminando venta:', errorEliminar);
-            throw errorEliminar;
-        }
+        if (errorEliminar) throw errorEliminar;
         
-        // ACTUALIZAR inventario
+        // Actualizar inventario
         const { error: errorInventario } = await supabaseClient
             .from(Constants.API_ENDPOINTS.INVENTORY_TABLE)
             .update({ 
@@ -172,12 +161,9 @@ export async function deleteSale(codigoBarras, fechaVenta, cantidad) {
             })
             .eq('barcode', codigoBarras);
         
-        if (errorInventario) {
-            console.error('Error actualizando inventario:', errorInventario);
-            throw errorInventario;
-        }
+        if (errorInventario) throw errorInventario;
         
-        // Actualizar StateManager local
+        // Actualizar StateManager
         StateManager.updateInventoryItem(codigoBarras, {
             cantidad: nuevoStock,
             fecha_actualizacion: new Date().toISOString()
@@ -185,9 +171,9 @@ export async function deleteSale(codigoBarras, fechaVenta, cantidad) {
         
         updateLocalInventoryRow(codigoBarras, nuevoStock);
         
-        // Remover la venta del StateManager
+        // Remover venta del StateManager
         const ventaIndex = StateManager.ventas.findIndex(v => 
-            v.codigo_barras === codigoBarras && v.fecha_venta === fechaVentaExacta
+            v.codigo_barras === codigoBarras && v.fecha_venta === fechaVenta
         );
         
         if (ventaIndex !== -1) {
@@ -201,16 +187,11 @@ export async function deleteSale(codigoBarras, fechaVenta, cantidad) {
         const { updateStatistics } = await import('./inventario.js');
         updateStatistics();
         
-        const producto = StateManager.getProducto(codigoBarras);
-        const nombreProducto = producto ? producto.descripcion || codigoBarras : codigoBarras;
-        notificationManager.success(`✅ Venta eliminada correctamente. Stock de ${nombreProducto} restaurado: ${stockActual} → ${nuevoStock} unidades`);
+        notificationManager.success(`✅ Venta eliminada correctamente`);
         
     } catch (error) {
-        console.error('Error completo eliminando venta:', error);
-        notificationManager.error('❌ Error al eliminar la venta: ' + error.message);
-        
-        // Forzar recarga completa de ventas
-        await reloadSalesData();
+        console.error('Error eliminando venta:', error);
+        notificationManager.error('❌ Error al eliminar la venta');
     }
 }
 
@@ -242,31 +223,28 @@ function updateLocalInventoryRow(codigoBarras, nuevoStock) {
     }
 }
 
-// Función para recargar datos de ventas desde la vista
+// Función para recargar ventas
 async function reloadSalesData() {
     try {
         const { data, error } = await supabaseClient
             .from(Constants.API_ENDPOINTS.SALES_VIEW)
             .select('*')
             .order('fecha_venta', { ascending: false })
-            .limit(Constants.LIMITS.MAX_VENTAS_POR_CARGA);
+            .limit(200);
             
         if (error) throw error;
         
         StateManager.setVentas(data);
         
-        // Usar la nueva visualización agrupada
-        const { updateSalesTableView } = await import('../ui/sales-table.js');
-        updateSalesTableView(true);
+        // Actualizar vista
+        displaySales(data);
         
-        // Actualizar estadísticas de ventas del día
+        // Actualizar estadísticas
         updateSalesStatistics();
         
-        return data;
     } catch (error) {
         console.error('Error recargando ventas:', error);
         notificationManager.error('Error al recargar ventas');
-        return [];
     }
 }
 
@@ -292,18 +270,85 @@ function updateSalesStatistics() {
     }
 }
 
-// Función para mostrar ventas en la tabla (mantenida para compatibilidad)
+// Función para mostrar ventas
 export function displaySales(data) {
-    // Esta función ya no se usa directamente, pero se mantiene por compatibilidad
-    // La visualización real ahora está en sales-table.js
-    const { updateSalesTableView } = import('../ui/sales-table.js');
-    updateSalesTableView(true);
+    const tbody = document.getElementById('ventasBody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    if (data.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 40px; color: #64748b;">
+                    <i class="fas fa-inbox"></i> No hay ventas registradas
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    data.forEach(item => {
+        const fechaFormateada = DateTimeUtils.formatToChileTime(item.fecha_venta);
+        const descuento = parseFloat(item.descuento || 0);
+        
+        const rowHTML = `
+            <tr>
+                <td>${StringUtils.escapeHTML(item.codigo_barras)}</td>
+                <td>${item.cantidad}</td>
+                <td>$${parseFloat(item.precio_unitario || 0).toFixed(2)}</td>
+                <td>${descuento > 0 ? `-$${descuento.toFixed(2)}` : '$0.00'}</td>
+                <td><strong>$${parseFloat(item.total || 0).toFixed(2)}</strong></td>
+                <td>${StringUtils.escapeHTML(item.descripcion || '')}</td>
+                <td>${fechaFormateada}</td>
+                <td>
+                    <button class="action-btn btn-edit" 
+                            data-codigo="${StringUtils.escapeHTML(item.codigo_barras)}" 
+                            data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button class="action-btn btn-delete" 
+                            data-codigo="${StringUtils.escapeHTML(item.codigo_barras)}" 
+                            data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}" 
+                            data-cantidad="${item.cantidad}">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </td>
+            </tr>
+        `;
+        
+        tbody.innerHTML += rowHTML;
+    });
+    
+    // Configurar event listeners
+    setupSalesRowEventListeners();
 }
 
-// ========== FUNCIONES PARA VENTAS INDIVIDUALES ==========
+function setupSalesRowEventListeners() {
+    document.querySelectorAll('#ventasBody .btn-edit').forEach(button => {
+        button.addEventListener('click', function() {
+            const codigo = this.getAttribute('data-codigo');
+            const fecha = this.getAttribute('data-fecha');
+            editSale(codigo, fecha);
+        });
+    });
+    
+    document.querySelectorAll('#ventasBody .btn-delete').forEach(button => {
+        button.addEventListener('click', function() {
+            const codigo = this.getAttribute('data-codigo');
+            const fecha = this.getAttribute('data-fecha');
+            const cantidad = parseInt(this.getAttribute('data-cantidad'));
+            deleteSale(codigo, fecha, cantidad);
+        });
+    });
+}
 
-// Función para abrir el modal de agregar venta
+// ========== FUNCIONES PARA AGREGAR VENTAS ==========
+
+// Función para abrir modal de agregar venta
 export function openAddSaleModal() {
+    console.log('➕ Abriendo modal de agregar venta');
+    
     StateManager.productoSeleccionado = null;
     document.getElementById('buscarProducto').value = '';
     document.getElementById('resultadosBusqueda').innerHTML = '';
@@ -315,14 +360,6 @@ export function openAddSaleModal() {
     document.getElementById('ventaDescripcion').value = '';
     document.getElementById('ventaTotal').textContent = '$0.00';
     document.getElementById('fechaVentaActual').textContent = DateTimeUtils.getCurrentChileDate();
-    
-    if (!navigator.onLine) {
-        document.getElementById('modalAgregarVenta').classList.add('offline-mode');
-        document.querySelector('#modalAgregarVenta .modal-header h2').innerHTML = '<i class="fas fa-wifi-slash"></i> Agregar Venta (Modo Offline)';
-    } else {
-        document.getElementById('modalAgregarVenta').classList.remove('offline-mode');
-        document.querySelector('#modalAgregarVenta .modal-header h2').textContent = 'Agregar Venta Manual';
-    }
     
     modalManager.open(Constants.MODAL_IDS.ADD_SALE);
 }
@@ -369,6 +406,7 @@ export function searchProducts() {
     resultadosDiv.innerHTML = html;
     resultadosDiv.style.display = 'block';
     
+    // Agregar event listeners
     document.querySelectorAll('#resultadosBusqueda div').forEach(div => {
         div.addEventListener('click', function() {
             const codigo = this.getAttribute('data-codigo');
@@ -377,7 +415,7 @@ export function searchProducts() {
     });
 }
 
-// Función para seleccionar un producto
+// Función para seleccionar producto
 export function selectProduct(codigoBarras) {
     StateManager.productoSeleccionado = StateManager.getProducto(codigoBarras);
     
@@ -393,7 +431,6 @@ export function selectProduct(codigoBarras) {
         const ventaCantidadInput = document.getElementById('ventaCantidad');
         if (ventaCantidadInput) {
             ventaCantidadInput.max = StateManager.productoSeleccionado.cantidad;
-            ventaCantidadInput.setAttribute('max', StateManager.productoSeleccionado.cantidad);
         }
         
         document.getElementById('resultadosBusqueda').style.display = 'none';
@@ -402,7 +439,7 @@ export function selectProduct(codigoBarras) {
     }
 }
 
-// Función para calcular el total de la venta
+// Función para calcular total de venta
 export function calculateSaleTotal() {
     const cantidad = parseInt(document.getElementById('ventaCantidad').value) || 0;
     const precio = parseFloat(document.getElementById('ventaPrecio').value) || 0;
@@ -412,7 +449,7 @@ export function calculateSaleTotal() {
     document.getElementById('ventaTotal').textContent = `$${total.toFixed(2)}`;
 }
 
-// Función para guardar una nueva venta
+// Función para guardar nueva venta
 export async function saveNewSale() {
     if (!StateManager.productoSeleccionado) {
         notificationManager.error('❌ Primero selecciona un producto');
@@ -442,12 +479,10 @@ export async function saveNewSale() {
         precio_unitario: precio,
         descuento: descuento,
         descripcion: descripcion || StateManager.productoSeleccionado.descripcion || '',
-        fecha_venta: DateTimeUtils.getCurrentChileISO(),
-        // Para compatibilidad con ventas múltiples
-        id_venta_agrupada: `IND-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        numero_linea: 1
+        fecha_venta: DateTimeUtils.getCurrentChileISO()
     };
     
+    // Modo offline
     if (!navigator.onLine) {
         const { saveSaleOffline } = await import('./offline.js');
         saveSaleOffline(ventaData);
@@ -455,19 +490,15 @@ export async function saveNewSale() {
         const { updateLocalInventory } = await import('./offline.js');
         updateLocalInventory(codigoBarras, -cantidad);
         
-        notificationManager.warning('📴 Venta guardada localmente. Se sincronizará cuando haya internet');
+        notificationManager.warning('📴 Venta guardada localmente');
         modalManager.close(Constants.MODAL_IDS.ADD_SALE);
-        
-        const { updateLocalInventoryView } = await import('./offline.js');
-        updateLocalInventoryView();
         return;
     }
     
     try {
-        const { data: ventaInsertada, error: errorVenta } = await supabaseClient
+        const { error: errorVenta } = await supabaseClient
             .from(Constants.API_ENDPOINTS.SALES_TABLE)
-            .insert([ventaData])
-            .select();
+            .insert([ventaData]);
             
         if (errorVenta) throw errorVenta;
         
@@ -490,7 +521,7 @@ export async function saveNewSale() {
         
         updateLocalInventoryRow(codigoBarras, nuevoStock);
         
-        // Recargar ventas después de agregar una nueva
+        // Recargar ventas
         await reloadSalesData();
         
         notificationManager.success('✅ Venta registrada correctamente');
@@ -510,15 +541,12 @@ export async function saveNewSale() {
         
         notificationManager.warning('⚠️ Error de conexión. Venta guardada localmente');
         modalManager.close(Constants.MODAL_IDS.ADD_SALE);
-        
-        const { updateLocalInventoryView } = await import('./offline.js');
-        updateLocalInventoryView();
     }
 }
 
-// ========== FUNCIONES DE REPORTES Y EXPORTACIÓN ==========
+// ========== FUNCIONES DE REPORTES ==========
 
-// Función para mostrar el reporte de encargos pendientes
+// Función para mostrar encargos pendientes
 export async function showPendingOrdersReport() {
     const inventario = StateManager.getInventario();
     const encargos = inventario.filter(producto => producto.cantidad < 0);
@@ -535,16 +563,10 @@ export async function showPendingOrdersReport() {
     
     tbody.innerHTML = '';
     
-    let totalUnidadesPendientes = 0;
-    let inversionTotal = 0;
-    
     encargos.forEach(producto => {
         const cantidadPendiente = Math.abs(producto.cantidad);
         const costoUnitario = parseFloat(producto.costo || 0);
         const costoProducto = cantidadPendiente * costoUnitario;
-        
-        totalUnidadesPendientes += cantidadPendiente;
-        inversionTotal += costoProducto;
         
         const row = `
             <tr style="border-bottom: 1px solid #e2e8f0;">
@@ -565,21 +587,8 @@ export async function showPendingOrdersReport() {
         tbody.innerHTML += row;
     });
     
-    const totalRow = `
-        <tr style="background: #f8fafc; font-weight: bold;">
-            <td style="padding: 12px; color: #475569;" colspan="2">TOTAL GENERAL</td>
-            <td style="padding: 12px; color: #dc2626;">${totalUnidadesPendientes} unidades</td>
-            <td style="padding: 12px; color: #dc2626;">
-                <div>Inversión total:</div>
-                <div style="font-size: 18px;">$${inversionTotal.toFixed(2)}</div>
-            </td>
-        </tr>
-    `;
-    
-    tbody.innerHTML += totalRow;
-    
     modalManager.open(Constants.MODAL_IDS.ORDERS);
-    notificationManager.success(`💰 Inversión requerida: $${inversionTotal.toFixed(2)} para ${encargos.length} productos`);
+    notificationManager.success(`💰 Reporte de encargos generado`);
 }
 
 // Función para exportar a Excel
@@ -636,7 +645,7 @@ export function exportToExcel() {
 
 // ========== CONFIGURACIÓN DE EVENT LISTENERS ==========
 
-// Funciones auxiliares para configuración de event listeners
+// Función para configurar event listeners del modal de edición
 function setupModalEventListeners() {
     const editCantidad = document.getElementById('editVentaCantidad');
     const editDescuento = document.getElementById('editVentaDescuento');
@@ -652,8 +661,6 @@ function setupModalEventListeners() {
     
     if (editPrecio) {
         editPrecio.addEventListener('input', calculateNewTotalWithDiscount);
-        editPrecio.readOnly = true;
-        editPrecio.style.cursor = 'not-allowed';
     }
     
     const saveVentaBtn = document.getElementById('save-venta');
@@ -673,6 +680,7 @@ function setupModalEventListeners() {
     }
 }
 
+// Función para configurar event listeners de agregar venta
 function setupAddSaleEventListeners() {
     const agregarVentaBtn = document.getElementById('agregar-venta-btn');
     const saveAgregarVentaBtn = document.getElementById('save-agregar-venta');
@@ -717,6 +725,7 @@ function setupAddSaleEventListeners() {
     }
 }
 
+// Función para configurar otros event listeners
 function setupOtherEventListeners() {
     const exportarExcelBtn = document.getElementById('exportar-excel-btn');
     const reporteEncargosBtn = document.getElementById('reporte-encargos-btn');
@@ -740,9 +749,11 @@ function setupOtherEventListeners() {
     }
 }
 
-// Función principal para configurar todos los event listeners de ventas
+// Función principal para configurar todos los event listeners
 export function setupSalesEventListeners() {
     setupModalEventListeners();
     setupAddSaleEventListeners();
     setupOtherEventListeners();
+    
+    console.log('✅ Event listeners de ventas configurados');
 }
