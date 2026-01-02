@@ -1,6 +1,6 @@
 import { checkAuth, setupAuthEventListeners } from './modules/auth.js';
-import ModalManager from './ui/modals.js';
-import NotificationManager from './ui/notifications.js';
+import modalManager from './ui/modals.js';
+import notificationManager from './ui/notifications.js';
 import { setupTabNavigation, setupSearch } from './ui/search.js';
 import { setupSalesEventListeners } from './modules/ventas.js';
 import { setupInventoryEventListeners } from './modules/inventario.js';
@@ -24,7 +24,7 @@ class InventarioApp {
         
         document.addEventListener('DOMContentLoaded', () => {
             setupAuthEventListeners();
-            ModalManager.setupModalCloseEvents();
+            modalManager.setupModalCloseEvents();
             setupTabNavigation();
             setupSearch();
             setupSalesEventListeners();
@@ -50,27 +50,30 @@ class InventarioApp {
         const fechaVentaActualElement = document.getElementById('fechaVentaActual');
         
         if (fechaHoyElement) {
-            const { DateTimeUtils } = await import('./modules/utils.js');
-            fechaHoyElement.textContent = DateTimeUtils.getCurrentChileDate();
+            import('./modules/utils.js').then(({ DateTimeUtils }) => {
+                fechaHoyElement.textContent = DateTimeUtils.getCurrentChileDate();
+            });
         }
         
-        if (fechaVentaActualElement && ModalManager.isOpen('modalAgregarVenta')) {
-            const { DateTimeUtils } = await import('./modules/utils.js');
-            fechaVentaActualElement.textContent = DateTimeUtils.getCurrentChileDate();
+        if (fechaVentaActualElement && modalManager.isOpen('modalAgregarVenta')) {
+            import('./modules/utils.js').then(({ DateTimeUtils }) => {
+                fechaVentaActualElement.textContent = DateTimeUtils.getCurrentChileDate();
+            });
         }
     }
     
     handleOnlineStatus() {
-        NotificationManager.success('🌐 Conexión a internet restablecida');
+        notificationManager.success('🌐 Conexión a internet restablecida');
         
         setTimeout(() => {
-            const { syncPendingSales } = await import('./modules/offline.js');
-            syncPendingSales();
+            import('./modules/offline.js').then(({ syncPendingSales }) => {
+                syncPendingSales();
+            });
         }, 3000);
     }
     
     handleOfflineStatus() {
-        NotificationManager.warning('📴 Modo offline activado. Las ventas se guardarán localmente');
+        notificationManager.warning('📴 Modo offline activado. Las ventas se guardarán localmente');
     }
 }
 
