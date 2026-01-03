@@ -473,7 +473,7 @@ export async function registrarVentaMultiple() {
                 precio_unitario: linea.precio,
                 descuento: linea.descuento,
                 descripcion: linea.descripcion || linea.producto.descripcion || '',
-                fecha_venta: DateTimeUtils.getCurrentChileISO(),
+                fecha_venta: new Date().toLocaleString('en-CA'),
                 id_venta_agrupada: idVentaActual,
                 numero_linea: i + 1
             };
