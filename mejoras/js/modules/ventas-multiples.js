@@ -473,7 +473,16 @@ export async function registrarVentaMultiple() {
                 precio_unitario: linea.precio,
                 descuento: linea.descuento,
                 descripcion: linea.descripcion || linea.producto.descripcion || '',
-                fecha_venta: new Date().toLocaleString('en-CA'),
+                fecha_venta: function() {
+                    const ahora = new Date();
+                    const año = ahora.getFullYear();
+                    const mes = (ahora.getMonth() + 1).toString().padStart(2, '0');
+                    const dia = ahora.getDate().toString().padStart(2, '0');
+                    const hora = ahora.getHours().toString().padStart(2, '0');
+                    const minutos = ahora.getMinutes().toString().padStart(2, '0');
+                    const segundos = ahora.getSeconds().toString().padStart(2, '0');
+                    return `${año}-${mes}-${dia} ${hora}:${minutos}:${segundos}.000`;
+                }(),
                 id_venta_agrupada: idVentaActual,
                 numero_linea: i + 1
             };
