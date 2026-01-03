@@ -1,10 +1,8 @@
 import { StateManager, Constants } from '../config/supabase-config.js';
 import { DateTimeUtils, StringUtils } from '../modules/utils.js';
 import notificationManager from './notifications.js';
+import { supabaseClient } from '../config/supabase-config.js';
 
-// ========== FUNCIONES PARA VISUALIZACIÓN AGRUPADA ==========
-
-// Función para agrupar ventas por id_venta_agrupada
 export function agruparVentas(ventas) {
     const ventasAgrupadas = {};
     
@@ -26,13 +24,11 @@ export function agruparVentas(ventas) {
         ventasAgrupadas[idVenta].items.push(venta);
     });
     
-    // Convertir a array y ordenar por fecha (más reciente primero)
     return Object.values(ventasAgrupadas).sort((a, b) => 
         new Date(b.fecha) - new Date(a.fecha)
     );
 }
 
-// Función para mostrar ventas agrupadas en la tabla
 export function displayGroupedSales(ventasAgrupadas) {
     const tbody = document.getElementById('ventasBody');
     if (!tbody) return;
@@ -50,7 +46,6 @@ export function displayGroupedSales(ventasAgrupadas) {
         return;
     }
     
-    // Calcular total de ventas de hoy
     const hoyChile = DateTimeUtils.getTodayChileDate();
     const totalHoy = ventasAgrupadas
         .filter(v => v.fecha && v.fecha.split('T')[0] === hoyChile)
@@ -61,12 +56,10 @@ export function displayGroupedSales(ventasAgrupadas) {
         ventasHoyElement.textContent = `$${totalHoy.toFixed(2)}`;
     }
     
-    // Crear filas agrupadas
     ventasAgrupadas.forEach(grupo => {
         const fechaFormateada = DateTimeUtils.formatToChileTime(grupo.fecha);
         const icono = grupo.expandida ? '🔽' : '▶';
         
-        // Fila principal (agrupada)
         const mainRow = `
             <tr class="venta-agrupada" data-venta-id="${StringUtils.escapeHTML(grupo.id_venta)}">
                 <td colspan="2" style="font-weight: bold; color: #1e293b;">
@@ -94,7 +87,6 @@ export function displayGroupedSales(ventasAgrupadas) {
         
         tbody.innerHTML += mainRow;
         
-        // Filas detalladas (si está expandida)
         if (grupo.expandida) {
             grupo.items.forEach((item, index) => {
                 const fechaItem = DateTimeUtils.formatToChileTime(item.fecha_venta);
@@ -113,15 +105,10 @@ export function displayGroupedSales(ventasAgrupadas) {
                         <td style="color: #64748b; font-size: 13px;">${StringUtils.escapeHTML(item.descripcion || '')}</td>
                         <td style="color: #64748b; font-size: 13px;">${fechaItem}</td>
                         <td style="color: #64748b; font-size: 13px;">
-                            <button class="action-btn btn-edit editar-item-venta" 
-                                    data-codigo="${StringUtils.escapeHTML(item.codigo_barras)}" 
-                                    data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}">
+                            <button class="action-btn btn-edit editar-item-venta" data-id="${item.id}">
                                 <i class="fas fa-edit"></i> Editar
                             </button>
-                            <button class="action-btn btn-delete eliminar-item-venta" 
-                                    data-codigo="${StringUtils.escapeHTML(item.codigo_barras)}" 
-                                    data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}"
-                                    data-cantidad="${item.cantidad}">
+                            <button class="action-btn btn-delete eliminar-item-venta" data-id="${item.id}" data-cantidad="${item.cantidad}">
                                 <i class="fas fa-trash"></i> Eliminar
                             </button>
                         </td>
@@ -133,13 +120,10 @@ export function displayGroupedSales(ventasAgrupadas) {
         }
     });
     
-    // Configurar event listeners para las filas agrupadas
     setupGroupedSalesEventListeners();
 }
 
-// Función para configurar event listeners de la tabla agrupada
 function setupGroupedSalesEventListeners() {
-    // Botones para expandir/contraer
     document.querySelectorAll('.toggle-venta').forEach(button => {
         button.addEventListener('click', function() {
             const idVenta = this.getAttribute('data-venta');
@@ -147,7 +131,6 @@ function setupGroupedSalesEventListeners() {
         });
     });
     
-    // Botones para eliminar venta agrupada
     document.querySelectorAll('.eliminar-venta-agrupada').forEach(button => {
         button.addEventListener('click', function() {
             const idVenta = this.getAttribute('data-venta');
@@ -155,52 +138,40 @@ function setupGroupedSalesEventListeners() {
         });
     });
     
-    // Botones para editar items individuales
     document.querySelectorAll('.editar-item-venta').forEach(button => {
         button.addEventListener('click', function() {
-            const codigo = this.getAttribute('data-codigo');
-            const fecha = this.getAttribute('data-fecha');
+            const id = this.getAttribute('data-id');
             
-            // Importar y usar la función de edición existente
             import('../modules/ventas.js').then(module => {
-                module.editSale(codigo, fecha);
+                module.editSale(id);
             });
         });
     });
     
-    // Botones para eliminar items individuales
     document.querySelectorAll('.eliminar-item-venta').forEach(button => {
         button.addEventListener('click', function() {
-            const codigo = this.getAttribute('data-codigo');
-            const fecha = this.getAttribute('data-fecha');
+            const id = this.getAttribute('data-id');
             const cantidad = parseInt(this.getAttribute('data-cantidad'));
             
-            // Importar y usar la función de eliminación existente
             import('../modules/ventas.js').then(module => {
-                module.deleteSale(codigo, fecha, cantidad);
+                module.deleteSale(id, cantidad);
             });
         });
     });
 }
 
-// Función para expandir/contraer una venta
 function toggleVentaExpandida(idVenta) {
-    // Actualizar estado en StateManager o recargar vista
-    // Por simplicidad, recargamos toda la tabla con el estado actualizado
     const ventas = StateManager.ventas;
     const ventasAgrupadas = agruparVentas(ventas);
     
-    // Buscar y toggle el estado de expandida
     const grupoIndex = ventasAgrupadas.findIndex(g => g.id_venta === idVenta);
     if (grupoIndex !== -1) {
         ventasAgrupadas[grupoIndex].expandida = !ventasAgrupadas[grupoIndex].expandida;
     }
     
-    // Volver a mostrar
     displayGroupedSales(ventasAgrupadas);
 }
 
-// Función para eliminar una venta agrupada completa
 async function eliminarVentaAgrupada(idVenta) {
     if (!confirm(`¿Eliminar toda la venta ${idVenta}?\nEsta acción eliminará todos los productos de esta venta y restaurará el stock.`)) {
         return;
@@ -209,7 +180,6 @@ async function eliminarVentaAgrupada(idVenta) {
     try {
         notificationManager.info('🔄 Eliminando venta agrupada...');
         
-        // Buscar todas las ventas con este id_venta_agrupada
         const ventasAEliminar = StateManager.ventas.filter(v => 
             v.id_venta_agrupada === idVenta
         );
@@ -221,18 +191,14 @@ async function eliminarVentaAgrupada(idVenta) {
         
         let eliminacionesExitosas = 0;
         
-        // Eliminar cada item de la venta
         for (const venta of ventasAEliminar) {
             try {
-                // Eliminar de la base de datos
                 const { error } = await supabaseClient
                     .from(Constants.API_ENDPOINTS.SALES_TABLE)
                     .delete()
-                    .eq('barcode', venta.codigo_barras)
-                    .eq('fecha_venta', venta.fecha_venta);
+                    .eq('id', venta.id);
                 
                 if (!error) {
-                    // Restaurar stock
                     const producto = StateManager.getProducto(venta.codigo_barras);
                     if (producto) {
                         const nuevoStock = producto.cantidad + venta.cantidad;
@@ -245,7 +211,6 @@ async function eliminarVentaAgrupada(idVenta) {
                             })
                             .eq('barcode', venta.codigo_barras);
                         
-                        // Actualizar StateManager
                         StateManager.updateInventoryItem(venta.codigo_barras, {
                             cantidad: nuevoStock,
                             fecha_actualizacion: new Date().toISOString()
@@ -260,7 +225,6 @@ async function eliminarVentaAgrupada(idVenta) {
         }
         
         if (eliminacionesExitosas > 0) {
-            // Recargar ventas
             const { loadSalesData } = await import('../modules/inventario.js');
             await loadSalesData();
             
@@ -275,7 +239,6 @@ async function eliminarVentaAgrupada(idVenta) {
     }
 }
 
-// Función para exportar ventas agrupadas a CSV
 export function exportGroupedSalesToCSV() {
     const ventas = StateManager.ventas;
     
@@ -284,14 +247,12 @@ export function exportGroupedSalesToCSV() {
         return;
     }
     
-    // Preparar datos para CSV
     let csv = Constants.EXPORT_COLUMNS.VENTAS.join(',') + '\n';
     
     ventas.forEach(venta => {
         const row = Constants.EXPORT_COLUMNS.VENTAS.map(columna => {
             let valor = venta[columna];
             
-            // Formatear valores especiales
             if (columna === 'fecha_venta') {
                 valor = DateTimeUtils.formatToChileTime(valor);
             } else if (typeof valor === 'string' && valor.includes(',')) {
@@ -306,7 +267,6 @@ export function exportGroupedSalesToCSV() {
         csv += row.join(',') + '\n';
     });
     
-    // Crear y descargar archivo
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -320,7 +280,6 @@ export function exportGroupedSalesToCSV() {
     notificationManager.success('Archivo CSV exportado correctamente');
 }
 
-// Función para actualizar tabla según el modo (agrupado o detallado)
 export function updateSalesTableView(modoAgrupado = true) {
     const ventas = StateManager.ventas;
     
@@ -328,7 +287,6 @@ export function updateSalesTableView(modoAgrupado = true) {
         const ventasAgrupadas = agruparVentas(ventas);
         displayGroupedSales(ventasAgrupadas);
     } else {
-        // Usar la función de visualización original
         import('../modules/inventario.js').then(module => {
             module.displaySales(ventas);
         });
