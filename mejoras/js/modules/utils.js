@@ -1,37 +1,30 @@
+// mejoras/js/modules/utils.js - VERSIÓN SIMPLIFICADA
 import { StateManager, Constants } from '../config/supabase-config.js';
 
 const DateTimeUtils = {
     getCurrentChileISO() {
-        const ahora = new Date();
-        // Devolver en formato ISO (UTC)
-        return ahora.toISOString();
+        // Simplemente devuelve la hora actual en ISO
+        return new Date().toISOString();
     },
     
     formatToChileTime(dateString) {
         if (!dateString) return 'Sin fecha';
         
         try {
-            let fecha = new Date(dateString);
+            // La fecha viene en UTC desde Supabase
+            const fecha = new Date(dateString);
             if (isNaN(fecha.getTime())) return 'Fecha inválida';
             
-            // IMPORTANTE: La fecha viene en UTC desde Supabase
-            // Chile está en UTC-3 (horario estándar) o UTC-4 (horario de verano)
-            // Vamos a usar UTC-3 como estándar
+            // Usar la hora local del navegador (que debería estar en Chile)
+            // No aplicar ningún offset manual
+            const fechaLocal = new Date(fecha);
             
-            // OPCIÓN 1: Usar hora local del navegador (si está configurado en Chile)
-            // const fechaChile = new Date(fecha);
-            
-            // OPCIÓN 2: Ajustar manualmente a UTC-3 (Chile continental)
-            // 3 horas = 3 * 60 * 60 * 1000 = 10,800,000 milisegundos
-            const offsetChile = -3; // UTC-3 para Chile
-            const fechaChile = new Date(fecha.getTime() + (offsetChile * 60 * 60 * 1000));
-            
-            const dia = fechaChile.getDate().toString().padStart(2, '0');
-            const mes = (fechaChile.getMonth() + 1).toString().padStart(2, '0');
-            const año = fechaChile.getFullYear();
-            const hora = fechaChile.getHours().toString().padStart(2, '0');
-            const minutos = fechaChile.getMinutes().toString().padStart(2, '0');
-            const segundos = fechaChile.getSeconds().toString().padStart(2, '0');
+            const dia = fechaLocal.getDate().toString().padStart(2, '0');
+            const mes = (fechaLocal.getMonth() + 1).toString().padStart(2, '0');
+            const año = fechaLocal.getFullYear();
+            const hora = fechaLocal.getHours().toString().padStart(2, '0');
+            const minutos = fechaLocal.getMinutes().toString().padStart(2, '0');
+            const segundos = fechaLocal.getSeconds().toString().padStart(2, '0');
             
             return `${dia}/${mes}/${año} ${hora}:${minutos}:${segundos}`;
         } catch (error) {
@@ -44,42 +37,36 @@ const DateTimeUtils = {
         if (!dateString) return '--:--';
         
         try {
-            let fecha = new Date(dateString);
+            const fecha = new Date(dateString);
             if (isNaN(fecha.getTime())) return '--:--';
             
-            // Mismo ajuste que formatToChileTime
-            const offsetChile = -3;
-            const fechaChile = new Date(fecha.getTime() + (offsetChile * 60 * 60 * 1000));
-            
-            return `${fechaChile.getHours().toString().padStart(2, '0')}:${fechaChile.getMinutes().toString().padStart(2, '0')}`;
+            const fechaLocal = new Date(fecha);
+            return `${fechaLocal.getHours().toString().padStart(2, '0')}:${fechaLocal.getMinutes().toString().padStart(2, '0')}`;
         } catch (error) {
             return '--:--';
         }
     },
     
     getCurrentChileDate() {
-        const ahora = new Date();
-        
-        // Ajustar a hora Chile
-        const offsetChile = -3;
-        const fechaChile = new Date(ahora.getTime() + (offsetChile * 60 * 60 * 1000));
+        // Usar fecha local del navegador
+        const fecha = new Date();
         
         const opciones = { 
             weekday: 'long', 
             year: 'numeric', 
             month: 'long', 
-            day: 'numeric'
+            day: 'numeric',
+            timeZone: 'America/Santiago' // Especificar zona horaria explícitamente
         };
         
-        return fechaChile.toLocaleDateString('es-CL', opciones);
+        return fecha.toLocaleDateString('es-CL', opciones);
     },
     
     getTodayChileDate() {
-        const ahora = new Date();
+        const fecha = new Date();
         
-        // Ajustar a hora Chile
-        const offsetChile = -3;
-        const fechaChile = new Date(ahora.getTime() + (offsetChile * 60 * 60 * 1000));
+        // Especificar zona horaria de Chile
+        const fechaChile = new Date(fecha.toLocaleString('en-US', { timeZone: 'America/Santiago' }));
         
         const año = fechaChile.getFullYear();
         const mes = (fechaChile.getMonth() + 1).toString().padStart(2, '0');
@@ -88,23 +75,23 @@ const DateTimeUtils = {
         return `${año}-${mes}-${dia}`;
     },
     
-    // Función adicional para debug
-    getTimeDebug(dateString) {
-        if (!dateString) return 'No date';
-        
+    // Función para debug: muestra las horas en diferentes formatos
+    debugTime(dateString) {
         const fecha = new Date(dateString);
-        const fechaChile = new Date(fecha.getTime() + (-3 * 60 * 60 * 1000));
+        const ahora = new Date();
         
-        return {
-            original: fechaString,
-            fechaUTC: fecha.toISOString(),
-            fechaChile: fechaChile.toISOString(),
-            horaChile: fechaChile.getHours() + ':' + fechaChile.getMinutes(),
-            offset: -3
-        };
+        console.log('=== DEBUG HORA ===');
+        console.log('Hora PC actual:', ahora.toLocaleString('es-CL', { timeZone: 'America/Santiago' }));
+        console.log('Fecha de Supabase (UTC):', fecha.toISOString());
+        console.log('Fecha de Supabase (Chile):', fecha.toLocaleString('es-CL', { timeZone: 'America/Santiago' }));
+        console.log('Diferencia minutos:', (fecha.getTime() - ahora.getTime()) / 60000);
+        console.log('=== FIN DEBUG ===');
+        
+        return fecha.toLocaleString('es-CL', { timeZone: 'America/Santiago' });
     }
 };
 
+// ... el resto del archivo se mantiene igual
 const InventoryUtils = {
     getStockStatus(cantidad) {
         if (cantidad <= Constants.STOCK_LEVELS.VERY_LOW) {
