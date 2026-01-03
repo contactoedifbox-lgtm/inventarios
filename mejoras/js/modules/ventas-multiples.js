@@ -589,7 +589,7 @@ export async function registrarVentaMultiple() {
             });
             
             // Actualizar fila en tabla de inventario (si está visible)
-            actualizarFilaInventarioEnDOM(linea.producto.codigo_barras, nuevoStock);
+            InventoryUISync.updateSingleInventoryRow(linea.producto.codigo_barras, nuevoStock);
         }
         
         // Cerrar modal
