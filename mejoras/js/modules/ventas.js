@@ -110,7 +110,7 @@ function updateLocalInventoryAfterSaleEdit(nuevaCantidad, barcode) {
             fecha_actualizacion: new Date().toISOString()
         });
         
-        updateLocalInventoryRow(barcode, nuevoStock);
+        InventoryUISync.updateSingleInventoryRow(barcode, nuevoStock);
     }
 }
 
@@ -533,7 +533,7 @@ export async function saveNewSale() {
             fecha_actualizacion: new Date().toISOString()
         });
         
-        updateLocalInventoryRow(codigoBarras, nuevoStock);
+        InventoryUISync.updateSingleInventoryRow(codigoBarras, nuevoStock);
         
         // Recargar ventas
         const { loadSalesData } = await import('./inventario.js');
