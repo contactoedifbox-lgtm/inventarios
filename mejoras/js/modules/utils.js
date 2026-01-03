@@ -1,4 +1,4 @@
-import { Constants } from '../config/supabase-config.js';
+import { StateManager, Constants } from '../config/supabase-config.js';
 
 const DateTimeUtils = {
     getCurrentChileISO() {
@@ -119,17 +119,13 @@ const StringUtils = {
     }
 };
 
-// ========== FUNCIONES NUEVAS PARA VENTAS MÚLTIPLES ==========
-
 const SalesUtils = {
-    // Generar ID único para venta agrupada
     generateGroupedSaleId() {
         const timestamp = Date.now();
         const random = Math.floor(Math.random() * 1000);
         return `${Constants.VENTA_PREFIX}${timestamp}${random}`;
     },
     
-    // Validar línea de venta
     validateSaleLine(linea) {
         const errors = [];
         
@@ -169,7 +165,6 @@ const SalesUtils = {
         };
     },
     
-    // Formatear número como moneda
     formatCurrency(amount) {
         return new Intl.NumberFormat('es-CL', {
             style: 'currency',
@@ -179,7 +174,6 @@ const SalesUtils = {
         }).format(amount);
     },
     
-    // Obtener productos únicos de un array de líneas
     getUniqueProducts(lineas) {
         const productosUnicos = [];
         const codigosVistos = new Set();
@@ -195,4 +189,56 @@ const SalesUtils = {
     }
 };
 
-export { DateTimeUtils, InventoryUtils, StringUtils, SalesUtils };
+// ========== FUNCIÓN COMPARTIDA PARA ACTUALIZACIÓN INCREMENTAL ==========
+
+/**
+ * Actualiza una fila específica en la tabla de inventario
+ * Usada por ventas múltiples, eliminación individual y eliminación agrupada
+ */
+const InventoryUISync = {
+    updateSingleInventoryRow(barcode, nuevoStock) {
+        const producto = StateManager.getProducto(barcode);
+        if (!producto) return;
+        
+        const tbody = document.getElementById('inventarioBody');
+        if (!tbody) return;
+        
+        const filas = tbody.getElementsByTagName('tr');
+        
+        for (let fila of filas) {
+            const codigoCelda = fila.cells[0].textContent.trim();
+            if (codigoCelda === barcode) {
+                const stockBadge = InventoryUtils.getStockStatus(nuevoStock);
+                const fecha = DateTimeUtils.formatToChileTime(producto.fecha_actualizacion);
+                
+                // Actualizar solo la fila afectada
+                fila.cells[1].innerHTML = producto.descripcion ? 
+                    StringUtils.escapeHTML(producto.descripcion) : 
+                    '<span style="color: #94a3b8;">Sin descripción</span>';
+                
+                fila.cells[2].innerHTML = `<span class="stock-badge ${stockBadge.class}">${nuevoStock} unidades</span>`;
+                fila.cells[3].textContent = `$${parseFloat(producto.costo || 0).toFixed(2)}`;
+                fila.cells[4].innerHTML = `<strong>$${parseFloat(producto.precio || 0).toFixed(2)}</strong>`;
+                fila.cells[5].textContent = fecha;
+                break;
+            }
+        }
+    },
+    
+    /**
+     * Actualiza múltiples productos en inventario después de eliminar venta agrupada
+     */
+    updateMultipleInventoryRows(actualizaciones) {
+        actualizaciones.forEach(({ barcode, nuevoStock }) => {
+            this.updateSingleInventoryRow(barcode, nuevoStock);
+        });
+    }
+};
+
+export { 
+    DateTimeUtils, 
+    InventoryUtils, 
+    StringUtils, 
+    SalesUtils, 
+    InventoryUISync 
+};
