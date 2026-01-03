@@ -6,9 +6,9 @@ import { setupSalesEventListeners } from './modules/ventas.js';
 import { setupInventoryEventListeners } from './modules/inventario.js';
 import { setupOfflineMonitoring } from './modules/offline.js';
 
-// ========== IMPORTAR MÓDULOS NUEVOS ==========
+// Importar módulos nuevos
 import { setupMultipleSalesEventListeners, openMultipleSaleModal } from './modules/ventas-multiples.js';
-import { updateSalesTableView } from './ui/sales-table.js';
+import { cambiarModoVisualizacionVentas } from './modules/inventario.js';
 
 class InventarioApp {
     constructor() {
@@ -48,10 +48,13 @@ class InventarioApp {
             // 2. Configurar event listeners del modal de venta múltiple
             setupMultipleSalesEventListeners();
             
-            // 3. Cambiar visualización de ventas a modo agrupado por defecto
+            // 3. Selector de modo de visualización (opcional - agregar en HTML si quieres)
+            // this.setupViewModeSelector();
+            
+            // 4. Por defecto, usar modo agrupado
             setTimeout(() => {
-                updateSalesTableView(true); // true = modo agrupado
-            }, 1000);
+                cambiarModoVisualizacionVentas('agrupado');
+            }, 1500);
             
             console.log('✅ Todos los event listeners configurados');
         });
@@ -105,6 +108,31 @@ class InventarioApp {
     
     handleOfflineStatus() {
         notificationManager.warning('📴 Modo offline activado. Las ventas se guardarán localmente');
+    }
+    
+    // Opcional: Selector de modo de visualización
+    setupViewModeSelector() {
+        const selectorHTML = `
+            <div style="margin-left: auto; display: flex; gap: 10px; align-items: center;">
+                <span style="font-size: 12px; color: #64748b;">Vista:</span>
+                <select id="viewModeSelector" style="padding: 5px 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <option value="agrupado">Agrupada</option>
+                    <option value="detallado">Detallada</option>
+                </select>
+            </div>
+        `;
+        
+        const tabsContainer = document.querySelector('.tabs');
+        if (tabsContainer) {
+            tabsContainer.insertAdjacentHTML('beforeend', selectorHTML);
+            
+            const selector = document.getElementById('viewModeSelector');
+            if (selector) {
+                selector.addEventListener('change', (e) => {
+                    cambiarModoVisualizacionVentas(e.target.value);
+                });
+            }
+        }
     }
 }
 
