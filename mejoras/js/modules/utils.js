@@ -6,64 +6,59 @@ const DateTimeUtils = {
     },
     
     formatToChileTime(dateString) {
-        if (!dateString) return 'Sin fecha';
+    if (!dateString) return 'Sin fecha';
+    
+    try {
+        console.log('📅 Fecha recibida de Supabase:', dateString);
         
-        try {
-            console.log('📅 Fecha recibida de Supabase:', dateString);
-            
-            // Convertir a objeto Date
-            let fecha;
-            
-            // Formato Supabase: "2026-01-02 13:00:08.443"
-            if (dateString.includes(' ') && dateString.includes(':')) {
-                // Supabase NO incluye info de zona horaria, asumimos que es UTC
-                const isoString = dateString.replace(' ', 'T') + 'Z';
-                fecha = new Date(isoString);
-                console.log('Convertido a Date (UTC):', fecha.toISOString());
-            } 
-            // Formato ISO con Z
-            else if (dateString.includes('T') && dateString.includes('Z')) {
-                fecha = new Date(dateString);
-            }
-            // Otro formato
-            else {
-                fecha = new Date(dateString);
-            }
-            
-            if (isNaN(fecha.getTime())) {
-                console.error('Fecha inválida:', dateString);
-                return 'Fecha inválida';
-            }
-            
-            // ⚠️⚠️⚠️ PROBLEMA IDENTIFICADO ⚠️⚠️⚠️
-            // La fecha viene como "13:00" (hora Chile) pero sin zona horaria
-            // JavaScript la interpreta como UTC, y al convertir a hora Chile
-            // le suma 3 horas -> 16:00
-            
-            // SOLUCIÓN: RESTAR 3 horas para compensar
-            const offsetChile = -3; // ⬅️ NEGATIVO para RESTAR
-            const fechaCorregida = new Date(fecha.getTime() + (offsetChile * 60 * 60 * 1000));
-            
-            console.log('Fecha corregida (restando 3h):', fechaCorregida.toISOString());
-            
-            // Formatear
-            const dia = fechaCorregida.getDate().toString().padStart(2, '0');
-            const mes = (fechaCorregida.getMonth() + 1).toString().padStart(2, '0');
-            const año = fechaCorregida.getFullYear();
-            const hora = fechaCorregida.getHours().toString().padStart(2, '0');
-            const minutos = fechaCorregida.getMinutes().toString().padStart(2, '0');
-            const segundos = fechaCorregida.getSeconds().toString().padStart(2, '0');
-            
-            const resultado = `${dia}/${mes}/${año} ${hora}:${minutos}:${segundos}`;
-            console.log('Resultado final:', resultado);
-            
-            return resultado;
-            
-        } catch (error) {
-            console.error('Error formateando fecha:', error);
-            return dateString || 'Sin fecha';
+        let fecha;
+        
+        // ⚠️¡IMPORTANTE! Tu fecha SÍ viene con T (es formato ISO)
+        if (dateString.includes('T')) {
+            // Es formato ISO: "2026-01-03T18:01:34.984" o "2026-01-03T18:01:34.984Z"
+            fecha = new Date(dateString);
+            console.log('Es formato ISO, Date creado:', fecha);
+        } 
+        else {
+            fecha = new Date(dateString);
         }
-    },
+        
+        if (isNaN(fecha.getTime())) {
+            console.error('Fecha inválida:', dateString);
+            return 'Fecha inválida';
+        }
+        
+        // ⚠️¡PROBLEMA! NO está entrando al if(dateString.includes('T'))
+        // porque la fecha viene con T, pero tal vez hay espacios extra
+        
+        // FORZAR LA CONVERSIÓN CORRECTA
+        const fechaUTC = new Date(dateString.trim()); // Trim por si hay espacios
+        
+        // RESTAR 3 HORAS MANUALMENTE
+        const offsetChile = 0; // Horas a restar
+        const fechaChile = new Date(fechaUTC.getTime() + (offsetChile * 60 * 60 * 1000));
+        
+        console.log('Fecha UTC original:', fechaUTC.toISOString());
+        console.log('Fecha Chile (UTC-3):', fechaChile.toISOString());
+        
+        // Formatear
+        const dia = fechaChile.getDate().toString().padStart(2, '0');
+        const mes = (fechaChile.getMonth() + 1).toString().padStart(2, '0');
+        const año = fechaChile.getFullYear();
+        const hora = fechaChile.getHours().toString().padStart(2, '0');
+        const minutos = fechaChile.getMinutes().toString().padStart(2, '0');
+        const segundos = fechaChile.getSeconds().toString().padStart(2, '0');
+        
+        const resultado = `${dia}/${mes}/${año} ${hora}:${minutos}:${segundos}`;
+        console.log('Resultado final:', resultado);
+        
+        return resultado;
+        
+    } catch (error) {
+        console.error('Error formateando fecha:', error, 'Date:', dateString);
+        return dateString || 'Sin fecha';
+    }
+},
     
     formatShortChileTime(dateString) {
         if (!dateString) return '--:--';
@@ -73,7 +68,7 @@ const DateTimeUtils = {
             if (isNaN(fecha.getTime())) return '--:--';
             
             // Misma corrección
-            const offsetChile = -3;
+            const offsetChile = 0;
             const fechaCorregida = new Date(fecha.getTime() + (offsetChile * 60 * 60 * 1000));
             
             return `${fechaCorregida.getHours().toString().padStart(2, '0')}:${fechaCorregida.getMinutes().toString().padStart(2, '0')}`;
