@@ -1,58 +1,63 @@
-// mejoras/js/modules/utils.js - CORRECCIÓN FINAL
 import { StateManager, Constants } from '../config/supabase-config.js';
 
 const DateTimeUtils = {
     getCurrentChileISO() {
-        // Devuelve la hora actual de Chile en formato ISO
-        const ahora = new Date();
-        return ahora.toISOString();
+        return new Date().toISOString();
     },
     
     formatToChileTime(dateString) {
         if (!dateString) return 'Sin fecha';
         
         try {
-            // La fecha viene en UTC desde Supabase
-            const fechaUTC = new Date(dateString);
-            if (isNaN(fechaUTC.getTime())) return 'Fecha inválida';
+            console.log('📅 Fecha recibida de Supabase:', dateString);
             
-            // IMPORTANTE: Supabase devuelve en UTC
-            // Chile está en UTC-3, así que para convertir UTC a hora Chile
-            // necesitamos RESTAR 3 horas: UTC - 3 = Hora Chile
-            // Pero JavaScript Date interpreta la fecha UTC como si fuera local
-            // así que necesitamos AJUSTAR LA DIFERENCIA
+            // Convertir a objeto Date
+            let fecha;
             
-            // Opción 1: Sumar 3 horas para compensar
-            // UTC 13:00 → Chile 10:00 (UTC-3)
-            // Si queremos mostrar 13:00 en Chile, sumamos 3
-            const offsetChile = 3; // IMPORTANTE: POSITIVO para sumar
-            const fechaChile = new Date(fechaUTC.getTime() + (offsetChile * 60 * 60 * 1000));
-            
-            // Opción 2: Formatear directamente con zona horaria de Chile
-            // Esta es más precisa
-            try {
-                const fechaFormateada = new Date(dateString).toLocaleString('es-CL', {
-                    timeZone: 'America/Santiago',
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: false
-                });
-                return fechaFormateada.replace(',', '');
-            } catch (e) {
-                // Fallback a cálculo manual
-                const dia = fechaChile.getDate().toString().padStart(2, '0');
-                const mes = (fechaChile.getMonth() + 1).toString().padStart(2, '0');
-                const año = fechaChile.getFullYear();
-                const hora = fechaChile.getHours().toString().padStart(2, '0');
-                const minutos = fechaChile.getMinutes().toString().padStart(2, '0');
-                const segundos = fechaChile.getSeconds().toString().padStart(2, '0');
-                
-                return `${dia}/${mes}/${año} ${hora}:${minutos}:${segundos}`;
+            // Formato Supabase: "2026-01-02 13:00:08.443"
+            if (dateString.includes(' ') && dateString.includes(':')) {
+                // Supabase NO incluye info de zona horaria, asumimos que es UTC
+                const isoString = dateString.replace(' ', 'T') + 'Z';
+                fecha = new Date(isoString);
+                console.log('Convertido a Date (UTC):', fecha.toISOString());
+            } 
+            // Formato ISO con Z
+            else if (dateString.includes('T') && dateString.includes('Z')) {
+                fecha = new Date(dateString);
             }
+            // Otro formato
+            else {
+                fecha = new Date(dateString);
+            }
+            
+            if (isNaN(fecha.getTime())) {
+                console.error('Fecha inválida:', dateString);
+                return 'Fecha inválida';
+            }
+            
+            // ⚠️⚠️⚠️ PROBLEMA IDENTIFICADO ⚠️⚠️⚠️
+            // La fecha viene como "13:00" (hora Chile) pero sin zona horaria
+            // JavaScript la interpreta como UTC, y al convertir a hora Chile
+            // le suma 3 horas -> 16:00
+            
+            // SOLUCIÓN: RESTAR 3 horas para compensar
+            const offsetChile = -3; // ⬅️ NEGATIVO para RESTAR
+            const fechaCorregida = new Date(fecha.getTime() + (offsetChile * 60 * 60 * 1000));
+            
+            console.log('Fecha corregida (restando 3h):', fechaCorregida.toISOString());
+            
+            // Formatear
+            const dia = fechaCorregida.getDate().toString().padStart(2, '0');
+            const mes = (fechaCorregida.getMonth() + 1).toString().padStart(2, '0');
+            const año = fechaCorregida.getFullYear();
+            const hora = fechaCorregida.getHours().toString().padStart(2, '0');
+            const minutos = fechaCorregida.getMinutes().toString().padStart(2, '0');
+            const segundos = fechaCorregida.getSeconds().toString().padStart(2, '0');
+            
+            const resultado = `${dia}/${mes}/${año} ${hora}:${minutos}:${segundos}`;
+            console.log('Resultado final:', resultado);
+            
+            return resultado;
             
         } catch (error) {
             console.error('Error formateando fecha:', error);
@@ -67,76 +72,55 @@ const DateTimeUtils = {
             const fecha = new Date(dateString);
             if (isNaN(fecha.getTime())) return '--:--';
             
-            try {
-                return new Date(dateString).toLocaleTimeString('es-CL', {
-                    timeZone: 'America/Santiago',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false
-                });
-            } catch (e) {
-                // Fallback
-                const fechaChile = new Date(fecha.getTime() + (3 * 60 * 60 * 1000));
-                return `${fechaChile.getHours().toString().padStart(2, '0')}:${fechaChile.getMinutes().toString().padStart(2, '0')}`;
-            }
+            // Misma corrección
+            const offsetChile = -3;
+            const fechaCorregida = new Date(fecha.getTime() + (offsetChile * 60 * 60 * 1000));
+            
+            return `${fechaCorregida.getHours().toString().padStart(2, '0')}:${fechaCorregida.getMinutes().toString().padStart(2, '0')}`;
         } catch (error) {
             return '--:--';
         }
     },
     
     getCurrentChileDate() {
+        const ahora = new Date();
+        
+        // Para mostrar fecha actual, usar hora local
         const opciones = { 
             weekday: 'long', 
             year: 'numeric', 
             month: 'long', 
-            day: 'numeric',
-            timeZone: 'America/Santiago'
+            day: 'numeric'
         };
         
-        return new Date().toLocaleDateString('es-CL', opciones);
+        return ahora.toLocaleDateString('es-CL', opciones);
     },
     
     getTodayChileDate() {
-        try {
-            const fechaChile = new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' });
-            const fecha = new Date(fechaChile);
-            
-            const año = fecha.getFullYear();
-            const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
-            const dia = fecha.getDate().toString().padStart(2, '0');
-            
-            return `${año}-${mes}-${dia}`;
-        } catch (e) {
-            // Fallback
-            const fecha = new Date();
-            const año = fecha.getFullYear();
-            const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
-            const dia = fecha.getDate().toString().padStart(2, '0');
-            return `${año}-${mes}-${dia}`;
-        }
+        const ahora = new Date();
+        const año = ahora.getFullYear();
+        const mes = (ahora.getMonth() + 1).toString().padStart(2, '0');
+        const dia = ahora.getDate().toString().padStart(2, '0');
+        
+        return `${año}-${mes}-${dia}`;
     },
     
     // Función para diagnóstico
-    getTimeDetails(dateString) {
-        const fechaUTC = new Date(dateString);
-        const fechaLocal = new Date();
+    debugFecha(dateString) {
+        const fecha = new Date(dateString);
         
-        console.log('=== DIAGNÓSTICO HORA ===');
-        console.log('Fecha UTC de Supabase:', fechaUTC.toISOString());
-        console.log('Hora UTC:', fechaUTC.getUTCHours() + ':' + fechaUTC.getUTCMinutes());
-        console.log('Hora local navegador:', fechaLocal.getHours() + ':' + fechaLocal.getMinutes());
-        console.log('toLocaleString (Chile):', fechaUTC.toLocaleString('es-CL', { timeZone: 'America/Santiago' }));
-        console.log('Diferencia UTC-Chile (horas):', (fechaUTC.getTime() - fechaLocal.getTime()) / 3600000);
-        console.log('=== FIN DIAGNÓSTICO ===');
-        
-        return {
-            utc: fechaUTC.toISOString(),
-            chile: fechaUTC.toLocaleString('es-CL', { timeZone: 'America/Santiago' })
-        };
+        console.log('=== DEBUG FECHA ===');
+        console.log('Original:', dateString);
+        console.log('Date object:', fecha);
+        console.log('toISOString():', fecha.toISOString());
+        console.log('getHours():', fecha.getHours());
+        console.log('getUTCHours():', fecha.getUTCHours());
+        console.log('toLocaleString (CL):', fecha.toLocaleString('es-CL'));
+        console.log('Diferencia getHours vs getUTCHours:', fecha.getHours() - fecha.getUTCHours());
+        console.log('=== FIN DEBUG ===');
     }
 };
 
-// ... el resto del archivo se mantiene igual
 const InventoryUtils = {
     getStockStatus(cantidad) {
         if (cantidad <= Constants.STOCK_LEVELS.VERY_LOW) {
@@ -257,12 +241,6 @@ const SalesUtils = {
     }
 };
 
-// ========== FUNCIÓN COMPARTIDA PARA ACTUALIZACIÓN INCREMENTAL ==========
-
-/**
- * Actualiza una fila específica en la tabla de inventario
- * Usada por ventas múltiples, eliminación individual y eliminación agrupada
- */
 const InventoryUISync = {
     updateSingleInventoryRow(barcode, nuevoStock) {
         const producto = StateManager.getProducto(barcode);
@@ -279,7 +257,6 @@ const InventoryUISync = {
                 const stockBadge = InventoryUtils.getStockStatus(nuevoStock);
                 const fecha = DateTimeUtils.formatToChileTime(producto.fecha_actualizacion);
                 
-                // Actualizar solo la fila afectada
                 fila.cells[1].innerHTML = producto.descripcion ? 
                     StringUtils.escapeHTML(producto.descripcion) : 
                     '<span style="color: #94a3b8;">Sin descripción</span>';
@@ -293,9 +270,6 @@ const InventoryUISync = {
         }
     },
     
-    /**
-     * Actualiza múltiples productos en inventario después de eliminar venta agrupada
-     */
     updateMultipleInventoryRows(actualizaciones) {
         actualizaciones.forEach(({ barcode, nuevoStock }) => {
             this.updateSingleInventoryRow(barcode, nuevoStock);
