@@ -3,13 +3,8 @@ import { DateTimeUtils, InventoryUtils, StringUtils, InventoryUISync } from './u
 import notificationManager from '../ui/notifications.js';
 import modalManager from '../ui/modals.js';
 
-// ========== FUNCIONES PARA VENTAS INDIVIDUALES (COMPATIBILIDAD) ==========
-
-export async function editSale(barcode, fechaVenta) {
-    // Buscar la venta - ahora busca por barcode
-    const venta = StateManager.ventas.find(v => 
-        (v.barcode === barcode || v.codigo_barras === barcode) && v.fecha_venta === fechaVenta
-    );
+export async function editSale(id) {
+    const venta = StateManager.ventas.find(v => v.id === id);
     
     if (!venta) {
         notificationManager.error('Venta no encontrada');
@@ -18,10 +13,11 @@ export async function editSale(barcode, fechaVenta) {
     
     StateManager.ventaEditando = venta;
     
+    const barcode = venta.barcode || venta.codigo_barras;
     const producto = StateManager.getProducto(barcode);
     const stockActual = producto ? producto.cantidad : 0;
     
-    document.getElementById('editVentaCodigo').value = venta.barcode || venta.codigo_barras;
+    document.getElementById('editVentaCodigo').value = barcode;
     document.getElementById('editVentaFecha').value = DateTimeUtils.formatToChileTime(venta.fecha_venta);
     document.getElementById('editVentaDescripcion').value = venta.descripcion || '';
     document.getElementById('editVentaPrecio').value = parseFloat(venta.precio_unitario).toFixed(2);
@@ -78,7 +74,6 @@ export async function saveSale() {
             notificationManager.success('✅ Venta actualizada correctamente');
             modalManager.close(Constants.MODAL_IDS.SALE);
             
-            // Recargar ventas
             const { loadSalesData } = await import('./inventario.js');
             await loadSalesData();
             const { updateStatistics } = await import('./inventario.js');
@@ -114,26 +109,22 @@ function updateLocalInventoryAfterSaleEdit(nuevaCantidad, barcode) {
     }
 }
 
-// ========== FUNCIÓN PARA ELIMINAR VENTA (INDIVIDUAL O AGRUPADA) ==========
-
-export async function deleteSale(barcode, fechaVenta, cantidad) {
-    if (!confirm(`¿Estás seguro de eliminar esta venta?\nCódigo: ${barcode}\nCantidad: ${cantidad}\n\nEsta acción devolverá ${cantidad} unidades al inventario.`)) {
+export async function deleteSale(id, cantidad) {
+    if (!confirm(`¿Estás seguro de eliminar esta venta?\nID: ${id}\nCantidad: ${cantidad}\n\nEsta acción devolverá ${cantidad} unidades al inventario.`)) {
         return;
     }
     
     try {
         notificationManager.info('🔄 Eliminando venta...');
         
-        // Buscar la venta en StateManager
-        const ventaEncontrada = StateManager.ventas.find(v => 
-            (v.barcode === barcode || v.codigo_barras === barcode) && v.fecha_venta === fechaVenta
-        );
+        const ventaEncontrada = StateManager.ventas.find(v => v.id === id);
         
         if (!ventaEncontrada) {
             notificationManager.error('❌ Venta no encontrada en los datos locales');
             return;
         }
         
+        const barcode = ventaEncontrada.barcode || ventaEncontrada.codigo_barras;
         const productoIndex = StateManager.getInventario().findIndex(p => 
             p.codigo_barras === barcode
         );
@@ -146,19 +137,16 @@ export async function deleteSale(barcode, fechaVenta, cantidad) {
         const stockActual = parseInt(StateManager.getInventario()[productoIndex].cantidad) || 0;
         const nuevoStock = stockActual + parseInt(cantidad);
         
-        // Eliminar de la tabla ventas
         const { error: errorEliminar } = await supabaseClient
             .from(Constants.API_ENDPOINTS.SALES_TABLE)
             .delete()
-            .eq('barcode', barcode)
-            .eq('fecha_venta', fechaVenta);
+            .eq('id', id);
         
         if (errorEliminar) {
             console.error('Error eliminando venta:', errorEliminar);
             throw errorEliminar;
         }
         
-        // Actualizar inventario
         const { error: errorInventario } = await supabaseClient
             .from(Constants.API_ENDPOINTS.INVENTORY_TABLE)
             .update({ 
@@ -172,7 +160,6 @@ export async function deleteSale(barcode, fechaVenta, cantidad) {
             throw errorInventario;
         }
         
-        // Actualizar StateManager local
         StateManager.updateInventoryItem(barcode, {
             cantidad: nuevoStock,
             fecha_actualizacion: new Date().toISOString()
@@ -180,21 +167,16 @@ export async function deleteSale(barcode, fechaVenta, cantidad) {
         
         updateLocalInventoryRow(barcode, nuevoStock);
         
-        // Remover la venta del StateManager
-        const ventaIndex = StateManager.ventas.findIndex(v => 
-            (v.barcode === barcode || v.codigo_barras === barcode) && v.fecha_venta === fechaVenta
-        );
+        const ventaIndex = StateManager.ventas.findIndex(v => v.id === id);
         
         if (ventaIndex !== -1) {
             StateManager.ventas.splice(ventaIndex, 1);
             StateManager.actualizarVentasAgrupadas();
         }
         
-        // Actualizar la tabla de ventas
         const { displayGroupedSales } = await import('./inventario.js');
         displayGroupedSales();
         
-        // Actualizar estadísticas
         const { updateStatistics } = await import('./inventario.js');
         updateStatistics();
         
@@ -206,18 +188,19 @@ export async function deleteSale(barcode, fechaVenta, cantidad) {
         console.error('Error completo eliminando venta:', error);
         notificationManager.error('❌ Error al eliminar la venta: ' + error.message);
         
-        // Forzar recarga completa de ventas
         const { loadSalesData } = await import('./inventario.js');
         await loadSalesData();
     }
 }
 
-// ========== FUNCIÓN PARA ELIMINAR VENTA AGRUPADA COMPLETA ==========
 export async function deleteGroupedSale(idVentaAgrupada) {
+    if (!confirm(`¿Estás seguro de eliminar TODA la venta agrupada ${idVentaAgrupada}?\nEsta acción eliminará todos los productos de esta venta y restaurará el stock.`)) {
+        return;
+    }
+    
     try {
         notificationManager.info(`🔄 Eliminando venta agrupada ${idVentaAgrupada}...`);
         
-        // Buscar todas las ventas con este id_venta_agrupada
         const ventasAEliminar = StateManager.ventas.filter(v => 
             v.id_venta_agrupada === idVentaAgrupada
         );
@@ -229,27 +212,22 @@ export async function deleteGroupedSale(idVentaAgrupada) {
         
         let eliminacionesExitosas = 0;
         let productosRestaurados = [];
-        let actualizacionesInventario = []; // Para actualización incremental
+        let actualizacionesInventario = [];
         
-        // Eliminar cada item de la venta
         for (const venta of ventasAEliminar) {
             try {
                 const barcode = venta.barcode || venta.codigo_barras;
                 
-                // Eliminar de la base de datos
                 const { error } = await supabaseClient
                     .from(Constants.API_ENDPOINTS.SALES_TABLE)
                     .delete()
-                    .eq('barcode', barcode)
-                    .eq('fecha_venta', venta.fecha_venta);
+                    .eq('id', venta.id);
                 
                 if (!error) {
-                    // Restaurar stock
                     const producto = StateManager.getProducto(barcode);
                     if (producto) {
                         const nuevoStock = producto.cantidad + venta.cantidad;
                         
-                        // Actualizar en base de datos
                         await supabaseClient
                             .from(Constants.API_ENDPOINTS.INVENTORY_TABLE)
                             .update({ 
@@ -258,13 +236,11 @@ export async function deleteGroupedSale(idVentaAgrupada) {
                             })
                             .eq('barcode', barcode);
                         
-                        // Actualizar StateManager
                         StateManager.updateInventoryItem(barcode, {
                             cantidad: nuevoStock,
                             fecha_actualizacion: new Date().toISOString()
                         });
                         
-                        // Guardar para actualización incremental
                         actualizacionesInventario.push({
                             barcode: barcode,
                             nuevoStock: nuevoStock
@@ -280,26 +256,24 @@ export async function deleteGroupedSale(idVentaAgrupada) {
                     eliminacionesExitosas++;
                 }
             } catch (error) {
-                console.error(`Error eliminando item ${venta.barcode}:`, error);
+                console.error(`Error eliminando item ${venta.id}:`, error);
             }
         }
         
         if (eliminacionesExitosas > 0) {
-            // ACTUALIZACIÓN INCREMENTAL DEL INVENTARIO - ¡ESTO ES LO NUEVO!
-            // Actualizar cada fila afectada en la tabla de inventario
             actualizacionesInventario.forEach(({ barcode, nuevoStock }) => {
                 InventoryUISync.updateSingleInventoryRow(barcode, nuevoStock);
             });
             
-            // Actualizar estadísticas inmediatamente
+            StateManager.ventas = StateManager.ventas.filter(v => v.id_venta_agrupada !== idVentaAgrupada);
+            StateManager.actualizarVentasAgrupadas();
+            
             const { updateStatistics } = await import('./inventario.js');
             updateStatistics();
             
-            // Recargar ventas para actualizar la tabla
-            const { loadSalesData } = await import('./inventario.js');
-            await loadSalesData();
+            const { displayGroupedSales } = await import('./inventario.js');
+            displayGroupedSales();
             
-            // Mensaje de éxito con detalles
             const mensajeProductos = productosRestaurados.map(p => 
                 `• ${p.producto}: ${p.cantidad} unidades → Stock: ${p.nuevoStock}`
             ).join('\n');
@@ -317,7 +291,6 @@ export async function deleteGroupedSale(idVentaAgrupada) {
         console.error('Error eliminando venta agrupada:', error);
         notificationManager.error('❌ Error al eliminar la venta: ' + error.message);
         
-        // Forzar recarga completa como fallback
         const { loadSalesData } = await import('./inventario.js');
         await loadSalesData();
     }
@@ -350,8 +323,6 @@ function updateLocalInventoryRow(barcode, nuevoStock) {
         }
     }
 }
-
-// ========== FUNCIONES PARA VENTAS SIMPLES (COMPATIBILIDAD) ==========
 
 export function openAddSaleModal() {
     StateManager.productoSeleccionado = null;
@@ -535,7 +506,6 @@ export async function saveNewSale() {
         
         InventoryUISync.updateSingleInventoryRow(codigoBarras, nuevoStock);
         
-        // Recargar ventas
         const { loadSalesData } = await import('./inventario.js');
         await loadSalesData();
         
@@ -561,8 +531,6 @@ export async function saveNewSale() {
         updateLocalInventoryView();
     }
 }
-
-// ========== OTRAS FUNCIONES (MANTENIDAS) ==========
 
 export async function showPendingOrdersReport() {
     const inventario = StateManager.getInventario();
@@ -635,11 +603,11 @@ export function exportToExcel() {
         return;
     }
     
-    // Preparar CSV con todas las columnas, incluyendo las nuevas
-    let csv = 'id_venta_agrupada,numero_linea,barcode,codigo_barras,descripcion,cantidad,precio_unitario,descuento,total,fecha_venta\n';
+    let csv = 'id,id_venta_agrupada,numero_linea,barcode,codigo_barras,descripcion,cantidad,precio_unitario,descuento,total,fecha_venta\n';
     
     ventas.forEach(venta => {
         const row = [
+            venta.id,
             venta.id_venta_agrupada || `IND-${venta.id}`,
             venta.numero_linea || 1,
             venta.barcode || venta.codigo_barras,
@@ -667,8 +635,6 @@ export function exportToExcel() {
     
     notificationManager.success('Archivo CSV exportado correctamente');
 }
-
-// ========== CONFIGURACIÓN DE EVENT LISTENERS ==========
 
 function setupModalEventListeners() {
     const editCantidad = document.getElementById('editVentaCantidad');
