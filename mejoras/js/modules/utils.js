@@ -84,21 +84,6 @@ formatToChileTime(dateString) {
         
         return `${año}-${mes}-${dia}`;
     },
-    
-    // Función para diagnóstico
-    debugFecha(dateString) {
-        const fecha = new Date(dateString);
-        
-        console.log('=== DEBUG FECHA ===');
-        console.log('Original:', dateString);
-        console.log('Date object:', fecha);
-        console.log('toISOString():', fecha.toISOString());
-        console.log('getHours():', fecha.getHours());
-        console.log('getUTCHours():', fecha.getUTCHours());
-        console.log('toLocaleString (CL):', fecha.toLocaleString('es-CL'));
-        console.log('Diferencia getHours vs getUTCHours:', fecha.getHours() - fecha.getUTCHours());
-        console.log('=== FIN DEBUG ===');
-    }
 };
 
 const InventoryUtils = {
