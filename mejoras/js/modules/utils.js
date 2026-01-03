@@ -3,8 +3,8 @@ import { StateManager, Constants } from '../config/supabase-config.js';
 const DateTimeUtils = {
     getCurrentChileISO() {
         const ahora = new Date();
-        const horaChile = new Date(ahora.getTime() + Constants.TIMEZONE_OFFSET * 60 * 60 * 1000);
-        return horaChile.toISOString();
+        // Devolver en formato ISO (UTC)
+        return ahora.toISOString();
     },
     
     formatToChileTime(dateString) {
@@ -14,17 +14,28 @@ const DateTimeUtils = {
             let fecha = new Date(dateString);
             if (isNaN(fecha.getTime())) return 'Fecha inválida';
             
-            fecha = new Date(fecha.getTime() + Constants.TIMEZONE_OFFSET * 60 * 60 * 1000);
+            // IMPORTANTE: La fecha viene en UTC desde Supabase
+            // Chile está en UTC-3 (horario estándar) o UTC-4 (horario de verano)
+            // Vamos a usar UTC-3 como estándar
             
-            const dia = fecha.getDate().toString().padStart(2, '0');
-            const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
-            const año = fecha.getFullYear();
-            const hora = fecha.getHours().toString().padStart(2, '0');
-            const minutos = fecha.getMinutes().toString().padStart(2, '0');
-            const segundos = fecha.getSeconds().toString().padStart(2, '0');
+            // OPCIÓN 1: Usar hora local del navegador (si está configurado en Chile)
+            // const fechaChile = new Date(fecha);
+            
+            // OPCIÓN 2: Ajustar manualmente a UTC-3 (Chile continental)
+            // 3 horas = 3 * 60 * 60 * 1000 = 10,800,000 milisegundos
+            const offsetChile = -3; // UTC-3 para Chile
+            const fechaChile = new Date(fecha.getTime() + (offsetChile * 60 * 60 * 1000));
+            
+            const dia = fechaChile.getDate().toString().padStart(2, '0');
+            const mes = (fechaChile.getMonth() + 1).toString().padStart(2, '0');
+            const año = fechaChile.getFullYear();
+            const hora = fechaChile.getHours().toString().padStart(2, '0');
+            const minutos = fechaChile.getMinutes().toString().padStart(2, '0');
+            const segundos = fechaChile.getSeconds().toString().padStart(2, '0');
             
             return `${dia}/${mes}/${año} ${hora}:${minutos}:${segundos}`;
         } catch (error) {
+            console.error('Error formateando fecha:', error);
             return dateString || 'Sin fecha';
         }
     },
@@ -36,8 +47,11 @@ const DateTimeUtils = {
             let fecha = new Date(dateString);
             if (isNaN(fecha.getTime())) return '--:--';
             
-            fecha = new Date(fecha.getTime() + Constants.TIMEZONE_OFFSET * 60 * 60 * 1000);
-            return `${fecha.getHours().toString().padStart(2, '0')}:${fecha.getMinutes().toString().padStart(2, '0')}`;
+            // Mismo ajuste que formatToChileTime
+            const offsetChile = -3;
+            const fechaChile = new Date(fecha.getTime() + (offsetChile * 60 * 60 * 1000));
+            
+            return `${fechaChile.getHours().toString().padStart(2, '0')}:${fechaChile.getMinutes().toString().padStart(2, '0')}`;
         } catch (error) {
             return '--:--';
         }
@@ -45,7 +59,10 @@ const DateTimeUtils = {
     
     getCurrentChileDate() {
         const ahora = new Date();
-        const fechaChile = new Date(ahora.getTime() + Constants.TIMEZONE_OFFSET * 60 * 60 * 1000);
+        
+        // Ajustar a hora Chile
+        const offsetChile = -3;
+        const fechaChile = new Date(ahora.getTime() + (offsetChile * 60 * 60 * 1000));
         
         const opciones = { 
             weekday: 'long', 
@@ -59,13 +76,32 @@ const DateTimeUtils = {
     
     getTodayChileDate() {
         const ahora = new Date();
-        const fechaChile = new Date(ahora.getTime() + Constants.TIMEZONE_OFFSET * 60 * 60 * 1000);
+        
+        // Ajustar a hora Chile
+        const offsetChile = -3;
+        const fechaChile = new Date(ahora.getTime() + (offsetChile * 60 * 60 * 1000));
         
         const año = fechaChile.getFullYear();
         const mes = (fechaChile.getMonth() + 1).toString().padStart(2, '0');
         const dia = fechaChile.getDate().toString().padStart(2, '0');
         
         return `${año}-${mes}-${dia}`;
+    },
+    
+    // Función adicional para debug
+    getTimeDebug(dateString) {
+        if (!dateString) return 'No date';
+        
+        const fecha = new Date(dateString);
+        const fechaChile = new Date(fecha.getTime() + (-3 * 60 * 60 * 1000));
+        
+        return {
+            original: fechaString,
+            fechaUTC: fecha.toISOString(),
+            fechaChile: fechaChile.toISOString(),
+            horaChile: fechaChile.getHours() + ':' + fechaChile.getMinutes(),
+            offset: -3
+        };
     }
 };
 
