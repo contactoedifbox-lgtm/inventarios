@@ -460,7 +460,7 @@ export async function saveNewSale() {
         precio_unitario: precio,
         descuento: descuento,
         descripcion: descripcion || StateManager.productoSeleccionado.descripcion || '',
-        fecha_venta: DateTimeUtils.getCurrentChileISO(),
+        fecha_venta: new Date().toLocaleString('en-CA'),
         id_venta_agrupada: `IND-${Date.now()}`,
         numero_linea: 1
     };
