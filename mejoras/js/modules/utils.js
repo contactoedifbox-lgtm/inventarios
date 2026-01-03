@@ -5,41 +5,30 @@ const DateTimeUtils = {
         return new Date().toISOString();
     },
     
-    formatToChileTime(dateString) {
+    // mejoras/js/modules/utils.js - VERSIÓN LIMPIA
+formatToChileTime(dateString) {
     if (!dateString) return 'Sin fecha';
     
     try {
-        console.log('📅 Fecha recibida de Supabase:', dateString);
-        
+        // Convertir a objeto Date
         let fecha;
         
-        // ⚠️¡IMPORTANTE! Tu fecha SÍ viene con T (es formato ISO)
         if (dateString.includes('T')) {
-            // Es formato ISO: "2026-01-03T18:01:34.984" o "2026-01-03T18:01:34.984Z"
+            // Es formato ISO
             fecha = new Date(dateString);
-            console.log('Es formato ISO, Date creado:', fecha);
         } 
         else {
             fecha = new Date(dateString);
         }
         
         if (isNaN(fecha.getTime())) {
-            console.error('Fecha inválida:', dateString);
             return 'Fecha inválida';
         }
         
-        // ⚠️¡PROBLEMA! NO está entrando al if(dateString.includes('T'))
-        // porque la fecha viene con T, pero tal vez hay espacios extra
-        
-        // FORZAR LA CONVERSIÓN CORRECTA
-        const fechaUTC = new Date(dateString.trim()); // Trim por si hay espacios
-        
-        // RESTAR 3 HORAS MANUALMENTE
-        const offsetChile = 0; // Horas a restar
+        // Convertir a fecha Chile (UTC-3)
+        const fechaUTC = new Date(dateString.trim());
+        const offsetChile = -3; // Horas a restar para Chile
         const fechaChile = new Date(fechaUTC.getTime() + (offsetChile * 60 * 60 * 1000));
-        
-        console.log('Fecha UTC original:', fechaUTC.toISOString());
-        console.log('Fecha Chile (UTC-3):', fechaChile.toISOString());
         
         // Formatear
         const dia = fechaChile.getDate().toString().padStart(2, '0');
@@ -49,13 +38,9 @@ const DateTimeUtils = {
         const minutos = fechaChile.getMinutes().toString().padStart(2, '0');
         const segundos = fechaChile.getSeconds().toString().padStart(2, '0');
         
-        const resultado = `${dia}/${mes}/${año} ${hora}:${minutos}:${segundos}`;
-        console.log('Resultado final:', resultado);
-        
-        return resultado;
+        return `${dia}/${mes}/${año} ${hora}:${minutos}:${segundos}`;
         
     } catch (error) {
-        console.error('Error formateando fecha:', error, 'Date:', dateString);
         return dateString || 'Sin fecha';
     }
 },
