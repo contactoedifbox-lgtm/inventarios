@@ -460,7 +460,19 @@ export async function saveNewSale() {
         precio_unitario: precio,
         descuento: descuento,
         descripcion: descripcion || StateManager.productoSeleccionado.descripcion || '',
-        fecha_venta: new Date().toLocaleString('en-CA'),
+        fecha_venta: function() {
+            const ahora = new Date();
+            // Formatear como string que Supabase entienda como hora local
+            const año = ahora.getFullYear();
+            const mes = (ahora.getMonth() + 1).toString().padStart(2, '0');
+            const dia = ahora.getDate().toString().padStart(2, '0');
+            const hora = ahora.getHours().toString().padStart(2, '0');
+            const minutos = ahora.getMinutes().toString().padStart(2, '0');
+            const segundos = ahora.getSeconds().toString().padStart(2, '0');
+            const ms = ahora.getMilliseconds().toString().padStart(3, '0');
+    
+    return `${año}-${mes}-${dia} ${hora}:${minutos}:${segundos}.${ms}`;
+}(),
         id_venta_agrupada: `IND-${Date.now()}`,
         numero_linea: 1
     };
