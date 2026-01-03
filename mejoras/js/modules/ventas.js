@@ -4,7 +4,7 @@ import notificationManager from '../ui/notifications.js';
 import modalManager from '../ui/modals.js';
 
 export async function editSale(id) {
-    const venta = StateManager.ventas.find(v => v.id === id);
+    const venta = StateManager.ventas.find(v => v.id === parseInt(id));
     
     if (!venta) {
         notificationManager.error('Venta no encontrada');
@@ -117,9 +117,10 @@ export async function deleteSale(id, cantidad) {
     try {
         notificationManager.info('🔄 Eliminando venta...');
         
-        const ventaEncontrada = StateManager.ventas.find(v => v.id === id);
+        const ventaEncontrada = StateManager.ventas.find(v => v.id === parseInt(id));
         
         if (!ventaEncontrada) {
+            console.error('Venta no encontrada en StateManager. IDs disponibles:', StateManager.ventas.map(v => v.id));
             notificationManager.error('❌ Venta no encontrada en los datos locales');
             return;
         }
@@ -140,10 +141,10 @@ export async function deleteSale(id, cantidad) {
         const { error: errorEliminar } = await supabaseClient
             .from(Constants.API_ENDPOINTS.SALES_TABLE)
             .delete()
-            .eq('id', id);
+            .eq('id', parseInt(id));
         
         if (errorEliminar) {
-            console.error('Error eliminando venta:', errorEliminar);
+            console.error('Error eliminando venta de Supabase:', errorEliminar);
             throw errorEliminar;
         }
         
@@ -156,7 +157,7 @@ export async function deleteSale(id, cantidad) {
             .eq('barcode', barcode);
         
         if (errorInventario) {
-            console.error('Error actualizando inventario:', errorInventario);
+            console.error('Error actualizando inventario en Supabase:', errorInventario);
             throw errorInventario;
         }
         
@@ -167,7 +168,7 @@ export async function deleteSale(id, cantidad) {
         
         updateLocalInventoryRow(barcode, nuevoStock);
         
-        const ventaIndex = StateManager.ventas.findIndex(v => v.id === id);
+        const ventaIndex = StateManager.ventas.findIndex(v => v.id === parseInt(id));
         
         if (ventaIndex !== -1) {
             StateManager.ventas.splice(ventaIndex, 1);
