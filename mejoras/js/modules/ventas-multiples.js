@@ -662,7 +662,7 @@ async function guardarVentaMultipleOffline(lineasValidas, observaciones) {
         
         // Actualizar vista de inventario
         const { updateLocalInventoryView } = await import('./offline.js');
-        updateLocalInventoryView();
+        await updateLocalInventoryView();
         
         // Reiniciar estado
         lineasVenta = [];
@@ -671,35 +671,6 @@ async function guardarVentaMultipleOffline(lineasValidas, observaciones) {
     } catch (error) {
         console.error('Error guardando venta offline:', error);
         notificationManager.error('❌ Error al guardar la venta localmente');
-    }
-}
-
-// Función para actualizar fila de inventario en el DOM
-function actualizarFilaInventarioEnDOM(codigoBarras, nuevoStock) {
-    const producto = StateManager.getProducto(codigoBarras);
-    if (!producto) return;
-    
-    const tbody = document.getElementById('inventarioBody');
-    if (!tbody) return;
-    
-    const filas = tbody.getElementsByTagName('tr');
-    
-    for (let fila of filas) {
-        const codigoCelda = fila.cells[0].textContent.trim();
-        if (codigoCelda === codigoBarras) {
-            const stockBadge = InventoryUtils.getStockStatus(nuevoStock);
-            const fecha = DateTimeUtils.formatToChileTime(producto.fecha_actualizacion);
-            
-            fila.cells[1].innerHTML = producto.descripcion ? 
-                StringUtils.escapeHTML(producto.descripcion) : 
-                '<span style="color: #94a3b8;">Sin descripción</span>';
-            
-            fila.cells[2].innerHTML = `<span class="stock-badge ${stockBadge.class}">${nuevoStock} unidades</span>`;
-            fila.cells[3].textContent = `$${parseFloat(producto.costo || 0).toFixed(2)}`;
-            fila.cells[4].innerHTML = `<strong>$${parseFloat(producto.precio || 0).toFixed(2)}</strong>`;
-            fila.cells[5].textContent = fecha;
-            break;
-        }
     }
 }
 
