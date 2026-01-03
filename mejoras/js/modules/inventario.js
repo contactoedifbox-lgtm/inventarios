@@ -266,16 +266,13 @@ export async function loadSalesData() {
             
         if (error) throw error;
         
-        // IMPORTANTE: Ahora la vista usa 'barcode', no 'codigo_barras'
-        // Mantener compatibilidad agregando codigo_barras
         const ventasNormalizadas = data.map(venta => ({
             ...venta,
-            codigo_barras: venta.barcode // Para compatibilidad
+            codigo_barras: venta.barcode
         }));
         
         StateManager.setVentas(ventasNormalizadas);
         
-        // Actualizar visualización según modo
         if (StateManager.modoVisualizacionVentas === 'agrupado') {
             displayGroupedSales();
         } else {
@@ -288,7 +285,6 @@ export async function loadSalesData() {
     }
 }
 
-// NUEVA: Mostrar ventas detalladas (modo antiguo)
 export function displayDetailedSales(data) {
     const tbody = document.getElementById('ventasBody');
     if (!tbody) return;
@@ -330,10 +326,10 @@ export function displayDetailedSales(data) {
                 <td>${StringUtils.escapeHTML(item.descripcion || '')}</td>
                 <td>${fecha}</td>
                 <td>
-                    <button class="action-btn btn-edit" data-codigo="${StringUtils.escapeHTML(item.barcode || item.codigo_barras)}" data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}">
+                    <button class="action-btn btn-edit" data-id="${item.id}">
                         <i class="fas fa-edit"></i> Editar
                     </button>
-                    <button class="action-btn btn-delete" data-codigo="${StringUtils.escapeHTML(item.barcode || item.codigo_barras)}" data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}" data-cantidad="${item.cantidad}">
+                    <button class="action-btn btn-delete" data-id="${item.id}" data-cantidad="${item.cantidad}">
                         <i class="fas fa-trash"></i> Eliminar
                     </button>
                 </td>
@@ -346,7 +342,6 @@ export function displayDetailedSales(data) {
     setupSalesRowEventListeners();
 }
 
-// NUEVA: Mostrar ventas agrupadas
 export function displayGroupedSales() {
     const tbody = document.getElementById('ventasBody');
     if (!tbody) return;
@@ -366,7 +361,6 @@ export function displayGroupedSales() {
         return;
     }
     
-    // Calcular total hoy
     const hoyChile = DateTimeUtils.getTodayChileDate();
     const totalHoy = ventasAgrupadas
         .filter(v => v.fecha && v.fecha.split('T')[0] === hoyChile)
@@ -374,12 +368,10 @@ export function displayGroupedSales() {
     
     document.getElementById('ventas-hoy').textContent = `$${totalHoy.toFixed(2)}`;
     
-    // Mostrar ventas agrupadas
     ventasAgrupadas.forEach(grupo => {
         const fechaFormateada = DateTimeUtils.formatToChileTime(grupo.fecha);
         const icono = grupo.expandida ? '🔽' : '▶';
         
-        // Fila principal
         const mainRow = `
             <tr class="venta-agrupada" data-venta-id="${StringUtils.escapeHTML(grupo.id_venta)}">
                 <td colspan="2" style="font-weight: bold; color: #1e293b;">
@@ -407,7 +399,6 @@ export function displayGroupedSales() {
         
         tbody.innerHTML += mainRow;
         
-        // Items detallados si está expandida
         if (grupo.expandida) {
             grupo.items.forEach((item, index) => {
                 const fechaItem = DateTimeUtils.formatToChileTime(item.fecha_venta);
@@ -426,15 +417,10 @@ export function displayGroupedSales() {
                         <td style="color: #64748b; font-size: 13px;">${StringUtils.escapeHTML(item.descripcion || '')}</td>
                         <td style="color: #64748b; font-size: 13px;">${fechaItem}</td>
                         <td style="color: #64748b; font-size: 13px;">
-                            <button class="action-btn btn-edit editar-item-venta" 
-                                    data-codigo="${StringUtils.escapeHTML(item.barcode || item.codigo_barras)}" 
-                                    data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}">
+                            <button class="action-btn btn-edit editar-item-venta" data-id="${item.id}">
                                 <i class="fas fa-edit"></i> Editar
                             </button>
-                            <button class="action-btn btn-delete eliminar-item-venta" 
-                                    data-codigo="${StringUtils.escapeHTML(item.barcode || item.codigo_barras)}" 
-                                    data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}"
-                                    data-cantidad="${item.cantidad}">
+                            <button class="action-btn btn-delete eliminar-item-venta" data-id="${item.id}" data-cantidad="${item.cantidad}">
                                 <i class="fas fa-trash"></i> Eliminar
                             </button>
                         </td>
@@ -450,7 +436,6 @@ export function displayGroupedSales() {
 }
 
 function setupGroupedSalesEventListeners() {
-    // Toggle expandir/contraer
     document.querySelectorAll('.toggle-venta').forEach(button => {
         button.addEventListener('click', function() {
             const idVenta = this.getAttribute('data-venta');
@@ -459,7 +444,6 @@ function setupGroupedSalesEventListeners() {
         });
     });
     
-    // Eliminar venta agrupada
     document.querySelectorAll('.eliminar-venta-agrupada').forEach(button => {
         button.addEventListener('click', function() {
             const idVenta = this.getAttribute('data-venta');
@@ -471,25 +455,21 @@ function setupGroupedSalesEventListeners() {
         });
     });
     
-    // Editar item individual
     document.querySelectorAll('.editar-item-venta').forEach(button => {
         button.addEventListener('click', function() {
-            const codigo = this.getAttribute('data-codigo');
-            const fecha = this.getAttribute('data-fecha');
+            const id = this.getAttribute('data-id');
             import('./ventas.js').then(module => {
-                module.editSale(codigo, fecha);
+                module.editSale(id);
             });
         });
     });
     
-    // Eliminar item individual
     document.querySelectorAll('.eliminar-item-venta').forEach(button => {
         button.addEventListener('click', function() {
-            const codigo = this.getAttribute('data-codigo');
-            const fecha = this.getAttribute('data-fecha');
+            const id = this.getAttribute('data-id');
             const cantidad = this.getAttribute('data-cantidad');
             import('./ventas.js').then(module => {
-                module.deleteSale(codigo, fecha, cantidad);
+                module.deleteSale(id, cantidad);
             });
         });
     });
@@ -498,21 +478,19 @@ function setupGroupedSalesEventListeners() {
 function setupSalesRowEventListeners() {
     document.querySelectorAll('#ventasBody .btn-edit').forEach(button => {
         button.addEventListener('click', function() {
-            const codigo = this.getAttribute('data-codigo');
-            const fecha = this.getAttribute('data-fecha');
+            const id = this.getAttribute('data-id');
             import('./ventas.js').then(module => {
-                module.editSale(codigo, fecha);
+                module.editSale(id);
             });
         });
     });
     
     document.querySelectorAll('#ventasBody .btn-delete').forEach(button => {
         button.addEventListener('click', function() {
-            const codigo = this.getAttribute('data-codigo');
-            const fecha = this.getAttribute('data-fecha');
+            const id = this.getAttribute('data-id');
             const cantidad = parseInt(this.getAttribute('data-cantidad'));
             import('./ventas.js').then(module => {
-                module.deleteSale(codigo, fecha, cantidad);
+                module.deleteSale(id, cantidad);
             });
         });
     });
@@ -559,7 +537,6 @@ function showTab(tabName) {
     }
 }
 
-// NUEVO: Cambiar modo de visualización
 export function cambiarModoVisualizacionVentas(modo) {
     StateManager.modoVisualizacionVentas = modo;
     
