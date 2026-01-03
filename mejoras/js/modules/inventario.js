@@ -369,7 +369,9 @@ export function displayGroupedSales() {
     document.getElementById('ventas-hoy').textContent = `$${totalHoy.toFixed(2)}`;
     
     ventasAgrupadas.forEach(grupo => {
-        const fechaFormateada = DateTimeUtils.formatToChileTime(grupo.fecha);
+        // OBTENER FECHA CORRECTA: Usar la fecha del primer item o la fecha del grupo
+        const fechaGrupo = grupo.fecha || (grupo.items.length > 0 ? grupo.items[0].fecha_venta : new Date().toISOString());
+        const fechaFormateada = DateTimeUtils.formatToChileTime(fechaGrupo);
         const icono = grupo.expandida ? '🔽' : '▶';
         
         const mainRow = `
