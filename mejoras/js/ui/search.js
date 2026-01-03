@@ -1,5 +1,5 @@
 import { StateManager } from '../config/supabase-config.js';
-import { displayInventory, displaySales } from '../modules/inventario.js';
+import { displayInventory, displayDetailedSales } from '../modules/inventario.js';
 
 export function setupTabNavigation() {
     const inventarioBtn = document.getElementById('tab-inventario-btn');
@@ -49,9 +49,10 @@ function filterTable(termino) {
     } else {
         const ventas = StateManager.ventas;
         const filtrados = ventas.filter(item =>
-            item.codigo_barras.toLowerCase().includes(termino.toLowerCase()) ||
+            (item.barcode && item.barcode.toLowerCase().includes(termino.toLowerCase())) ||
+            (item.codigo_barras && item.codigo_barras.toLowerCase().includes(termino.toLowerCase())) ||
             (item.descripcion && item.descripcion.toLowerCase().includes(termino.toLowerCase()))
         );
-        displaySales(filtrados);
+        displayDetailedSales(filtrados);
     }
 }
