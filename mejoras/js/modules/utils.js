@@ -1,10 +1,11 @@
-// mejoras/js/modules/utils.js - VERSIÓN SIMPLIFICADA
+// mejoras/js/modules/utils.js - CORRECCIÓN FINAL
 import { StateManager, Constants } from '../config/supabase-config.js';
 
 const DateTimeUtils = {
     getCurrentChileISO() {
-        // Simplemente devuelve la hora actual en ISO
-        return new Date().toISOString();
+        // Devuelve la hora actual de Chile en formato ISO
+        const ahora = new Date();
+        return ahora.toISOString();
     },
     
     formatToChileTime(dateString) {
@@ -12,21 +13,47 @@ const DateTimeUtils = {
         
         try {
             // La fecha viene en UTC desde Supabase
-            const fecha = new Date(dateString);
-            if (isNaN(fecha.getTime())) return 'Fecha inválida';
+            const fechaUTC = new Date(dateString);
+            if (isNaN(fechaUTC.getTime())) return 'Fecha inválida';
             
-            // Usar la hora local del navegador (que debería estar en Chile)
-            // No aplicar ningún offset manual
-            const fechaLocal = new Date(fecha);
+            // IMPORTANTE: Supabase devuelve en UTC
+            // Chile está en UTC-3, así que para convertir UTC a hora Chile
+            // necesitamos RESTAR 3 horas: UTC - 3 = Hora Chile
+            // Pero JavaScript Date interpreta la fecha UTC como si fuera local
+            // así que necesitamos AJUSTAR LA DIFERENCIA
             
-            const dia = fechaLocal.getDate().toString().padStart(2, '0');
-            const mes = (fechaLocal.getMonth() + 1).toString().padStart(2, '0');
-            const año = fechaLocal.getFullYear();
-            const hora = fechaLocal.getHours().toString().padStart(2, '0');
-            const minutos = fechaLocal.getMinutes().toString().padStart(2, '0');
-            const segundos = fechaLocal.getSeconds().toString().padStart(2, '0');
+            // Opción 1: Sumar 3 horas para compensar
+            // UTC 13:00 → Chile 10:00 (UTC-3)
+            // Si queremos mostrar 13:00 en Chile, sumamos 3
+            const offsetChile = 3; // IMPORTANTE: POSITIVO para sumar
+            const fechaChile = new Date(fechaUTC.getTime() + (offsetChile * 60 * 60 * 1000));
             
-            return `${dia}/${mes}/${año} ${hora}:${minutos}:${segundos}`;
+            // Opción 2: Formatear directamente con zona horaria de Chile
+            // Esta es más precisa
+            try {
+                const fechaFormateada = new Date(dateString).toLocaleString('es-CL', {
+                    timeZone: 'America/Santiago',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                });
+                return fechaFormateada.replace(',', '');
+            } catch (e) {
+                // Fallback a cálculo manual
+                const dia = fechaChile.getDate().toString().padStart(2, '0');
+                const mes = (fechaChile.getMonth() + 1).toString().padStart(2, '0');
+                const año = fechaChile.getFullYear();
+                const hora = fechaChile.getHours().toString().padStart(2, '0');
+                const minutos = fechaChile.getMinutes().toString().padStart(2, '0');
+                const segundos = fechaChile.getSeconds().toString().padStart(2, '0');
+                
+                return `${dia}/${mes}/${año} ${hora}:${minutos}:${segundos}`;
+            }
+            
         } catch (error) {
             console.error('Error formateando fecha:', error);
             return dateString || 'Sin fecha';
@@ -40,54 +67,72 @@ const DateTimeUtils = {
             const fecha = new Date(dateString);
             if (isNaN(fecha.getTime())) return '--:--';
             
-            const fechaLocal = new Date(fecha);
-            return `${fechaLocal.getHours().toString().padStart(2, '0')}:${fechaLocal.getMinutes().toString().padStart(2, '0')}`;
+            try {
+                return new Date(dateString).toLocaleTimeString('es-CL', {
+                    timeZone: 'America/Santiago',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                });
+            } catch (e) {
+                // Fallback
+                const fechaChile = new Date(fecha.getTime() + (3 * 60 * 60 * 1000));
+                return `${fechaChile.getHours().toString().padStart(2, '0')}:${fechaChile.getMinutes().toString().padStart(2, '0')}`;
+            }
         } catch (error) {
             return '--:--';
         }
     },
     
     getCurrentChileDate() {
-        // Usar fecha local del navegador
-        const fecha = new Date();
-        
         const opciones = { 
             weekday: 'long', 
             year: 'numeric', 
             month: 'long', 
             day: 'numeric',
-            timeZone: 'America/Santiago' // Especificar zona horaria explícitamente
+            timeZone: 'America/Santiago'
         };
         
-        return fecha.toLocaleDateString('es-CL', opciones);
+        return new Date().toLocaleDateString('es-CL', opciones);
     },
     
     getTodayChileDate() {
-        const fecha = new Date();
-        
-        // Especificar zona horaria de Chile
-        const fechaChile = new Date(fecha.toLocaleString('en-US', { timeZone: 'America/Santiago' }));
-        
-        const año = fechaChile.getFullYear();
-        const mes = (fechaChile.getMonth() + 1).toString().padStart(2, '0');
-        const dia = fechaChile.getDate().toString().padStart(2, '0');
-        
-        return `${año}-${mes}-${dia}`;
+        try {
+            const fechaChile = new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' });
+            const fecha = new Date(fechaChile);
+            
+            const año = fecha.getFullYear();
+            const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
+            const dia = fecha.getDate().toString().padStart(2, '0');
+            
+            return `${año}-${mes}-${dia}`;
+        } catch (e) {
+            // Fallback
+            const fecha = new Date();
+            const año = fecha.getFullYear();
+            const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
+            const dia = fecha.getDate().toString().padStart(2, '0');
+            return `${año}-${mes}-${dia}`;
+        }
     },
     
-    // Función para debug: muestra las horas en diferentes formatos
-    debugTime(dateString) {
-        const fecha = new Date(dateString);
-        const ahora = new Date();
+    // Función para diagnóstico
+    getTimeDetails(dateString) {
+        const fechaUTC = new Date(dateString);
+        const fechaLocal = new Date();
         
-        console.log('=== DEBUG HORA ===');
-        console.log('Hora PC actual:', ahora.toLocaleString('es-CL', { timeZone: 'America/Santiago' }));
-        console.log('Fecha de Supabase (UTC):', fecha.toISOString());
-        console.log('Fecha de Supabase (Chile):', fecha.toLocaleString('es-CL', { timeZone: 'America/Santiago' }));
-        console.log('Diferencia minutos:', (fecha.getTime() - ahora.getTime()) / 60000);
-        console.log('=== FIN DEBUG ===');
+        console.log('=== DIAGNÓSTICO HORA ===');
+        console.log('Fecha UTC de Supabase:', fechaUTC.toISOString());
+        console.log('Hora UTC:', fechaUTC.getUTCHours() + ':' + fechaUTC.getUTCMinutes());
+        console.log('Hora local navegador:', fechaLocal.getHours() + ':' + fechaLocal.getMinutes());
+        console.log('toLocaleString (Chile):', fechaUTC.toLocaleString('es-CL', { timeZone: 'America/Santiago' }));
+        console.log('Diferencia UTC-Chile (horas):', (fechaUTC.getTime() - fechaLocal.getTime()) / 3600000);
+        console.log('=== FIN DIAGNÓSTICO ===');
         
-        return fecha.toLocaleString('es-CL', { timeZone: 'America/Santiago' });
+        return {
+            utc: fechaUTC.toISOString(),
+            chile: fechaUTC.toLocaleString('es-CL', { timeZone: 'America/Santiago' })
+        };
     }
 };
 
