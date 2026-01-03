@@ -27,7 +27,7 @@ formatToChileTime(dateString) {
         
         // Convertir a fecha Chile (UTC-3)
         const fechaUTC = new Date(dateString.trim());
-        const offsetChile = -3; // Horas a restar para Chile
+        const offsetChile = 0; // Horas a restar para Chile
         const fechaChile = new Date(fechaUTC.getTime() + (offsetChile * 60 * 60 * 1000));
         
         // Formatear
