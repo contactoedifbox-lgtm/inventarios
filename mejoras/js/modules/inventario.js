@@ -170,7 +170,6 @@ export async function saveInventory() {
             notificationManager.success('✅ Producto actualizado');
             modalManager.close(Constants.MODAL_IDS.INVENTORY);
             
-            // Actualización incremental - solo esta fila
             StateManager.updateInventoryItem(StateManager.productoEditando.codigo_barras, {
                 descripcion: descripcion,
                 cantidad: cantidad,
@@ -179,10 +178,7 @@ export async function saveInventory() {
                 fecha_actualizacion: new Date().toISOString()
             });
             
-            // Actualizar solo la fila en la tabla
             updateSingleInventoryRow(StateManager.productoEditando.codigo_barras);
-            
-            // Actualizar estadísticas
             updateStatistics();
             
         } else {
@@ -218,18 +214,15 @@ function updateSingleInventoryRow(codigoBarras) {
             fila.cells[4].innerHTML = `<strong>$${parseFloat(producto.precio || 0).toFixed(2)}</strong>`;
             fila.cells[5].textContent = fecha;
             
-            // Actualizar el botón de editar
             const editButton = fila.cells[6].querySelector('.btn-edit');
             if (editButton) {
                 editButton.setAttribute('data-codigo', producto.codigo_barras);
-                // Remover listeners antiguos y añadir nuevos
                 editButton.replaceWith(editButton.cloneNode(true));
             }
             break;
         }
     }
     
-    // Re-configurar listeners
     setupInventoryRowEventListeners();
 }
 
@@ -273,19 +266,45 @@ export async function loadSalesData() {
             
         if (error) throw error;
         
-        StateManager.setVentas(data);
-        displaySales(StateManager.ventas);
+        // IMPORTANTE: Ahora la vista usa 'barcode', no 'codigo_barras'
+        // Mantener compatibilidad agregando codigo_barras
+        const ventasNormalizadas = data.map(venta => ({
+            ...venta,
+            codigo_barras: venta.barcode // Para compatibilidad
+        }));
+        
+        StateManager.setVentas(ventasNormalizadas);
+        
+        // Actualizar visualización según modo
+        if (StateManager.modoVisualizacionVentas === 'agrupado') {
+            displayGroupedSales();
+        } else {
+            displayDetailedSales(StateManager.getVentas());
+        }
+        
     } catch (error) {
         console.error('Error cargando ventas:', error);
         notificationManager.error('Error al cargar ventas');
     }
 }
 
-export function displaySales(data) {
+// NUEVA: Mostrar ventas detalladas (modo antiguo)
+export function displayDetailedSales(data) {
     const tbody = document.getElementById('ventasBody');
     if (!tbody) return;
     
     tbody.innerHTML = '';
+    
+    if (data.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 40px; color: #64748b;">
+                    <i class="fas fa-inbox"></i> No hay ventas registradas
+                </td>
+            </tr>
+        `;
+        return;
+    }
     
     const hoyChile = DateTimeUtils.getTodayChileDate();
     const ventasHoy = data.filter(v => {
@@ -303,7 +322,7 @@ export function displaySales(data) {
         
         const rowHTML = `
             <tr>
-                <td>${StringUtils.escapeHTML(item.codigo_barras)}</td>
+                <td>${StringUtils.escapeHTML(item.barcode || item.codigo_barras)}</td>
                 <td>${item.cantidad}</td>
                 <td>$${parseFloat(item.precio_unitario || 0).toFixed(2)}</td>
                 <td>${descuento > 0 ? `-$${descuento.toFixed(2)}` : '$0.00'}</td>
@@ -311,10 +330,10 @@ export function displaySales(data) {
                 <td>${StringUtils.escapeHTML(item.descripcion || '')}</td>
                 <td>${fecha}</td>
                 <td>
-                    <button class="action-btn btn-edit" data-codigo="${StringUtils.escapeHTML(item.codigo_barras)}" data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}">
+                    <button class="action-btn btn-edit" data-codigo="${StringUtils.escapeHTML(item.barcode || item.codigo_barras)}" data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}">
                         <i class="fas fa-edit"></i> Editar
                     </button>
-                    <button class="action-btn btn-delete" data-codigo="${StringUtils.escapeHTML(item.codigo_barras)}" data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}" data-cantidad="${item.cantidad}">
+                    <button class="action-btn btn-delete" data-codigo="${StringUtils.escapeHTML(item.barcode || item.codigo_barras)}" data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}" data-cantidad="${item.cantidad}">
                         <i class="fas fa-trash"></i> Eliminar
                     </button>
                 </td>
@@ -327,17 +346,162 @@ export function displaySales(data) {
     setupSalesRowEventListeners();
 }
 
+// NUEVA: Mostrar ventas agrupadas
+export function displayGroupedSales() {
+    const tbody = document.getElementById('ventasBody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    const ventasAgrupadas = StateManager.getVentasAgrupadas();
+    
+    if (ventasAgrupadas.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 40px; color: #64748b;">
+                    <i class="fas fa-inbox"></i> No hay ventas registradas
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    // Calcular total hoy
+    const hoyChile = DateTimeUtils.getTodayChileDate();
+    const totalHoy = ventasAgrupadas
+        .filter(v => v.fecha && v.fecha.split('T')[0] === hoyChile)
+        .reduce((sum, v) => sum + v.total, 0);
+    
+    document.getElementById('ventas-hoy').textContent = `$${totalHoy.toFixed(2)}`;
+    
+    // Mostrar ventas agrupadas
+    ventasAgrupadas.forEach(grupo => {
+        const fechaFormateada = DateTimeUtils.formatToChileTime(grupo.fecha);
+        const icono = grupo.expandida ? '🔽' : '▶';
+        
+        // Fila principal
+        const mainRow = `
+            <tr class="venta-agrupada" data-venta-id="${StringUtils.escapeHTML(grupo.id_venta)}">
+                <td colspan="2" style="font-weight: bold; color: #1e293b;">
+                    ${icono} ${StringUtils.escapeHTML(grupo.id_venta)}
+                </td>
+                <td colspan="2" style="color: #64748b; font-size: 14px;">
+                    ${fechaFormateada}
+                </td>
+                <td style="font-weight: bold; color: #10b981;">
+                    $${grupo.total.toFixed(2)}
+                </td>
+                <td colspan="2" style="color: #64748b; font-size: 14px;">
+                    ${grupo.items.length} producto(s)
+                </td>
+                <td>
+                    <button class="action-btn btn-edit toggle-venta" data-venta="${StringUtils.escapeHTML(grupo.id_venta)}">
+                        <i class="fas fa-${grupo.expandida ? 'minus' : 'plus'}"></i> ${grupo.expandida ? 'Contraer' : 'Expandir'}
+                    </button>
+                    <button class="action-btn btn-delete eliminar-venta-agrupada" data-venta="${StringUtils.escapeHTML(grupo.id_venta)}">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </td>
+            </tr>
+        `;
+        
+        tbody.innerHTML += mainRow;
+        
+        // Items detallados si está expandida
+        if (grupo.expandida) {
+            grupo.items.forEach((item, index) => {
+                const fechaItem = DateTimeUtils.formatToChileTime(item.fecha_venta);
+                const descuento = parseFloat(item.descuento || 0);
+                const subtotal = (item.cantidad * item.precio_unitario) - descuento;
+                
+                const detailRow = `
+                    <tr class="venta-detalle" data-venta-id="${StringUtils.escapeHTML(grupo.id_venta)}" style="background-color: #f8fafc;">
+                        <td style="padding-left: 40px; color: #64748b; font-size: 13px;">
+                            ${index + 1}. ${StringUtils.escapeHTML(item.barcode || item.codigo_barras)}
+                        </td>
+                        <td style="color: #64748b; font-size: 13px;">${item.cantidad}</td>
+                        <td style="color: #64748b; font-size: 13px;">$${parseFloat(item.precio_unitario || 0).toFixed(2)}</td>
+                        <td style="color: #64748b; font-size: 13px;">${descuento > 0 ? `-$${descuento.toFixed(2)}` : '$0.00'}</td>
+                        <td style="color: #64748b; font-size: 13px; font-weight: 500;">$${subtotal.toFixed(2)}</td>
+                        <td style="color: #64748b; font-size: 13px;">${StringUtils.escapeHTML(item.descripcion || '')}</td>
+                        <td style="color: #64748b; font-size: 13px;">${fechaItem}</td>
+                        <td style="color: #64748b; font-size: 13px;">
+                            <button class="action-btn btn-edit editar-item-venta" 
+                                    data-codigo="${StringUtils.escapeHTML(item.barcode || item.codigo_barras)}" 
+                                    data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}">
+                                <i class="fas fa-edit"></i> Editar
+                            </button>
+                            <button class="action-btn btn-delete eliminar-item-venta" 
+                                    data-codigo="${StringUtils.escapeHTML(item.barcode || item.codigo_barras)}" 
+                                    data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}"
+                                    data-cantidad="${item.cantidad}">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                
+                tbody.innerHTML += detailRow;
+            });
+        }
+    });
+    
+    setupGroupedSalesEventListeners();
+}
+
+function setupGroupedSalesEventListeners() {
+    // Toggle expandir/contraer
+    document.querySelectorAll('.toggle-venta').forEach(button => {
+        button.addEventListener('click', function() {
+            const idVenta = this.getAttribute('data-venta');
+            StateManager.toggleExpandirVenta(idVenta);
+            displayGroupedSales();
+        });
+    });
+    
+    // Eliminar venta agrupada
+    document.querySelectorAll('.eliminar-venta-agrupada').forEach(button => {
+        button.addEventListener('click', function() {
+            const idVenta = this.getAttribute('data-venta');
+            if (confirm(`¿Eliminar toda la venta ${idVenta}?`)) {
+                import('./ventas.js').then(module => {
+                    module.deleteGroupedSale(idVenta);
+                });
+            }
+        });
+    });
+    
+    // Editar item individual
+    document.querySelectorAll('.editar-item-venta').forEach(button => {
+        button.addEventListener('click', function() {
+            const codigo = this.getAttribute('data-codigo');
+            const fecha = this.getAttribute('data-fecha');
+            import('./ventas.js').then(module => {
+                module.editSale(codigo, fecha);
+            });
+        });
+    });
+    
+    // Eliminar item individual
+    document.querySelectorAll('.eliminar-item-venta').forEach(button => {
+        button.addEventListener('click', function() {
+            const codigo = this.getAttribute('data-codigo');
+            const fecha = this.getAttribute('data-fecha');
+            const cantidad = this.getAttribute('data-cantidad');
+            import('./ventas.js').then(module => {
+                module.deleteSale(codigo, fecha, cantidad);
+            });
+        });
+    });
+}
+
 function setupSalesRowEventListeners() {
     document.querySelectorAll('#ventasBody .btn-edit').forEach(button => {
         button.addEventListener('click', function() {
             const codigo = this.getAttribute('data-codigo');
             const fecha = this.getAttribute('data-fecha');
-            
             import('./ventas.js').then(module => {
                 module.editSale(codigo, fecha);
-            }).catch(error => {
-                console.error('Error importando ventas.js:', error);
-                notificationManager.error('Error al cargar módulo de ventas');
             });
         });
     });
@@ -347,12 +511,8 @@ function setupSalesRowEventListeners() {
             const codigo = this.getAttribute('data-codigo');
             const fecha = this.getAttribute('data-fecha');
             const cantidad = parseInt(this.getAttribute('data-cantidad'));
-            
             import('./ventas.js').then(module => {
                 module.deleteSale(codigo, fecha, cantidad);
-            }).catch(error => {
-                console.error('Error importando ventas.js:', error);
-                notificationManager.error('Error al cargar módulo de ventas');
             });
         });
     });
@@ -396,5 +556,16 @@ function showTab(tabName) {
         document.getElementById('tab-ventas-btn').classList.add('active');
     } else {
         document.getElementById('tab-inventario-btn').classList.add('active');
+    }
+}
+
+// NUEVO: Cambiar modo de visualización
+export function cambiarModoVisualizacionVentas(modo) {
+    StateManager.modoVisualizacionVentas = modo;
+    
+    if (modo === 'agrupado') {
+        displayGroupedSales();
+    } else {
+        displayDetailedSales(StateManager.getVentas());
     }
 }
