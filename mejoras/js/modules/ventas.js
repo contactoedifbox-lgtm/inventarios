@@ -213,7 +213,6 @@ export async function deleteSale(barcode, fechaVenta, cantidad) {
 }
 
 // ========== FUNCIÓN PARA ELIMINAR VENTA AGRUPADA COMPLETA ==========
-
 export async function deleteGroupedSale(idVentaAgrupada) {
     try {
         notificationManager.info(`🔄 Eliminando venta agrupada ${idVentaAgrupada}...`);
@@ -230,6 +229,7 @@ export async function deleteGroupedSale(idVentaAgrupada) {
         
         let eliminacionesExitosas = 0;
         let productosRestaurados = [];
+        let actualizacionesInventario = []; // Para actualización incremental
         
         // Eliminar cada item de la venta
         for (const venta of ventasAEliminar) {
@@ -249,6 +249,7 @@ export async function deleteGroupedSale(idVentaAgrupada) {
                     if (producto) {
                         const nuevoStock = producto.cantidad + venta.cantidad;
                         
+                        // Actualizar en base de datos
                         await supabaseClient
                             .from(Constants.API_ENDPOINTS.INVENTORY_TABLE)
                             .update({ 
@@ -263,9 +264,16 @@ export async function deleteGroupedSale(idVentaAgrupada) {
                             fecha_actualizacion: new Date().toISOString()
                         });
                         
+                        // Guardar para actualización incremental
+                        actualizacionesInventario.push({
+                            barcode: barcode,
+                            nuevoStock: nuevoStock
+                        });
+                        
                         productosRestaurados.push({
                             producto: producto.descripcion || barcode,
-                            cantidad: venta.cantidad
+                            cantidad: venta.cantidad,
+                            nuevoStock: nuevoStock
                         });
                     }
                     
@@ -277,18 +285,30 @@ export async function deleteGroupedSale(idVentaAgrupada) {
         }
         
         if (eliminacionesExitosas > 0) {
-            // Recargar ventas
+            // ACTUALIZACIÓN INCREMENTAL DEL INVENTARIO - ¡ESTO ES LO NUEVO!
+            // Actualizar cada fila afectada en la tabla de inventario
+            actualizacionesInventario.forEach(({ barcode, nuevoStock }) => {
+                InventoryUISync.updateSingleInventoryRow(barcode, nuevoStock);
+            });
+            
+            // Actualizar estadísticas inmediatamente
+            const { updateStatistics } = await import('./inventario.js');
+            updateStatistics();
+            
+            // Recargar ventas para actualizar la tabla
             const { loadSalesData } = await import('./inventario.js');
             await loadSalesData();
             
+            // Mensaje de éxito con detalles
             const mensajeProductos = productosRestaurados.map(p => 
-                `• ${p.producto}: +${p.cantidad} unidades`
+                `• ${p.producto}: ${p.cantidad} unidades → Stock: ${p.nuevoStock}`
             ).join('\n');
             
             notificationManager.success(
-                `✅ Venta ${idVentaAgrupada} eliminada.\n` +
-                `Productos restaurados:\n${mensajeProductos}`
+                `✅ Venta ${idVentaAgrupada} eliminada correctamente.\n` +
+                `Stock restaurado:\n${mensajeProductos}`
             );
+            
         } else {
             notificationManager.error('❌ No se pudo eliminar la venta');
         }
@@ -296,6 +316,10 @@ export async function deleteGroupedSale(idVentaAgrupada) {
     } catch (error) {
         console.error('Error eliminando venta agrupada:', error);
         notificationManager.error('❌ Error al eliminar la venta: ' + error.message);
+        
+        // Forzar recarga completa como fallback
+        const { loadSalesData } = await import('./inventario.js');
+        await loadSalesData();
     }
 }
 
