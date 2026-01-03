@@ -1,5 +1,5 @@
 const Constants = {
-    TIMEZONE_OFFSET: 0,
+    TIMEZONE_OFFSET: -3,
     
     STOCK_LEVELS: {
         VERY_LOW: 5,
