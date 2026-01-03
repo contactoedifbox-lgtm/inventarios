@@ -3,11 +3,12 @@ import { DateTimeUtils, InventoryUtils, StringUtils } from './utils.js';
 import notificationManager from '../ui/notifications.js';
 import modalManager from '../ui/modals.js';
 
-// Función para editar una venta
-export async function editSale(codigoBarras, fechaVenta) {
-    // Buscar la venta usando el valor EXACTO de fecha_venta
+// ========== FUNCIONES PARA VENTAS INDIVIDUALES (COMPATIBILIDAD) ==========
+
+export async function editSale(barcode, fechaVenta) {
+    // Buscar la venta - ahora busca por barcode
     const venta = StateManager.ventas.find(v => 
-        v.codigo_barras === codigoBarras && v.fecha_venta === fechaVenta
+        (v.barcode === barcode || v.codigo_barras === barcode) && v.fecha_venta === fechaVenta
     );
     
     if (!venta) {
@@ -17,10 +18,10 @@ export async function editSale(codigoBarras, fechaVenta) {
     
     StateManager.ventaEditando = venta;
     
-    const producto = StateManager.getProducto(codigoBarras);
+    const producto = StateManager.getProducto(barcode);
     const stockActual = producto ? producto.cantidad : 0;
     
-    document.getElementById('editVentaCodigo').value = venta.codigo_barras;
+    document.getElementById('editVentaCodigo').value = venta.barcode || venta.codigo_barras;
     document.getElementById('editVentaFecha').value = DateTimeUtils.formatToChileTime(venta.fecha_venta);
     document.getElementById('editVentaDescripcion').value = venta.descripcion || '';
     document.getElementById('editVentaPrecio').value = parseFloat(venta.precio_unitario).toFixed(2);
@@ -32,7 +33,6 @@ export async function editSale(codigoBarras, fechaVenta) {
     modalManager.open(Constants.MODAL_IDS.SALE);
 }
 
-// Función para calcular el nuevo total con descuento
 export function calculateNewTotalWithDiscount() {
     const precio = parseFloat(document.getElementById('editVentaPrecio').value) || 0;
     const descuento = parseFloat(document.getElementById('editVentaDescuento').value) || 0;
@@ -42,7 +42,6 @@ export function calculateNewTotalWithDiscount() {
     document.getElementById('editVentaTotal').value = `$${total.toFixed(2)}`;
 }
 
-// Función para guardar una venta editada
 export async function saveSale() {
     if (!StateManager.ventaEditando) {
         notificationManager.error('❌ Error: No hay venta seleccionada para editar');
@@ -51,7 +50,6 @@ export async function saveSale() {
     
     const nuevaCantidad = parseInt(document.getElementById('editVentaCantidad').value);
     const nuevoDescuento = parseFloat(document.getElementById('editVentaDescuento').value) || 0;
-    
     const precioActual = parseFloat(document.getElementById('editVentaPrecio').value) || 0;
     
     const validation = InventoryUtils.validateSaleData(nuevaCantidad, precioActual, nuevoDescuento);
@@ -63,8 +61,10 @@ export async function saveSale() {
     try {
         notificationManager.info('🔄 Actualizando venta...');
         
+        const barcode = StateManager.ventaEditando.barcode || StateManager.ventaEditando.codigo_barras;
+        
         const { data, error } = await supabaseClient.rpc(Constants.RPC_FUNCTIONS.EDIT_SALE, {
-            p_barcode: StateManager.ventaEditando.codigo_barras,
+            p_barcode: barcode,
             p_fecha_venta: StateManager.ventaEditando.fecha_venta,
             p_nueva_cantidad: nuevaCantidad,
             p_nuevo_descuento: nuevoDescuento
@@ -73,13 +73,14 @@ export async function saveSale() {
         if (error) throw error;
         
         if (data && data.success) {
-            updateLocalInventoryAfterSaleEdit(nuevaCantidad);
+            updateLocalInventoryAfterSaleEdit(nuevaCantidad, barcode);
             
             notificationManager.success('✅ Venta actualizada correctamente');
             modalManager.close(Constants.MODAL_IDS.SALE);
             
-            // Recargar ventas para reflejar cambios
-            await reloadSalesData();
+            // Recargar ventas
+            const { loadSalesData } = await import('./inventario.js');
+            await loadSalesData();
             const { updateStatistics } = await import('./inventario.js');
             updateStatistics();
             
@@ -95,36 +96,37 @@ export async function saveSale() {
     }
 }
 
-function updateLocalInventoryAfterSaleEdit(nuevaCantidad) {
+function updateLocalInventoryAfterSaleEdit(nuevaCantidad, barcode) {
     const productoIndex = StateManager.getInventario().findIndex(p => 
-        p.codigo_barras === StateManager.ventaEditando.codigo_barras
+        p.codigo_barras === barcode
     );
     
     if (productoIndex !== -1) {
         const diferenciaCantidad = StateManager.ventaEditando.cantidad - nuevaCantidad;
         const nuevoStock = StateManager.getInventario()[productoIndex].cantidad + diferenciaCantidad;
         
-        StateManager.updateInventoryItem(StateManager.ventaEditando.codigo_barras, {
+        StateManager.updateInventoryItem(barcode, {
             cantidad: nuevoStock,
             fecha_actualizacion: new Date().toISOString()
         });
         
-        updateLocalInventoryRow(StateManager.ventaEditando.codigo_barras, nuevoStock);
+        updateLocalInventoryRow(barcode, nuevoStock);
     }
 }
 
-// Función para eliminar una venta - CORREGIDA
-export async function deleteSale(codigoBarras, fechaVenta, cantidad) {
-    if (!confirm(`¿Estás seguro de eliminar esta venta?\nCódigo: ${codigoBarras}\nCantidad: ${cantidad}\n\nEsta acción devolverá ${cantidad} unidades al inventario.`)) {
+// ========== FUNCIÓN PARA ELIMINAR VENTA (INDIVIDUAL O AGRUPADA) ==========
+
+export async function deleteSale(barcode, fechaVenta, cantidad) {
+    if (!confirm(`¿Estás seguro de eliminar esta venta?\nCódigo: ${barcode}\nCantidad: ${cantidad}\n\nEsta acción devolverá ${cantidad} unidades al inventario.`)) {
         return;
     }
     
     try {
         notificationManager.info('🔄 Eliminando venta...');
         
-        // Primero, buscar la venta COMPLETA en StateManager para obtener el valor EXACTO de fecha_venta
+        // Buscar la venta en StateManager
         const ventaEncontrada = StateManager.ventas.find(v => 
-            v.codigo_barras === codigoBarras && v.fecha_venta === fechaVenta
+            (v.barcode === barcode || v.codigo_barras === barcode) && v.fecha_venta === fechaVenta
         );
         
         if (!ventaEncontrada) {
@@ -132,7 +134,10 @@ export async function deleteSale(codigoBarras, fechaVenta, cantidad) {
             return;
         }
         
-        const productoIndex = StateManager.getInventario().findIndex(p => p.codigo_barras === codigoBarras);
+        const productoIndex = StateManager.getInventario().findIndex(p => 
+            p.codigo_barras === barcode
+        );
+        
         if (productoIndex === -1) {
             notificationManager.error('❌ Producto no encontrado en inventario');
             return;
@@ -141,37 +146,26 @@ export async function deleteSale(codigoBarras, fechaVenta, cantidad) {
         const stockActual = parseInt(StateManager.getInventario()[productoIndex].cantidad) || 0;
         const nuevoStock = stockActual + parseInt(cantidad);
         
-        // Usar el valor EXACTO de fecha_venta de la venta encontrada
-        const fechaVentaExacta = ventaEncontrada.fecha_venta;
-        
-        console.log('Eliminando venta con:', {
-            barcode: codigoBarras,
-            fecha_venta: fechaVentaExacta,
-            fechaVentaParam: fechaVenta
-        });
-        
-        // ELIMINAR de la tabla VENTAS (no de la vista)
-        const { error: errorEliminar, count } = await supabaseClient
+        // Eliminar de la tabla ventas
+        const { error: errorEliminar } = await supabaseClient
             .from(Constants.API_ENDPOINTS.SALES_TABLE)
             .delete()
-            .eq('barcode', codigoBarras)
-            .eq('fecha_venta', fechaVentaExacta);
-        
-        console.log('Resultado eliminación:', { errorEliminar, count });
+            .eq('barcode', barcode)
+            .eq('fecha_venta', fechaVenta);
         
         if (errorEliminar) {
             console.error('Error eliminando venta:', errorEliminar);
             throw errorEliminar;
         }
         
-        // ACTUALIZAR inventario
+        // Actualizar inventario
         const { error: errorInventario } = await supabaseClient
             .from(Constants.API_ENDPOINTS.INVENTORY_TABLE)
             .update({ 
                 cantidad: nuevoStock,
                 fecha_actualizacion: new Date().toISOString()
             })
-            .eq('barcode', codigoBarras);
+            .eq('barcode', barcode);
         
         if (errorInventario) {
             console.error('Error actualizando inventario:', errorInventario);
@@ -179,31 +173,33 @@ export async function deleteSale(codigoBarras, fechaVenta, cantidad) {
         }
         
         // Actualizar StateManager local
-        StateManager.updateInventoryItem(codigoBarras, {
+        StateManager.updateInventoryItem(barcode, {
             cantidad: nuevoStock,
             fecha_actualizacion: new Date().toISOString()
         });
         
-        updateLocalInventoryRow(codigoBarras, nuevoStock);
+        updateLocalInventoryRow(barcode, nuevoStock);
         
         // Remover la venta del StateManager
         const ventaIndex = StateManager.ventas.findIndex(v => 
-            v.codigo_barras === codigoBarras && v.fecha_venta === fechaVentaExacta
+            (v.barcode === barcode || v.codigo_barras === barcode) && v.fecha_venta === fechaVenta
         );
         
         if (ventaIndex !== -1) {
             StateManager.ventas.splice(ventaIndex, 1);
+            StateManager.actualizarVentasAgrupadas();
         }
         
         // Actualizar la tabla de ventas
-        displaySales(StateManager.ventas);
+        const { displayGroupedSales } = await import('./inventario.js');
+        displayGroupedSales();
         
         // Actualizar estadísticas
         const { updateStatistics } = await import('./inventario.js');
         updateStatistics();
         
-        const producto = StateManager.getProducto(codigoBarras);
-        const nombreProducto = producto ? producto.descripcion || codigoBarras : codigoBarras;
+        const producto = StateManager.getProducto(barcode);
+        const nombreProducto = producto ? producto.descripcion || barcode : barcode;
         notificationManager.success(`✅ Venta eliminada correctamente. Stock de ${nombreProducto} restaurado: ${stockActual} → ${nuevoStock} unidades`);
         
     } catch (error) {
@@ -211,12 +207,100 @@ export async function deleteSale(codigoBarras, fechaVenta, cantidad) {
         notificationManager.error('❌ Error al eliminar la venta: ' + error.message);
         
         // Forzar recarga completa de ventas
-        await reloadSalesData();
+        const { loadSalesData } = await import('./inventario.js');
+        await loadSalesData();
     }
 }
 
-function updateLocalInventoryRow(codigoBarras, nuevoStock) {
-    const producto = StateManager.getProducto(codigoBarras);
+// ========== FUNCIÓN PARA ELIMINAR VENTA AGRUPADA COMPLETA ==========
+
+export async function deleteGroupedSale(idVentaAgrupada) {
+    try {
+        notificationManager.info(`🔄 Eliminando venta agrupada ${idVentaAgrupada}...`);
+        
+        // Buscar todas las ventas con este id_venta_agrupada
+        const ventasAEliminar = StateManager.ventas.filter(v => 
+            v.id_venta_agrupada === idVentaAgrupada
+        );
+        
+        if (ventasAEliminar.length === 0) {
+            notificationManager.error('No se encontró la venta especificada');
+            return;
+        }
+        
+        let eliminacionesExitosas = 0;
+        let productosRestaurados = [];
+        
+        // Eliminar cada item de la venta
+        for (const venta of ventasAEliminar) {
+            try {
+                const barcode = venta.barcode || venta.codigo_barras;
+                
+                // Eliminar de la base de datos
+                const { error } = await supabaseClient
+                    .from(Constants.API_ENDPOINTS.SALES_TABLE)
+                    .delete()
+                    .eq('barcode', barcode)
+                    .eq('fecha_venta', venta.fecha_venta);
+                
+                if (!error) {
+                    // Restaurar stock
+                    const producto = StateManager.getProducto(barcode);
+                    if (producto) {
+                        const nuevoStock = producto.cantidad + venta.cantidad;
+                        
+                        await supabaseClient
+                            .from(Constants.API_ENDPOINTS.INVENTORY_TABLE)
+                            .update({ 
+                                cantidad: nuevoStock,
+                                fecha_actualizacion: new Date().toISOString()
+                            })
+                            .eq('barcode', barcode);
+                        
+                        // Actualizar StateManager
+                        StateManager.updateInventoryItem(barcode, {
+                            cantidad: nuevoStock,
+                            fecha_actualizacion: new Date().toISOString()
+                        });
+                        
+                        productosRestaurados.push({
+                            producto: producto.descripcion || barcode,
+                            cantidad: venta.cantidad
+                        });
+                    }
+                    
+                    eliminacionesExitosas++;
+                }
+            } catch (error) {
+                console.error(`Error eliminando item ${venta.barcode}:`, error);
+            }
+        }
+        
+        if (eliminacionesExitosas > 0) {
+            // Recargar ventas
+            const { loadSalesData } = await import('./inventario.js');
+            await loadSalesData();
+            
+            const mensajeProductos = productosRestaurados.map(p => 
+                `• ${p.producto}: +${p.cantidad} unidades`
+            ).join('\n');
+            
+            notificationManager.success(
+                `✅ Venta ${idVentaAgrupada} eliminada.\n` +
+                `Productos restaurados:\n${mensajeProductos}`
+            );
+        } else {
+            notificationManager.error('❌ No se pudo eliminar la venta');
+        }
+        
+    } catch (error) {
+        console.error('Error eliminando venta agrupada:', error);
+        notificationManager.error('❌ Error al eliminar la venta: ' + error.message);
+    }
+}
+
+function updateLocalInventoryRow(barcode, nuevoStock) {
+    const producto = StateManager.getProducto(barcode);
     if (!producto) return;
     
     const tbody = document.getElementById('inventarioBody');
@@ -226,7 +310,7 @@ function updateLocalInventoryRow(codigoBarras, nuevoStock) {
     
     for (let fila of filas) {
         const codigoCelda = fila.cells[0].textContent.trim();
-        if (codigoCelda === codigoBarras) {
+        if (codigoCelda === barcode) {
             const stockBadge = InventoryUtils.getStockStatus(nuevoStock);
             const fecha = DateTimeUtils.formatToChileTime(producto.fecha_actualizacion);
             
@@ -243,114 +327,8 @@ function updateLocalInventoryRow(codigoBarras, nuevoStock) {
     }
 }
 
-// Función para recargar datos de ventas desde la vista
-async function reloadSalesData() {
-    try {
-        const { data, error } = await supabaseClient
-            .from(Constants.API_ENDPOINTS.SALES_VIEW)
-            .select('*')
-            .order('fecha_venta', { ascending: false })
-            .limit(200);
-            
-        if (error) throw error;
-        
-        StateManager.setVentas(data);
-        displaySales(data);
-        
-        return data;
-    } catch (error) {
-        console.error('Error recargando ventas:', error);
-        notificationManager.error('Error al recargar ventas');
-        return [];
-    }
-}
+// ========== FUNCIONES PARA VENTAS SIMPLES (COMPATIBILIDAD) ==========
 
-// Función para mostrar ventas en la tabla
-export function displaySales(data) {
-    const tbody = document.getElementById('ventasBody');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '';
-    
-    if (data.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="8" style="text-align: center; padding: 40px; color: #64748b;">
-                    <i class="fas fa-inbox"></i> No hay ventas registradas
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
-    const hoyChile = DateTimeUtils.getTodayChileDate();
-    const ventasHoy = data.filter(v => {
-        if (!v.fecha_venta) return false;
-        const fechaVenta = v.fecha_venta.split('T')[0];
-        return fechaVenta === hoyChile;
-    });
-    
-    const totalHoy = ventasHoy.reduce((sum, v) => sum + parseFloat(v.total || 0), 0);
-    const ventasHoyElement = document.getElementById('ventas-hoy');
-    if (ventasHoyElement) {
-        ventasHoyElement.textContent = `$${totalHoy.toFixed(2)}`;
-    }
-    
-    data.forEach(item => {
-        const fechaFormateada = DateTimeUtils.formatToChileTime(item.fecha_venta);
-        const descuento = parseFloat(item.descuento || 0);
-        
-        const rowHTML = `
-            <tr>
-                <td>${StringUtils.escapeHTML(item.codigo_barras)}</td>
-                <td>${item.cantidad}</td>
-                <td>$${parseFloat(item.precio_unitario || 0).toFixed(2)}</td>
-                <td>${descuento > 0 ? `-$${descuento.toFixed(2)}` : '$0.00'}</td>
-                <td><strong>$${parseFloat(item.total || 0).toFixed(2)}</strong></td>
-                <td>${StringUtils.escapeHTML(item.descripcion || '')}</td>
-                <td>${fechaFormateada}</td>
-                <td>
-                    <button class="action-btn btn-edit" 
-                            data-codigo="${StringUtils.escapeHTML(item.codigo_barras)}" 
-                            data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}">
-                        <i class="fas fa-edit"></i> Editar
-                    </button>
-                    <button class="action-btn btn-delete" 
-                            data-codigo="${StringUtils.escapeHTML(item.codigo_barras)}" 
-                            data-fecha="${StringUtils.escapeHTML(item.fecha_venta)}" 
-                            data-cantidad="${item.cantidad}">
-                        <i class="fas fa-trash"></i> Eliminar
-                    </button>
-                </td>
-            </tr>
-        `;
-        
-        tbody.innerHTML += rowHTML;
-    });
-    
-    setupSalesRowEventListeners();
-}
-
-function setupSalesRowEventListeners() {
-    document.querySelectorAll('#ventasBody .btn-edit').forEach(button => {
-        button.addEventListener('click', function() {
-            const codigo = this.getAttribute('data-codigo');
-            const fecha = this.getAttribute('data-fecha');
-            editSale(codigo, fecha);
-        });
-    });
-    
-    document.querySelectorAll('#ventasBody .btn-delete').forEach(button => {
-        button.addEventListener('click', function() {
-            const codigo = this.getAttribute('data-codigo');
-            const fecha = this.getAttribute('data-fecha');
-            const cantidad = parseInt(this.getAttribute('data-cantidad'));
-            deleteSale(codigo, fecha, cantidad);
-        });
-    });
-}
-
-// Función para abrir el modal de agregar venta
 export function openAddSaleModal() {
     StateManager.productoSeleccionado = null;
     document.getElementById('buscarProducto').value = '';
@@ -375,7 +353,6 @@ export function openAddSaleModal() {
     modalManager.open(Constants.MODAL_IDS.ADD_SALE);
 }
 
-// Función para buscar productos
 export function searchProducts() {
     const termino = document.getElementById('buscarProducto').value.trim().toLowerCase();
     const resultadosDiv = document.getElementById('resultadosBusqueda');
@@ -425,7 +402,6 @@ export function searchProducts() {
     });
 }
 
-// Función para seleccionar un producto
 export function selectProduct(codigoBarras) {
     StateManager.productoSeleccionado = StateManager.getProducto(codigoBarras);
     
@@ -450,7 +426,6 @@ export function selectProduct(codigoBarras) {
     }
 }
 
-// Función para calcular el total de la venta
 export function calculateSaleTotal() {
     const cantidad = parseInt(document.getElementById('ventaCantidad').value) || 0;
     const precio = parseFloat(document.getElementById('ventaPrecio').value) || 0;
@@ -460,7 +435,6 @@ export function calculateSaleTotal() {
     document.getElementById('ventaTotal').textContent = `$${total.toFixed(2)}`;
 }
 
-// Función para guardar una nueva venta
 export async function saveNewSale() {
     if (!StateManager.productoSeleccionado) {
         notificationManager.error('❌ Primero selecciona un producto');
@@ -490,7 +464,9 @@ export async function saveNewSale() {
         precio_unitario: precio,
         descuento: descuento,
         descripcion: descripcion || StateManager.productoSeleccionado.descripcion || '',
-        fecha_venta: DateTimeUtils.getCurrentChileISO()
+        fecha_venta: DateTimeUtils.getCurrentChileISO(),
+        id_venta_agrupada: `IND-${Date.now()}`,
+        numero_linea: 1
     };
     
     if (!navigator.onLine) {
@@ -535,8 +511,9 @@ export async function saveNewSale() {
         
         updateLocalInventoryRow(codigoBarras, nuevoStock);
         
-        // Recargar ventas después de agregar una nueva
-        await reloadSalesData();
+        // Recargar ventas
+        const { loadSalesData } = await import('./inventario.js');
+        await loadSalesData();
         
         notificationManager.success('✅ Venta registrada correctamente');
         modalManager.close(Constants.MODAL_IDS.ADD_SALE);
@@ -561,7 +538,8 @@ export async function saveNewSale() {
     }
 }
 
-// Función para mostrar el reporte de encargos pendientes
+// ========== OTRAS FUNCIONES (MANTENIDAS) ==========
+
 export async function showPendingOrdersReport() {
     const inventario = StateManager.getInventario();
     const encargos = inventario.filter(producto => producto.cantidad < 0);
@@ -625,59 +603,49 @@ export async function showPendingOrdersReport() {
     notificationManager.success(`💰 Inversión requerida: $${inversionTotal.toFixed(2)} para ${encargos.length} productos`);
 }
 
-// Función para exportar a Excel
 export function exportToExcel() {
-    const tabActiva = document.querySelector('.tab-btn.active').textContent.toLowerCase();
-    let data, filename;
+    const ventas = StateManager.getVentas();
     
-    if (tabActiva.includes('inventario')) {
-        data = StateManager.getInventario();
-        filename = 'inventario_cliente.xlsx';
-    } else {
-        data = StateManager.ventas;
-        filename = 'ventas_cliente.xlsx';
-    }
-    
-    if (data.length === 0) {
+    if (ventas.length === 0) {
         notificationManager.warning('No hay datos para exportar');
         return;
     }
     
-    let csv = '';
+    // Preparar CSV con todas las columnas, incluyendo las nuevas
+    let csv = 'id_venta_agrupada,numero_linea,barcode,codigo_barras,descripcion,cantidad,precio_unitario,descuento,total,fecha_venta\n';
     
-    if (data.length > 0) {
-        const headers = Object.keys(data[0]);
-        csv += headers.join(',') + '\n';
+    ventas.forEach(venta => {
+        const row = [
+            venta.id_venta_agrupada || `IND-${venta.id}`,
+            venta.numero_linea || 1,
+            venta.barcode || venta.codigo_barras,
+            venta.codigo_barras || venta.barcode,
+            `"${(venta.descripcion || '').replace(/"/g, '""')}"`,
+            venta.cantidad,
+            venta.precio_unitario,
+            venta.descuento || 0,
+            venta.total || (venta.cantidad * venta.precio_unitario - (venta.descuento || 0)),
+            venta.fecha_venta
+        ].join(',');
         
-        data.forEach(item => {
-            const row = headers.map(header => {
-                let value = item[header];
-                if (typeof value === 'string' && value.includes(',')) {
-                    value = `"${value}"`;
-                }
-                if (value === null || value === undefined) {
-                    value = '';
-                }
-                return value;
-            });
-            csv += row.join(',') + '\n';
-        });
-    }
+        csv += row + '\n';
+    });
     
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     
     a.href = url;
-    a.download = filename;
+    a.download = `ventas_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     
     window.URL.revokeObjectURL(url);
     
-    notificationManager.success('Archivo exportado correctamente');
+    notificationManager.success('Archivo CSV exportado correctamente');
 }
 
-// Funciones auxiliares para configuración de event listeners
+// ========== CONFIGURACIÓN DE EVENT LISTENERS ==========
+
 function setupModalEventListeners() {
     const editCantidad = document.getElementById('editVentaCantidad');
     const editDescuento = document.getElementById('editVentaDescuento');
@@ -781,7 +749,6 @@ function setupOtherEventListeners() {
     }
 }
 
-// Función principal para configurar todos los event listeners de ventas
 export function setupSalesEventListeners() {
     setupModalEventListeners();
     setupAddSaleEventListeners();
