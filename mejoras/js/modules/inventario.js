@@ -348,8 +348,6 @@ export function displayGroupedSales() {
     
     tbody.innerHTML = '';
     
-    const ventasAgrupadas = StateManager.getVentasAgrupadas();
-    
     if (ventasAgrupadas.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -369,24 +367,33 @@ export function displayGroupedSales() {
     document.getElementById('ventas-hoy').textContent = `$${totalHoy.toFixed(2)}`;
     
     ventasAgrupadas.forEach(grupo => {
-        // OBTENER FECHA CORRECTA: Usar la fecha del primer item o la fecha del grupo
         const fechaGrupo = grupo.fecha || (grupo.items.length > 0 ? grupo.items[0].fecha_venta : new Date().toISOString());
         const fechaFormateada = DateTimeUtils.formatToChileTime(fechaGrupo);
         const icono = grupo.expandida ? '🔽' : '▶';
         
+        // CORRECCIÓN: Cambiar el colspan y las columnas
         const mainRow = `
             <tr class="venta-agrupada" data-venta-id="${StringUtils.escapeHTML(grupo.id_venta)}">
-                <td colspan="2" style="font-weight: bold; color: #1e293b;">
+                <td style="font-weight: bold; color: #1e293b;">
                     ${icono} ${StringUtils.escapeHTML(grupo.id_venta)}
                 </td>
-                <td colspan="2" style="color: #64748b; font-size: 14px;">
-                    ${fechaFormateada}
+                <td style="text-align: center; color: #64748b;">
+                    ${grupo.items.length}<!-- Cantidad agrupada -->
+                </td>
+                <td style="text-align: center; color: #64748b;">
+                    --<!-- Precio unitario (vacío) -->
+                </td>
+                <td style="text-align: center; color: #64748b;">
+                    --<!-- Descuento (vacío) -->
                 </td>
                 <td style="font-weight: bold; color: #10b981;">
                     $${grupo.total.toFixed(2)}
                 </td>
-                <td colspan="2" style="color: #64748b; font-size: 14px;">
-                    ${grupo.items.length} producto(s)
+                <td style="color: #64748b; font-size: 14px;">
+                    ${grupo.items.length} producto(s) agrupado(s)
+                </td>
+                <td style="color: #64748b; font-size: 14px;">
+                    ${fechaFormateada}
                 </td>
                 <td>
                     <button class="action-btn btn-edit toggle-venta" data-venta="${StringUtils.escapeHTML(grupo.id_venta)}">
@@ -409,13 +416,13 @@ export function displayGroupedSales() {
                 
                 const detailRow = `
                     <tr class="venta-detalle" data-venta-id="${StringUtils.escapeHTML(grupo.id_venta)}" style="background-color: #f8fafc;">
-                        <td style="padding-left: 40px; color: #64748b; font-size: 13px;">
+                        <td style="padding-left: 20px; color: #64748b; font-size: 13px;">
                             ${index + 1}. ${StringUtils.escapeHTML(item.barcode || item.codigo_barras)}
                         </td>
-                        <td style="color: #64748b; font-size: 13px;">${item.cantidad}</td>
-                        <td style="color: #64748b; font-size: 13px;">$${parseFloat(item.precio_unitario || 0).toFixed(2)}</td>
-                        <td style="color: #64748b; font-size: 13px;">${descuento > 0 ? `-$${descuento.toFixed(2)}` : '$0.00'}</td>
-                        <td style="color: #64748b; font-size: 13px; font-weight: 500;">$${subtotal.toFixed(2)}</td>
+                        <td style="color: #64748b; font-size: 13px; text-align: center;">${item.cantidad}</td>
+                        <td style="color: #64748b; font-size: 13px; text-align: center;">$${parseFloat(item.precio_unitario || 0).toFixed(2)}</td>
+                        <td style="color: #64748b; font-size: 13px; text-align: center;">${descuento > 0 ? `-$${descuento.toFixed(2)}` : '$0.00'}</td>
+                        <td style="color: #64748b; font-size: 13px; font-weight: 500; text-align: center;">$${subtotal.toFixed(2)}</td>
                         <td style="color: #64748b; font-size: 13px;">${StringUtils.escapeHTML(item.descripcion || '')}</td>
                         <td style="color: #64748b; font-size: 13px;">${fechaItem}</td>
                         <td style="color: #64748b; font-size: 13px;">
