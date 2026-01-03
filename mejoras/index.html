@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Control - Inventario y Ventas Veterinaria</title>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Nuestros archivos CSS -->
+    <link rel="stylesheet" href="css/login.css">
+    <link rel="stylesheet" href="css/style.css">
+    
+    <!-- Preload para mejor performance -->
+    <link rel="preconnect" href="https://qnhmfvtqgwtlckcvzbhq.supabase.co">
+</head>
+<body>
+    <!-- ========== LOGIN CONTAINER ========== -->
+    <div id="login-container">
+        <div class="login-box">
+            <h2><i class="fas fa-lock"></i> Acceso Sistema Veterinaria</h2>
+            <p class="login-subtitle">Ingresa tus credenciales para acceder al panel</p>
+            
+            <div class="login-error">
+                Credenciales incorrectas. Intenta nuevamente.
+            </div>
+            
+            <div class="login-loading">
+                <i class="fas fa-spinner"></i> Verificando...
+            </div>
+            
+            <input type="email" id="login-email" placeholder="Correo electrónico" autocomplete="username">
+            <input type="password" id="login-password" placeholder="Contraseña" autocomplete="current-password">
+            
+            <button id="login-button">
+                <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+            </button>
+            
+            <div class="login-info">
+                <p><i class="fas fa-info-circle"></i> <strong>Sistema Veterinario - Acceso Restringido</strong></p>
+                <p>Panel de administración - Solo personal autorizado</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ========== APP CONTAINER (oculto hasta login) ========== -->
+    <div id="app-container" class="app-container">
+        <div class="container">
+            <!-- Header -->
+            <div class="header">
+                <div>
+                    <h1><i class="fas fa-warehouse"></i> Sistema de Inventario y Ventas Veterinaria</h1>
+                    <p class="subtitle">Panel de administración - <span id="current-user"></span></p>
+                </div>
+                <div class="header-buttons">
+                    <button id="recarga-inventario-btn" class="header-btn warning">
+                        <i class="fas fa-sync-alt"></i> Recargar Inventario
+                    </button>
+                    <div id="sincronizacion-indicador" class="sync-indicator sync-success">
+                        <i class="fas fa-check-circle"></i> Inventario completo
+                    </div>
+                    <button id="agregar-venta-btn" class="header-btn primary">
+                        <i class="fas fa-plus-circle"></i> Agregar Venta
+                    </button>
+                    <button id="exportar-excel-btn" class="header-btn success">
+                        <i class="fas fa-file-excel"></i> Exportar a Excel
+                    </button>
+                    <button id="reporte-encargos-btn" class="header-btn warning">
+                        <i class="fas fa-clipboard-list"></i> Encargos Pendientes
+                    </button>
+                    <div class="user-info">
+                        <i class="fas fa-user-circle"></i>
+                        <span id="user-email"></span>
+                    </div>
+                    <button class="logout-btn" id="logout-button">
+                        <i class="fas fa-sign-out-alt"></i> Salir
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Stats Cards -->
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-icon icon-inventory">
+                        <i class="fas fa-boxes"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Productos en Inventario</h3>
+                        <div class="stat-value" id="total-productos">0</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-sales">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Total Ventas Hoy</h3>
+                        <div class="stat-value" id="ventas-hoy">$0</div>
+                        <div class="hora-chile" id="fecha-hoy"></div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Stock Bajo (< 10)</h3>
+                        <div class="stat-value" id="stock-bajo">0</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-update">
+                        <i class="fas fa-sync-alt"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Última Actualización</h3>
+                        <div class="stat-value" id="ultima-actualizacion">--:--</div>
+                        <div class="hora-chile">Hora Chile</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab-btn active" id="tab-ventas-btn">
+                    <i class="fas fa-shopping-cart"></i> Ventas
+                </button>    
+                <button class="tab-btn" id="tab-inventario-btn">
+                    <i class="fas fa-boxes"></i> Inventario
+                </button>
+            </div>
+            
+            <!-- Search -->
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Buscar por código de barras o descripción..." autocomplete="off">
+            </div>
+
+            <!-- Ventas Tab -->
+            <div id="tab-ventas" class="tab-content active">
+                <div class="table-container">
+                    <table id="tablaVentas">
+                        <thead>
+                            <tr>
+                                <th>Código de Barras</th>
+                                <th>Cantidad</th>
+                                <th>Precio Unitario</th>
+                                <th>Descuento</th>
+                                <th>Total</th>
+                                <th>Descripción</th>
+                                <th>Fecha Venta (Chile)</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ventasBody">
+                            <!-- Los datos se cargarán aquí -->
+                            <tr>
+                                <td colspan="8" style="text-align: center; padding: 40px; color: #64748b;">
+                                    <i class="fas fa-spinner fa-spin"></i> Cargando ventas...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Inventario Tab -->
+            <div id="tab-inventario" class="tab-content">
+                <div class="table-container">
+                    <table id="tablaInventario">
+                        <thead>
+                            <tr>
+                                <th>Código de Barras</th>
+                                <th>Descripción</th>
+                                <th>Cantidad</th>
+                                <th>Costo</th>
+                                <th>Precio Venta</th>
+                                <th>Última Actualización</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventarioBody">
+                            <!-- Los datos se cargarán aquí -->
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 40px; color: #64748b;">
+                                    <i class="fas fa-spinner fa-spin"></i> Cargando inventario...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+        </div>
+        
+        <!-- Modal Editar Inventario -->
+        <div id="modalInventario" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Editar Producto</h2>
+                    <button class="modal-close">×</button>
+                </div>
+                <div class="modal-body">
+                    <form id="formInventario">
+                        <div class="form-group">
+                            <label>Código de Barras</label>
+                            <input type="text" id="editCodigo" readonly class="readonly-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Descripción</label>
+                            <textarea id="editDescripcion" rows="3"></textarea>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Cantidad</label>
+                                <input type="number" id="editCantidad" min="0" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Costo</label>
+                                <input type="number" id="editCosto" min="0" step="0.01" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Precio Venta</label>
+                                <input type="number" id="editPrecio" min="0" step="0.01" required>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="action-btn btn-cancel">Cancelar</button>
+                    <button class="action-btn btn-save" id="save-inventario">Guardar Cambios</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal Editar Venta -->
+        <div id="modalVenta" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Editar Venta</h2>
+                    <button class="modal-close">×</button>
+                </div>
+                <div class="modal-body">
+                    <form id="formVenta">
+                        <div class="form-group">
+                            <label>Código de Barras</label>
+                            <input type="text" id="editVentaCodigo" readonly class="readonly-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha de Venta</label>
+                            <input type="text" id="editVentaFecha" readonly class="readonly-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Descripción</label>
+                            <input type="text" id="editVentaDescripcion" class="readonly-input">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Precio Unitario</label>
+                                <input type="number" id="editVentaPrecio" step="0.01" min="0" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Descuento ($)</label>
+                                <input type="number" id="editVentaDescuento" step="0.01" min="0" required>
+                                <small class="form-help">Modificar si es necesario</small>
+                            </div>
+                            <div class="form-group">
+                                <label>Nueva Cantidad</label>
+                                <input type="number" id="editVentaCantidad" min="1" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Nuevo Total</label>
+                            <input type="text" id="editVentaTotal" readonly class="readonly-input total-display">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="action-btn btn-cancel">Cancelar</button>
+                    <button class="action-btn btn-save" id="save-venta">Actualizar Venta</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal Agregar Venta -->
+        <div id="modalAgregarVenta" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Agregar Venta Manual</h2>
+                    <button class="modal-close">×</button>
+                </div>
+                <div class="modal-body">
+                    <form id="formAgregarVenta">
+                        <div class="form-group">
+                            <label>Buscar Producto</label>
+                            <input type="text" id="buscarProducto" placeholder="Escribe código o descripción..." 
+                                   class="search-product-input" autocomplete="off">
+                            <div id="resultadosBusqueda" class="search-results">
+                                <!-- Resultados aparecen aquí -->
+                            </div>
+                        </div>
+                        
+                        <div class="form-group" id="infoProducto">
+                            <div class="product-info">
+                                <p><strong>Producto seleccionado:</strong> <span id="productoNombre"></span></p>
+                                <p><strong>Código:</strong> <span id="productoCodigo"></span></p>
+                                <p><strong>Stock disponible:</strong> <span id="productoStock"></span></p>
+                                <p><strong>Precio actual:</strong> $<span id="productoPrecio"></span></p>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Cantidad</label>
+                                <input type="number" id="ventaCantidad" min="1" value="1" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Precio Unitario</label>
+                                <input type="number" id="ventaPrecio" step="0.01" min="0" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Descuento ($)</label>
+                                <input type="number" id="ventaDescuento" step="0.01" min="0" value="0" required>
+                                <small class="form-help">Monto fijo en pesos</small>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Descripción de la Venta</label>
+                            <textarea id="ventaDescripcion" rows="2" placeholder="Descripción del producto..."></textarea>
+                            <small class="form-help">Puedes modificar esta descripción si es necesario</small>
+                        </div>
+                        
+                        <div class="form-group venta-total-info">
+                            <p><strong>Total a registrar:</strong> <span id="ventaTotal" class="venta-total">$0.00</span></p>
+                            <p class="venta-fecha">Fecha: <span id="fechaVentaActual">Cargando...</span> (Hora Chile)</p>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="action-btn btn-cancel">Cancelar</button>
+                    <button class="action-btn btn-save" id="save-agregar-venta">Registrar Venta</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== MODAL PARA ENCARGOS PENDIENTES ========== -->
+        <div id="modalEncargos" class="modal">
+            <div class="modal-content modal-wide">
+                <div class="modal-header">
+                    <h2><i class="fas fa-clipboard-list"></i> Reporte de Encargos Pendientes</h2>
+                    <button class="modal-close">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="modal-header-info">
+                        <div>
+                            <h3>Productos con stock negativo (encargos)</h3>
+                            <p>Total de encargos pendientes: <strong id="total-encargos">0</strong></p>
+                        </div>
+                    </div>
+                    
+                    <div class="table-scroll">
+                        <table class="encargos-table">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Descripción</th>
+                                    <th>Cantidad Pendiente</th>
+                                    <th>Costo</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lista-encargos">
+                                <!-- Los encargos se cargarán aquí -->
+                                <tr>
+                                    <td colspan="4" style="text-align: center; padding: 40px; color: #64748b;">
+                                        No hay encargos pendientes
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="info-box">
+                        <h4><i class="fas fa-info-circle"></i> Instrucciones:</h4>
+                        <ul>
+                            <li>Los productos con cantidad negativa representan encargos pendientes</li>
+                            <li>Valores como <strong>-1, -3</strong> indican que hay 1 o 3 unidades encargadas</li>
+                            <li>Para reponer stock, usa la función normal de "Editar" en el inventario</li>
+                            <li>Exporta el reporte para enviarlo a tu proveedor</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="action-btn btn-cancel">Cerrar</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Notificación -->
+        <div id="notification" class="notification"></div>
+        
+        <!-- Badge offline -->
+        <div id="offlineBadge" class="offline-badge">
+            📶 <span id="offlineCount">0</span> venta(s) pendientes
+        </div>
+    </div>
+
+    <!-- Nuestro archivo JavaScript principal -->
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
