@@ -272,6 +272,7 @@ export async function loadSalesData() {
         }));
         
         StateManager.setVentas(ventasNormalizadas);
+        StateManager.actualizarVentasAgrupadas();
         
         if (StateManager.modoVisualizacionVentas === 'agrupado') {
             displayGroupedSales();
@@ -348,6 +349,9 @@ export function displayGroupedSales() {
     
     tbody.innerHTML = '';
     
+    // OBTENER VENTAS AGRUPADAS DEL STATE MANAGER
+    const ventasAgrupadas = StateManager.getVentasAgrupadas();
+    
     if (ventasAgrupadas.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -371,26 +375,26 @@ export function displayGroupedSales() {
         const fechaFormateada = DateTimeUtils.formatToChileTime(fechaGrupo);
         const icono = grupo.expandida ? '🔽' : '▶';
         
-        // CORRECCIÓN: Cambiar el colspan y las columnas
+        // FILA AGRUPADA - CADA DATO EN SU COLUMNA CORRECTA
         const mainRow = `
             <tr class="venta-agrupada" data-venta-id="${StringUtils.escapeHTML(grupo.id_venta)}">
                 <td style="font-weight: bold; color: #1e293b;">
                     ${icono} ${StringUtils.escapeHTML(grupo.id_venta)}
                 </td>
                 <td style="text-align: center; color: #64748b;">
-                    ${grupo.items.length}<!-- Cantidad agrupada -->
+                    ${grupo.items.length} <!-- Cantidad total de productos -->
                 </td>
                 <td style="text-align: center; color: #64748b;">
-                    --<!-- Precio unitario (vacío) -->
+                    -- <!-- Precio unitario (no aplica para grupo) -->
                 </td>
                 <td style="text-align: center; color: #64748b;">
-                    --<!-- Descuento (vacío) -->
+                    -- <!-- Descuento (no aplica para grupo) -->
                 </td>
                 <td style="font-weight: bold; color: #10b981;">
                     $${grupo.total.toFixed(2)}
                 </td>
                 <td style="color: #64748b; font-size: 14px;">
-                    ${grupo.items.length} producto(s) agrupado(s)
+                    ${grupo.items.length} producto(s)
                 </td>
                 <td style="color: #64748b; font-size: 14px;">
                     ${fechaFormateada}
