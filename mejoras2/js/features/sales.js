@@ -7,7 +7,8 @@ import {
     validateSale, 
     calculateTotal,
     escapeHTML,
-    generateSaleId 
+    generateSaleId,
+    CHILE_TIMEZONE 
 } from '../core/utils.js';
 
 class SalesManager {
