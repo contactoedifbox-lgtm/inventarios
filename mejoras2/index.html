@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Control - Inventario Veterinaria</title>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/login.css">
+    <link rel="stylesheet" href="css/style.css">
+    
+    <!-- Preconnect -->
+    <link rel="preconnect" href="https://qnhmfvtqgwtlckcvzbhq.supabase.co">
+</head>
+<body>
+    <!-- LOGIN -->
+    <div id="login-container">
+        <div class="login-box">
+            <h2><i class="fas fa-lock"></i> Acceso Sistema</h2>
+            <p class="login-subtitle">Ingresa tus credenciales</p>
+            
+            <input type="email" id="login-email" placeholder="Correo" autocomplete="username">
+            <input type="password" id="login-password" placeholder="Contraseña" autocomplete="current-password">
+            
+            <button id="login-button">
+                <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+            </button>
+            
+            <div class="login-info">
+                <p><i class="fas fa-info-circle"></i> <strong>Sistema Veterinario</strong></p>
+                <p>Panel de administración</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- APP -->
+    <div id="app-container" class="app-container">
+        <div class="container">
+            <!-- HEADER -->
+            <div class="header">
+                <div>
+                    <h1><i class="fas fa-warehouse"></i> Sistema Veterinaria</h1>
+                    <p class="subtitle">Panel de administración - <span id="current-user"></span></p>
+                </div>
+                <div class="header-buttons">
+                    <button id="recarga-inventario-btn" class="header-btn warning">
+                        <i class="fas fa-sync-alt"></i> Recargar
+                    </button>
+                    <button id="nueva-venta-btn" class="header-btn success">
+                        <i class="fas fa-cart-plus"></i> Nueva Venta
+                    </button>
+                    <button id="exportar-excel-btn" class="header-btn success">
+                        <i class="fas fa-file-excel"></i> Exportar
+                    </button>
+                    <button id="reporte-encargos-btn" class="header-btn warning">
+                        <i class="fas fa-clipboard-list"></i> Encargos
+                    </button>
+                    <div class="user-info">
+                        <i class="fas fa-user-circle"></i>
+                        <span id="user-email"></span>
+                    </div>
+                    <button class="logout-btn" id="logout-button">
+                        <i class="fas fa-sign-out-alt"></i> Salir
+                    </button>
+                </div>
+            </div>
+            
+            <!-- STATS -->
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-icon icon-inventory">
+                        <i class="fas fa-boxes"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Productos</h3>
+                        <div class="stat-value" id="total-productos">0</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-sales">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Ventas Hoy</h3>
+                        <div class="stat-value" id="ventas-hoy">$0</div>
+                        <div class="hora-chile" id="fecha-hoy"></div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Stock Bajo</h3>
+                        <div class="stat-value" id="stock-bajo">0</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-update">
+                        <i class="fas fa-sync-alt"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Última Actualización</h3>
+                        <div class="stat-value" id="ultima-actualizacion">--:--</div>
+                        <div class="hora-chile">Hora Chile</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- TABS -->
+            <div class="tabs">
+                <button class="tab-btn active" id="tab-ventas-btn">
+                    <i class="fas fa-shopping-cart"></i> Ventas
+                </button>    
+                <button class="tab-btn" id="tab-inventario-btn">
+                    <i class="fas fa-boxes"></i> Inventario
+                </button>
+            </div>
+            
+            <!-- SEARCH -->
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Buscar por código o descripción...">
+            </div>
+            
+            <!-- VENTAS TAB -->
+            <div id="tab-ventas" class="tab-content active">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Cantidad</th>
+                                <th>Precio</th>
+                                <th>Descuento</th>
+                                <th>Total</th>
+                                <th>Descripción</th>
+                                <th>Fecha Venta</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ventasBody">
+                            <tr>
+                                <td colspan="8" style="text-align: center; padding: 40px; color: #64748b;">
+                                    <i class="fas fa-spinner fa-spin"></i> Cargando...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- INVENTARIO TAB -->
+            <div id="tab-inventario" class="tab-content">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Descripción</th>
+                                <th>Cantidad</th>
+                                <th>Costo</th>
+                                <th>Precio</th>
+                                <th>Última Actualización</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventarioBody">
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 40px; color: #64748b;">
+                                    <i class="fas fa-spinner fa-spin"></i> Cargando...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- MODALES DINÁMICOS -->
+        <div id="sales-modal" class="modal"></div>
+        <div id="custom-modal" class="modal"></div>
+        
+        <!-- NOTIFICACIÓN -->
+        <div id="notification" class="notification"></div>
+        
+        <!-- OFFLINE BADGE -->
+        <div id="offlineBadge" class="offline-badge">
+            📶 <span id="offlineCount">0</span> venta(s) pendientes
+        </div>
+    </div>
+    
+    <!-- JS -->
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
