@@ -1,1 +1,156 @@
+/* ========== ESTILOS ESPECÍFICOS DEL LOGIN ========== */
 
+/* Contenedor principal del login */
+#login-container { 
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%; 
+    background: white; 
+    z-index: 9999; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+}
+
+/* Caja del login */
+.login-box { 
+    max-width: 400px; 
+    width: 90%; 
+    padding: 40px; 
+    border: 1px solid #e2e8f0; 
+    border-radius: 15px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    background: white;
+}
+
+/* Título del login */
+.login-box h2 { 
+    margin-bottom: 15px; 
+    color: #1e293b;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Subtítulo del login */
+.login-subtitle { 
+    color: #64748b; 
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+/* Inputs del login */
+.login-box input { 
+    width: 100%; 
+    padding: 12px; 
+    margin: 10px 0; 
+    border: 1px solid #cbd5e1; 
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.3s;
+}
+
+.login-box input:focus { 
+    outline: none; 
+    border-color: #3b82f6; 
+}
+
+/* Botón del login */
+.login-box button { 
+    width: 100%; 
+    padding: 12px; 
+    background: #3b82f6; 
+    color: white; 
+    border: none; 
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: background-color 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.login-box button:hover { 
+    background: #2563eb; 
+}
+
+.login-box button:disabled {
+    background: #94a3b8;
+    cursor: not-allowed;
+}
+
+/* Mensajes de error del login */
+.login-error { 
+    color: #ef4444; 
+    background: #fee2e2; 
+    padding: 10px; 
+    border-radius: 6px; 
+    margin: 10px 0;
+    display: none;
+    font-size: 14px;
+    border-left: 4px solid #ef4444;
+}
+
+/* Información adicional del login */
+.login-info { 
+    margin-top: 20px; 
+    padding: 15px; 
+    background: #f8fafc; 
+    border-radius: 8px; 
+    font-size: 14px;
+    border: 1px solid #e2e8f0;
+}
+
+.login-info p { 
+    margin: 5px 0;
+}
+
+.login-info strong { 
+    color: #1e293b;
+}
+
+.login-info p:last-child { 
+    font-size: 12px; 
+    color: #64748b;
+}
+
+/* Icono de información */
+.login-info i { 
+    color: #3b82f6;
+    margin-right: 8px;
+}
+
+/* Loading spinner */
+.login-loading {
+    display: none;
+    text-align: center;
+    margin: 10px 0;
+}
+
+.login-loading i {
+    color: #3b82f6;
+    font-size: 20px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .login-box {
+        padding: 30px 20px;
+    }
+    
+    .login-box h2 {
+        font-size: 20px;
+    }
+}
