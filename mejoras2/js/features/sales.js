@@ -67,30 +67,35 @@ class SalesManager {
     }
     
     addProductLine(product = null) {
-        if (this.currentSale.lines.length >= 20) {
-            this.showNotification('Máximo 20 productos por venta', 'warning');
-            return;
-        }
-        
-        const lineNumber = this.currentSale.lines.length + 1;
-        
-        this.currentSale.lines.push({
-            id: Date.now() + lineNumber,
-            number: lineNumber,
-            product: product,
-            quantity: product ? 1 : 0,
-            price: product ? (product.precio || 0) : 0,
-            discount: 0,
-            description: product ? (product.descripcion || '') : '',
-            subtotal: 0
-        });
-        
-        if (product) {
-            this.calculateLineSubtotal(lineNumber);
-        }
-        
-        this.updateSaleSummary();
+    console.log(`➕ Agregando línea ${this.currentSale.lines.length + 1}`);
+    
+    if (this.currentSale.lines.length >= 20) {
+        this.showNotification('Máximo 20 productos por venta', 'warning');
+        return;
     }
+    
+    const lineNumber = this.currentSale.lines.length + 1;
+    
+    this.currentSale.lines.push({
+        id: Date.now() + lineNumber,
+        number: lineNumber,
+        product: product,
+        quantity: product ? 1 : 0,
+        price: product ? (product.precio || 0) : 0,
+        discount: 0,
+        description: product ? (product.descripcion || '') : '',
+        subtotal: 0
+    });
+    
+    if (product) {
+        this.calculateLineSubtotal(lineNumber);
+    }
+    
+    this.updateSaleSummary();
+    
+    // ¡IMPORTANTE! Re-renderizar el modal después de agregar
+    this.renderModal();
+}
     
     removeProductLine(lineNumber) {
         if (lineNumber === 1 && this.currentSale.lines.length === 1) {
@@ -413,33 +418,51 @@ class SalesManager {
     }
     
     bindModalEvents() {
-        // Agregar línea
-        const addBtn = document.getElementById('agregar-linea-btn');
-        if (addBtn) {
-            addBtn.addEventListener('click', () => this.addProductLine());
-        }
-        
-        // Registrar venta
-        const registerBtn = document.getElementById('registrar-venta-btn');
-        if (registerBtn) {
-            registerBtn.addEventListener('click', () => this.processSale());
-        }
-        
-        // Cancelar
-        const cancelBtn = document.querySelector('.btn-cancel');
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', () => this.closeModal());
-        }
-        
-        // Cerrar modal
-        const closeBtn = document.querySelector('.modal-close');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => this.closeModal());
-        }
-        
-        // Bindear eventos de líneas
-        this.bindLineEvents();
+    console.log('🔧 Binding modal events...');
+    
+    // Agregar línea - DEBE SER ASÍ:
+    const addBtn = document.getElementById('agregar-linea-btn');
+    if (addBtn) {
+        console.log('✅ Botón agregar encontrado, agregando listener...');
+        // IMPORTANTE: Usar arrow function para mantener el contexto de 'this'
+        addBtn.addEventListener('click', () => {
+            console.log('➕ Click en agregar línea');
+            this.addProductLine();
+        });
+    } else {
+        console.error('❌ Botón agregar-linea-btn NO encontrado');
     }
+    
+    // Registrar venta
+    const registerBtn = document.getElementById('registrar-venta-btn');
+    if (registerBtn) {
+        registerBtn.addEventListener('click', () => {
+            console.log('🛒 Click en registrar venta');
+            this.processSale();
+        });
+    }
+    
+    // Cancelar
+    const cancelBtn = document.querySelector('.btn-cancel');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+            console.log('❌ Click en cancelar');
+            this.closeModal();
+        });
+    }
+    
+    // Cerrar modal
+    const closeBtn = document.querySelector('.modal-close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            console.log('✖️ Click en cerrar modal');
+            this.closeModal();
+        });
+    }
+    
+    // Bindear eventos de líneas
+    this.bindLineEvents();
+}
     
     bindLineEvents() {
         // Busqueda
