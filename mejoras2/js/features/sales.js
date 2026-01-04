@@ -3,7 +3,8 @@
 import store from '../core/store.js';
 import api from '../core/api.js';
 import { 
-    formatChileTime, 
+    formatChileTime,
+    formatShortTime,
     validateSale, 
     calculateTotal,
     escapeHTML,
