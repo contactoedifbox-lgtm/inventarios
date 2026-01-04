@@ -14,7 +14,6 @@ class VetInventoryApp {
     
     async init() {
         // Setup básico
-        this.setupAuth();
         this.setupUI();
         this.setupDate();
         
@@ -84,7 +83,7 @@ class VetInventoryApp {
             await SalesManager.refreshData();
             
             // Mostrar pestaña ventas por defecto
-            InventoryManager.showSalesTab();
+            this.showSalesTab();
             
         } catch (error) {
             console.error('Error cargando dashboard:', error);
@@ -192,8 +191,11 @@ class VetInventoryApp {
     
     // ========== VIEW TOGGLES ==========
     showLogin() {
-        document.getElementById('login-container').style.display = 'flex';
-        document.getElementById('app-container').style.display = 'none';
+        const loginContainer = document.getElementById('login-container');
+        const appContainer = document.getElementById('app-container');
+        
+        if (loginContainer) loginContainer.style.display = 'flex';
+        if (appContainer) appContainer.style.display = 'none';
         
         // Limpiar campos
         const emailInput = document.getElementById('login-email');
@@ -204,9 +206,31 @@ class VetInventoryApp {
     }
     
     showApp() {
-        document.getElementById('login-container').style.display = 'none';
-        document.getElementById('app-container').style.display = 'block';
+        const loginContainer = document.getElementById('login-container');
+        const appContainer = document.getElementById('app-container');
+        
+        if (loginContainer) loginContainer.style.display = 'none';
+        if (appContainer) appContainer.style.display = 'block';
+        
         this.updateUserInfo();
+    }
+    
+    showSalesTab() {
+        this.hideAllTabs();
+        const ventasTab = document.getElementById('tab-ventas');
+        const ventasBtn = document.getElementById('tab-ventas-btn');
+        
+        if (ventasTab) ventasTab.classList.add('active');
+        if (ventasBtn) ventasBtn.classList.add('active');
+    }
+    
+    hideAllTabs() {
+        document.querySelectorAll('.tab-content').forEach(tab => 
+            tab.classList.remove('active')
+        );
+        document.querySelectorAll('.tab-btn').forEach(btn => 
+            btn.classList.remove('active')
+        );
     }
     
     // ========== NOTIFICACIONES ==========
