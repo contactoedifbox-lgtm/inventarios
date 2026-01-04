@@ -9,7 +9,7 @@ import {
     calculateTotal,
     escapeHTML,
     generateSaleId,
-    CHILE_TIMEZONE -3 
+    CHILE_TIMEZONE
 } from '../core/utils.js';
 
 class SalesManager {
