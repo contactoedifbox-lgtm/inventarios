@@ -7,7 +7,7 @@
 const SUPABASE_URL = 'https://hqcwdrdcznzpjexivlsv.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxY3dkcmRjem56cGpleGl2bHN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3OTA3NjgsImV4cCI6MjA5NzM2Njc2OH0.Q7e53_I7lhyRHxuftUjSBzb7GNMeTFyL5iY0LuCk8gk';
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // 2) ELEMENTOS DEL DOM
 const authSection = document.getElementById('auth-section');
