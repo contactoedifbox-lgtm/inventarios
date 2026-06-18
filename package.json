@@ -1,0 +1,12 @@
+{
+  "name": "caporales-sg",
+  "version": "1.0.0",
+  "description": "Caporales San Gabriel - Arriendo de Trajes",
+  "scripts": {
+    "build": "node build.js",
+    "deploy": "npm run build"
+  },
+  "devDependencies": {
+    "dotenv": "^16.4.5"
+  }
+}
