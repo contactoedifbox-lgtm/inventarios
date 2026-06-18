@@ -3,11 +3,12 @@
 // Supabase dashboard
 // ========================
 
-// 1) CONFIGURACIÓN: reemplaza con tus datos de Supabase
+// 1) CONFIGURACIÓN
 const SUPABASE_URL = 'https://hqcwdrdcznzpjexivlsv.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxY3dkcmRjem56cGpleGl2bHN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3OTA3NjgsImV4cCI6MjA5NzM2Njc2OH0.Q7e53_I7lhyRHxuftUjSBzb7GNMeTFyL5iY0LuCk8gk';
 
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Crear cliente de Supabase usando el namespace del CDN
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // 2) ELEMENTOS DEL DOM
 const authSection = document.getElementById('auth-section');
@@ -106,7 +107,7 @@ function toggleAuthMode() {
 
 // 4) SESIÓN Y PERFIL
 async function loadSession() {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await supabaseClient.auth.getSession();
   if (session?.user) {
     await setUser(session.user);
   } else {
@@ -116,7 +117,7 @@ async function loadSession() {
 
 async function setUser(user) {
   currentUser = user;
-  const { data: profile } = await supabase
+  const { data: profile } = await supabaseClient
     .from('profiles')
     .select('*')
     .eq('id', user.id)
@@ -135,7 +136,7 @@ async function handleAuth(e) {
     const fullName = authName.value.trim();
     if (!fullName) return showToast('Ingresa tu nombre completo.', 'error');
 
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await supabaseClient.auth.signUp({
       email,
       password,
       options: { data: { full_name: fullName } }
@@ -143,8 +144,8 @@ async function handleAuth(e) {
 
     if (error) return showToast('Error al registrarse: ' + error.message, 'error');
 
-    // Crear perfil manualmente (el trigger también lo hará, pero forzamos nombre)
-    await supabase.from('profiles').upsert({
+    // Crear perfil manualmente
+    await supabaseClient.from('profiles').upsert({
       id: data.user.id,
       full_name: fullName,
       email: email
@@ -153,7 +154,7 @@ async function handleAuth(e) {
     showToast('Cuenta creada. Ya puedes usar el dashboard.', 'success');
     await setUser(data.user);
   } else {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if (error) return showToast('Error al iniciar sesión: ' + error.message, 'error');
     showToast('Sesión iniciada.', 'success');
     await setUser(data.user);
@@ -164,7 +165,7 @@ async function handleAuth(e) {
 }
 
 async function handleLogout() {
-  await supabase.auth.signOut();
+  await supabaseClient.auth.signOut();
   currentUser = null;
   userProfile = null;
   showPublicUI();
@@ -189,7 +190,7 @@ function showLoggedUI() {
 async function loadCostumes() {
   costumesBody.innerHTML = '<tr><td colspan="8" class="loading">Cargando...</td></tr>';
 
-  let query = supabase
+  let query = supabaseClient
     .from('costumes')
     .select('*, owner:profiles(id, full_name, email), renter:rentals(*)')
     .order('created_at', { ascending: false });
@@ -207,6 +208,7 @@ async function loadCostumes() {
   const { data, error } = await query;
   if (error) {
     costumesBody.innerHTML = `<tr><td colspan="8" class="empty">Error al cargar: ${error.message}</td></tr>`;
+    console.error('Error cargando trajes:', error);
     return;
   }
 
@@ -291,7 +293,7 @@ async function handleAddCostume(e) {
     status: 'disponible'
   };
 
-  const { error } = await supabase.from('costumes').insert(costume);
+  const { error } = await supabaseClient.from('costumes').insert(costume);
   if (error) return showToast('Error al publicar: ' + error.message, 'error');
 
   showToast('Traje publicado correctamente.', 'success');
@@ -326,7 +328,7 @@ async function handleRentSubmit(e) {
   const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
   const filePath = `vouchers/${fileName}`;
 
-  const { error: uploadError } = await supabase.storage
+  const { error: uploadError } = await supabaseClient.storage
     .from('vouchers')
     .upload(filePath, file, { contentType: file.type });
 
@@ -346,11 +348,11 @@ async function handleRentSubmit(e) {
     status: 'reservado'
   };
 
-  const { error: rentalError } = await supabase.from('rentals').insert(rental);
+  const { error: rentalError } = await supabaseClient.from('rentals').insert(rental);
   if (rentalError) return showToast('Error al crear solicitud: ' + rentalError.message, 'error');
 
   // Actualizar estado del traje
-  const { error: updateError } = await supabase
+  const { error: updateError } = await supabaseClient
     .from('costumes')
     .update({ status: 'reservado' })
     .eq('id', costumeId);
@@ -368,7 +370,7 @@ window.confirmRental = async function(rentalId) {
   if (!currentUser) return;
 
   // Verificar que el usuario es dueño del traje
-  const { data: rental, error } = await supabase
+  const { data: rental, error } = await supabaseClient
     .from('rentals')
     .select('costume_id, costume:costumes(owner_id, status)')
     .eq('id', rentalId)
@@ -377,14 +379,14 @@ window.confirmRental = async function(rentalId) {
   if (error || !rental) return showToast('No se encontró la solicitud.', 'error');
   if (rental.costume.owner_id !== currentUser.id) return showToast('No puedes confirmar este arriendo.', 'error');
 
-  const { error: updRental } = await supabase
+  const { error: updRental } = await supabaseClient
     .from('rentals')
     .update({ status: 'arrendado' })
     .eq('id', rentalId);
 
   if (updRental) return showToast('Error al confirmar: ' + updRental.message, 'error');
 
-  const { error: updCostume } = await supabase
+  const { error: updCostume } = await supabaseClient
     .from('costumes')
     .update({ status: 'arrendado' })
     .eq('id', rental.costume_id);
@@ -399,7 +401,7 @@ window.confirmRental = async function(rentalId) {
 window.viewVoucher = async function(path) {
   if (!path) return showToast('No hay comprobante adjunto.', 'error');
 
-  const { data, error } = await supabase.storage.from('vouchers').createSignedUrl(path, 300);
+  const { data, error } = await supabaseClient.storage.from('vouchers').createSignedUrl(path, 300);
   if (error) return showToast('Error al cargar comprobante: ' + error.message, 'error');
 
   const isPdf = path.toLowerCase().endsWith('.pdf');
@@ -414,7 +416,7 @@ window.viewVoucher = async function(path) {
 window.deleteCostume = async function(costumeId) {
   if (!confirm('¿Seguro que quieres eliminar este traje?')) return;
 
-  const { error } = await supabase.from('costumes').delete().eq('id', costumeId);
+  const { error } = await supabaseClient.from('costumes').delete().eq('id', costumeId);
   if (error) return showToast('Error al eliminar: ' + error.message, 'error');
 
   showToast('Traje eliminado.', 'info');
@@ -425,9 +427,9 @@ window.deleteCostume = async function(costumeId) {
 function escapeHtml(text) {
   if (!text) return '';
   return text
-    .replace(/&/g, '&')
-    .replace(/</g, '<')
-    .replace(/>/g, '>')
-    .replace(/"/g, '"')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
