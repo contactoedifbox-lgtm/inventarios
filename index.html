@@ -87,6 +87,10 @@
             border-top-color: var(--info);
         }
         
+        .project-card.trajes {
+            border-top-color: var(--danger);
+        }
+        
         .card-header {
             display: flex;
             align-items: center;
@@ -108,6 +112,7 @@
         .original .card-icon { background: var(--success); }
         .mejoras .card-icon { background: var(--premium); }
         .mejoras2 .card-icon { background: var(--info); }
+        .trajes .card-icon { background: var(--danger); }
         
         .card-title {
             font-size: 1.5rem;
@@ -204,6 +209,11 @@
         .badge-info {
             background: #cffafe;
             color: var(--info);
+        }
+        
+        .badge-danger {
+            background: #fee2e2;
+            color: var(--danger);
         }
         
         footer {
@@ -347,6 +357,40 @@
                     </a>
                 </div>
             </div>
+            
+            <!-- TARJETA TRAJES_SG (NUEVA) -->
+            <div class="project-card trajes">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="fas fa-tshirt"></i>
+                    </div>
+                    <div>
+                        <h2 class="card-title">Trajes SG <span class="badge badge-danger">NUEVO</span></h2>
+                        <p class="card-subtitle">Sistema de gestión de trajes</p>
+                    </div>
+                </div>
+                
+                <p><strong>Proyecto:</strong> Gestión y catálogo de trajes</p>
+                
+                <ul class="features">
+                    <li>Catálogo completo de trajes</li>
+                    <li>Gestión de inventario especializado</li>
+                    <li>Interfaz adaptada para el sector</li>
+                    <li>Seguimiento de pedidos</li>
+                    <li>Control de tallas y modelos</li>
+                    <li>Reportes personalizados</li>
+                </ul>
+                
+                <div class="info-box">
+                    <p><i class="fas fa-lightbulb"></i> <strong>Nuevo proyecto:</strong> Sistema independiente para la gestión especializada de trajes.</p>
+                </div>
+                
+                <div class="btn-group">
+                    <a href="trajes_SG/index.html" class="btn btn-primary">
+                        <i class="fas fa-rocket"></i> Abrir Trajes SG
+                    </a>
+                </div>
+            </div>
         </div>
         
         <div class="warning-box">
@@ -359,7 +403,7 @@
         <footer>
             <p>Sistema desarrollado para gestión veterinaria | Desplegado con GitHub Pages</p>
             <p style="margin-top: 10px; font-size: 0.9rem;">
-                <i class="fab fa-github"></i> Repositorio: inventarios | Versiones: Original, Mejoras y Mejoras2
+                <i class="fab fa-github"></i> Repositorio: inventarios | Versiones: Original, Mejoras, Mejoras2 y Trajes SG
             </p>
         </footer>
     </div>
