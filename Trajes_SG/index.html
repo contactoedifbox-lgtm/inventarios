@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Caporales San Gabriel – Arriendo de Trajes</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-content">
+      <div class="brand">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Flag_of_Bolivia.svg/1200px-Flag_of_Bolivia.svg.png" alt="Bolivia" class="flag" />
+        <div>
+          <h1>Caporales San Gabriel</h1>
+          <p>Filial Viña del Mar – Arriendo de Trajes</p>
+        </div>
+      </div>
+      <nav id="nav-actions"></nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Auth section -->
+    <section id="auth-section" class="card">
+      <h2 id="auth-title">Iniciar sesión</h2>
+      <form id="auth-form" class="form-grid">
+        <div class="field">
+          <label for="auth-email">Correo electrónico</label>
+          <input type="email" id="auth-email" required placeholder="tu@correo.cl" />
+        </div>
+        <div class="field">
+          <label for="auth-password">Contraseña</label>
+          <input type="password" id="auth-password" required placeholder="••••••••" />
+        </div>
+        <div class="field full">
+          <label for="auth-name" id="auth-name-label" class="hidden">Nombre completo</label>
+          <input type="text" id="auth-name" class="hidden" placeholder="Tu nombre" />
+        </div>
+        <div class="actions full">
+          <button type="submit" class="btn btn-primary" id="auth-submit">Iniciar sesión</button>
+          <button type="button" class="btn btn-ghost" id="auth-toggle">¿No tienes cuenta? Regístrate</button>
+        </div>
+      </form>
+      <p class="note">Puedes ver los trajes disponibles sin iniciar sesión. Para publicar o arrendar necesitas una cuenta.</p>
+    </section>
+
+    <!-- User bar -->
+    <section id="user-bar" class="user-bar hidden">
+      <span id="user-greeting"></span>
+      <button id="logout-btn" class="btn btn-small btn-ghost">Cerrar sesión</button>
+    </section>
+
+    <!-- Events -->
+    <section class="events">
+      <div class="event-card">
+        <strong>Inti Raymi 2026</strong>
+        <span>21 de junio de 2026</span>
+      </div>
+      <div class="event-card">
+        <strong>Mil Tambores 2026</strong>
+        <span>11 de octubre de 2026</span>
+      </div>
+    </section>
+
+    <!-- Filters -->
+    <section class="card filters">
+      <h3>Filtrar trajes</h3>
+      <div class="form-grid">
+        <div class="field">
+          <label for="filter-year">Año</label>
+          <select id="filter-year">
+            <option value="">Todos</option>
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="filter-size">Talla traje</label>
+          <select id="filter-size">
+            <option value="">Todas</option>
+            <option value="S">S</option>
+            <option value="M">M</option>
+            <option value="L">L</option>
+            <option value="XL">XL</option>
+            <option value="S/M">S/M</option>
+            <option value="M/L">M/L</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="filter-boot">Talla bota</label>
+          <select id="filter-boot">
+            <option value="">Todas</option>
+            <option value="38">38</option>
+            <option value="39">39</option>
+            <option value="40">40</option>
+            <option value="41">41</option>
+            <option value="42">42</option>
+            <option value="43">43</option>
+            <option value="44">44</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="filter-status">Estado</label>
+          <select id="filter-status">
+            <option value="">Todos</option>
+            <option value="disponible">Disponible</option>
+            <option value="reservado">Reservado</option>
+            <option value="arrendado">Arrendado</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Add costume (logged users) -->
+    <section id="add-section" class="card hidden">
+      <h3>Publicar un traje</h3>
+      <form id="add-form" class="form-grid">
+        <div class="field">
+          <label for="costume-year">Año traje</label>
+          <select id="costume-year" required>
+            <option value="">Selecciona</option>
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="costume-size">Talla traje</label>
+          <select id="costume-size" required>
+            <option value="">Selecciona</option>
+            <option value="S">S</option>
+            <option value="M">M</option>
+            <option value="L">L</option>
+            <option value="XL">XL</option>
+            <option value="S/M">S/M</option>
+            <option value="M/L">M/L</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="costume-boot">Talla bota</label>
+          <select id="costume-boot" required>
+            <option value="">Selecciona</option>
+            <option value="38">38</option>
+            <option value="39">39</option>
+            <option value="40">40</option>
+            <option value="41">41</option>
+            <option value="42">42</option>
+            <option value="43">43</option>
+            <option value="44">44</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="costume-price">Precio arriendo ($)</label>
+          <input type="number" id="costume-price" value="25000" min="0" step="1000" required />
+        </div>
+        <div class="field full">
+          <label for="costume-bank">Datos para transferencia (nombre, banco, cuenta, RUT)</label>
+          <textarea id="costume-bank" rows="2" required placeholder="Ej: Juan Pérez, Banco Estado, Cuenta Rut 12.345.678-9"></textarea>
+        </div>
+        <div class="actions full">
+          <button type="submit" class="btn btn-primary">Publicar traje</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Costumes table -->
+    <section class="card">
+      <h3>Trajes disponibles</h3>
+      <div class="table-wrap">
+        <table id="costumes-table">
+          <thead>
+            <tr>
+              <th>Año</th>
+              <th>Talla traje</th>
+              <th>Talla bota</th>
+              <th>Precio</th>
+              <th>Dueño</th>
+              <th>Evento</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="costumes-body">
+            <tr><td colspan="8" class="loading">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Rent modal -->
+  <div id="rent-modal" class="modal hidden">
+    <div class="modal-content">
+      <button class="modal-close" id="rent-close">&times;</button>
+      <h2>Solicitar arriendo</h2>
+      <p class="modal-subtitle">Completa tus datos y adjunta el comprobante de transferencia. El dueño revisará y confirmará.</p>
+      <form id="rent-form" class="form-grid">
+        <input type="hidden" id="rent-costume-id" />
+        <div class="field">
+          <label for="rent-firstname">Nombres</label>
+          <input type="text" id="rent-firstname" required />
+        </div>
+        <div class="field">
+          <label for="rent-lastname">Apellidos</label>
+          <input type="text" id="rent-lastname" required />
+        </div>
+        <div class="field">
+          <label for="rent-rut">RUT</label>
+          <input type="text" id="rent-rut" required placeholder="12.345.678-9" />
+        </div>
+        <div class="field">
+          <label for="rent-phone">Teléfono</label>
+          <input type="tel" id="rent-phone" required placeholder="+56 9 1234 5678" />
+        </div>
+        <div class="field full">
+          <label for="rent-email">Correo</label>
+          <input type="email" id="rent-email" required />
+        </div>
+        <div class="field full">
+          <label for="rent-event">Evento</label>
+          <select id="rent-event" required>
+            <option value="">Selecciona</option>
+            <option value="Inti Raymi 2026">Inti Raymi 2026 (21 junio)</option>
+            <option value="Mil Tambores 2026">Mil Tambores 2026 (11 octubre)</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label for="rent-voucher">Comprobante de transferencia (imagen o PDF)</label>
+          <input type="file" id="rent-voucher" accept="image/*,.pdf" required />
+        </div>
+        <div class="actions full">
+          <button type="submit" class="btn btn-primary">Enviar solicitud de arriendo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Voucher preview modal -->
+  <div id="voucher-modal" class="modal hidden">
+    <div class="modal-content">
+      <button class="modal-close" id="voucher-close">&times;</button>
+      <h2>Comprobante de pago</h2>
+      <div id="voucher-preview"></div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <p>Caporales San Gabriel – Filial Viña del Mar</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
