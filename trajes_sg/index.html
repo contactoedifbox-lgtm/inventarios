@@ -49,25 +49,28 @@
     <!-- User bar -->
     <section id="user-bar" class="user-bar hidden">
       <span id="user-greeting"></span>
-      <button id="logout-btn" class="btn btn-small btn-ghost">Cerrar sesión</button>
+      <div>
+        <button id="admin-btn" class="btn btn-small btn-warning hidden">⚙️ Administrar Eventos</button>
+        <button id="logout-btn" class="btn btn-small btn-ghost">Cerrar sesión</button>
+      </div>
     </section>
 
-    <!-- Events -->
-    <section class="events">
-      <div class="event-card">
-        <strong>Inti Raymi 2026</strong>
-        <span>21 de junio de 2026</span>
-      </div>
-      <div class="event-card">
-        <strong>Mil Tambores 2026</strong>
-        <span>11 de octubre de 2026</span>
-      </div>
+    <!-- Events display -->
+    <section id="events-section" class="events">
+      <!-- Se llena dinámicamente -->
     </section>
 
     <!-- Filters -->
     <section class="card filters">
       <h3>Filtrar trajes</h3>
       <div class="form-grid">
+        <div class="field">
+          <label for="filter-event">Evento</label>
+          <select id="filter-event">
+            <option value="">Todos los eventos</option>
+            <!-- Se llena dinámicamente -->
+          </select>
+        </div>
         <div class="field">
           <label for="filter-year">Año</label>
           <select id="filter-year">
@@ -117,6 +120,13 @@
     <section id="add-section" class="card hidden">
       <h3>Publicar un traje</h3>
       <form id="add-form" class="form-grid">
+        <div class="field">
+          <label for="costume-event">Evento</label>
+          <select id="costume-event" required>
+            <option value="">Selecciona evento</option>
+            <!-- Se llena dinámicamente -->
+          </select>
+        </div>
         <div class="field">
           <label for="costume-year">Año traje</label>
           <select id="costume-year" required>
@@ -171,12 +181,12 @@
         <table id="costumes-table">
           <thead>
             <tr>
+              <th>Evento</th>
               <th>Año</th>
               <th>Talla traje</th>
               <th>Talla bota</th>
               <th>Precio</th>
               <th>Dueño</th>
-              <th>Evento</th>
               <th>Estado</th>
               <th>Acciones</th>
             </tr>
@@ -221,8 +231,7 @@
           <label for="rent-event">Evento</label>
           <select id="rent-event" required>
             <option value="">Selecciona</option>
-            <option value="Inti Raymi 2026">Inti Raymi 2026 (21 junio)</option>
-            <option value="Mil Tambores 2026">Mil Tambores 2026 (11 octubre)</option>
+            <!-- Se llena dinámicamente -->
           </select>
         </div>
         <div class="field full">
@@ -242,6 +251,42 @@
       <button class="modal-close" id="voucher-close">&times;</button>
       <h2>Comprobante de pago</h2>
       <div id="voucher-preview"></div>
+    </div>
+  </div>
+
+  <!-- Admin Events Modal -->
+  <div id="admin-modal" class="modal hidden">
+    <div class="modal-content">
+      <button class="modal-close" id="admin-close">&times;</button>
+      <h2>⚙️ Administrar Eventos</h2>
+      
+      <div class="card" style="margin-bottom: 20px;">
+        <h3>Agregar nuevo evento</h3>
+        <form id="admin-add-event-form" class="form-grid">
+          <div class="field">
+            <label for="event-name">Nombre del evento</label>
+            <input type="text" id="event-name" required placeholder="Ej: Carnaval 2027" />
+          </div>
+          <div class="field">
+            <label for="event-date">Fecha</label>
+            <input type="date" id="event-date" required />
+          </div>
+          <div class="field full">
+            <label for="event-description">Descripción</label>
+            <input type="text" id="event-description" placeholder="Descripción opcional" />
+          </div>
+          <div class="actions full">
+            <button type="submit" class="btn btn-primary">Crear Evento</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>Eventos existentes</h3>
+        <div id="admin-events-list" class="events-list">
+          <!-- Se llena dinámicamente -->
+        </div>
+      </div>
     </div>
   </div>
 
