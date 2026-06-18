@@ -1,7 +1,7 @@
-// ========================
+// =========================
 // Caporales San Gabriel – Arriendo de Trajes
 // Supabase dashboard v2.1
-// ========================
+// =========================
 
 // 1) CONFIGURACIÓN
 const SUPABASE_URL = 'https://hqcwdrdcznzpjexivlsv.supabase.co';
