@@ -1,6 +1,6 @@
 // ========================
 // Caporales San Gabriel – Arriendo de Trajes
-// Supabase dashboard v2.0
+// Supabase dashboard v2.1
 // ========================
 
 // 1) CONFIGURACIÓN
@@ -155,7 +155,7 @@ function populateEventSelects() {
   // Select de evento al arrendar
   const rentEvent = document.getElementById('rent-event');
   if (rentEvent) {
-    rentEvent.innerHTML = '<option value="">Selecciona</option>';
+    rentEvent.innerHTML = '<option value="">Selecciona evento</option>';
     eventsList.forEach(event => {
       rentEvent.innerHTML += `<option value="${event.name}">${event.name} (${formatDate(event.event_date)})</option>`;
     });
@@ -207,14 +207,23 @@ async function setUser(user) {
 
   userProfile = profile || { full_name: user.email };
 
-  // Verificar si es admin
-  const { data: roleData } = await supabaseClient
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', user.id)
-    .single();
+  // Verificar si es admin (manejo seguro de error)
+  try {
+    const { data: roleData, error: roleError } = await supabaseClient
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
 
-  isAdmin = roleData?.role === 'admin';
+    if (!roleError && roleData) {
+      isAdmin = roleData.role === 'admin';
+    } else {
+      isAdmin = false;
+    }
+  } catch (e) {
+    console.log('Error verificando rol (posiblemente tabla no existe):', e.message);
+    isAdmin = false;
+  }
   
   showLoggedUI();
 }
@@ -358,17 +367,19 @@ function renderCostumes(costumes) {
 function renderActions(costume, isOwner, rental) {
   let html = '';
 
+  // Botón Arrendar
   if (costume.status === 'disponible') {
     if (currentUser) {
-      html += `<button class="btn btn-primary btn-small" onclick="openRentModal('${costume.id}')">Arrendar</button>`;
+      html += `<button class="btn btn-primary btn-small" onclick="openRentModal('${costume.id}')" style="margin-right:8px;">Arrendar</button>`;
     } else {
       html += `<small>Inicia sesión para arrendar</small>`;
     }
   }
 
+  // Botones del dueño (Confirmar, Ver comprobante)
   if (isOwner && costume.status !== 'disponible' && rental) {
-    html += `<button class="btn btn-success btn-small" onclick="confirmRental('${rental.id}')">Confirmar arriendo</button>`;
-    html += `<button class="btn btn-ghost btn-small" onclick="viewVoucher('${rental.voucher_path}')">Ver comprobante</button>`;
+    html += `<button class="btn btn-success btn-small" onclick="confirmRental('${rental.id}')" style="margin-right:8px;">Confirmar arriendo</button>`;
+    html += `<button class="btn btn-ghost btn-small" onclick="viewVoucher('${rental.voucher_path}')" style="margin-right:8px;">Ver comprobante</button>`;
     html += `<div class="renter-info">
       <strong>${escapeHtml(rental.first_name + ' ' + rental.last_name)}</strong><br>
       RUT: ${escapeHtml(rental.rut)}<br>
@@ -377,8 +388,9 @@ function renderActions(costume, isOwner, rental) {
     </div>`;
   }
 
+  // Botón Eliminar (dueño, solo disponible)
   if (isOwner && costume.status === 'disponible') {
-    html += `<button class="btn btn-danger btn-small" onclick="deleteCostume('${costume.id}')">Eliminar</button>`;
+    html += `<button class="btn btn-danger btn-small" onclick="deleteCostume('${costume.id}')" style="margin-top:8px;">Eliminar</button>`;
   }
 
   return html;
@@ -390,11 +402,11 @@ async function handleAddCostume(e) {
   if (!currentUser) return showToast('Debes iniciar sesión.', 'error');
 
   const eventId = document.getElementById('costume-event').value;
-  if (!eventId) return showToast('Selecciona un evento.', 'error');
-
+  // Permitir publicar sin evento (queda disponible para todos)
+  
   const costume = {
     owner_id: currentUser.id,
-    event_id: eventId,
+    event_id: eventId || null,
     year: document.getElementById('costume-year').value,
     size: document.getElementById('costume-size').value,
     boot_size: document.getElementById('costume-boot').value,
@@ -604,14 +616,8 @@ window.toggleEventStatus = async function(eventId, currentStatus) {
   loadAdminEventsList();
 };
 
-// Sobreescribir admin close para cargar lista
-const originalAdminClose = adminClose.onclick;
-adminClose.onclick = null;
-adminClose.addEventListener('click', () => {
-  adminModal.classList.add('hidden');
-});
-
-// Cargar lista cuando se abre el modal
+// Cargar lista cuando se abre el modal de admin
+const adminModalElement = document.getElementById('admin-modal');
 const observer = new MutationObserver((mutations) => {
   mutations.forEach((mutation) => {
     if (mutation.target.id === 'admin-modal' && !mutation.target.classList.contains('hidden')) {
@@ -620,8 +626,9 @@ const observer = new MutationObserver((mutations) => {
   });
 });
 
-const adminModalElement = document.getElementById('admin-modal');
-observer.observe(adminModalElement, { attributes: true, attributeFilter: ['class'] });
+if (adminModalElement) {
+  observer.observe(adminModalElement, { attributes: true, attributeFilter: ['class'] });
+}
 
 // 13) UTILIDADES
 function escapeHtml(text) {
