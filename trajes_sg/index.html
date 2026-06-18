@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Caporales San Gabriel – Arriendo de Trajes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -56,19 +58,16 @@
     </section>
 
     <!-- Events display -->
-    <section id="events-section" class="events">
-      <!-- Se llena dinámicamente -->
-    </section>
+    <section id="events-section" class="events"></section>
 
     <!-- Filters -->
     <section class="card filters">
-      <h3>Filtrar trajes</h3>
+      <h3>🔍 Filtrar Trajes</h3>
       <div class="form-grid">
         <div class="field">
           <label for="filter-event">Evento</label>
           <select id="filter-event">
             <option value="">Todos los eventos</option>
-            <!-- Se llena dinámicamente -->
           </select>
         </div>
         <div class="field">
@@ -116,15 +115,38 @@
       </div>
     </section>
 
-    <!-- Add costume (logged users) -->
+    <!-- Costumes table -->
+    <section class="card">
+      <h3>👔 Trajes Disponibles</h3>
+      <div class="table-wrap">
+        <table id="costumes-table">
+          <thead>
+            <tr>
+              <th>Evento</th>
+              <th>Año</th>
+              <th>Talla</th>
+              <th>Bota</th>
+              <th>Precio</th>
+              <th>Dueño</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="costumes-body">
+            <tr><td colspan="8" class="loading">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Add costume -->
     <section id="add-section" class="card hidden">
-      <h3>Publicar un traje</h3>
+      <h3>✨ Publicar un Traje</h3>
       <form id="add-form" class="form-grid">
         <div class="field">
           <label for="costume-event">Evento</label>
           <select id="costume-event" required>
             <option value="">Selecciona evento</option>
-            <!-- Se llena dinámicamente -->
           </select>
         </div>
         <div class="field">
@@ -165,127 +187,60 @@
           <input type="number" id="costume-price" value="25000" min="0" step="1000" required />
         </div>
         <div class="field full">
-          <label for="costume-bank">Datos para transferencia (nombre, banco, cuenta, RUT)</label>
+          <label for="costume-bank">Datos para transferencia</label>
           <textarea id="costume-bank" rows="2" required placeholder="Ej: Juan Pérez, Banco Estado, Cuenta Rut 12.345.678-9"></textarea>
         </div>
         <div class="actions full">
-          <button type="submit" class="btn btn-primary">Publicar traje</button>
+          <button type="submit" class="btn btn-primary">✨ Publicar Traje</button>
         </div>
       </form>
     </section>
-
-    <!-- Costumes table -->
-    <section class="card">
-      <h3>Trajes disponibles</h3>
-      <div class="table-wrap">
-        <table id="costumes-table">
-          <thead>
-            <tr>
-              <th>Evento</th>
-              <th>Año</th>
-              <th>Talla traje</th>
-              <th>Talla bota</th>
-              <th>Precio</th>
-              <th>Dueño</th>
-              <th>Estado</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody id="costumes-body">
-            <tr><td colspan="8" class="loading">Cargando...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
   </main>
 
-  <!-- Rent modal -->
+  <!-- Modales (igual que antes) -->
   <div id="rent-modal" class="modal hidden">
     <div class="modal-content">
       <button class="modal-close" id="rent-close">&times;</button>
-      <h2>Solicitar arriendo</h2>
-      <p class="modal-subtitle">Completa tus datos y adjunta el comprobante de transferencia. El dueño revisará y confirmará.</p>
+      <h2>Solicitar Arriendo</h2>
+      <p class="modal-subtitle">Completa tus datos y adjunta el comprobante.</p>
       <form id="rent-form" class="form-grid">
         <input type="hidden" id="rent-costume-id" />
-        <div class="field">
-          <label for="rent-firstname">Nombres</label>
-          <input type="text" id="rent-firstname" required />
-        </div>
-        <div class="field">
-          <label for="rent-lastname">Apellidos</label>
-          <input type="text" id="rent-lastname" required />
-        </div>
-        <div class="field">
-          <label for="rent-rut">RUT</label>
-          <input type="text" id="rent-rut" required placeholder="12.345.678-9" />
-        </div>
-        <div class="field">
-          <label for="rent-phone">Teléfono</label>
-          <input type="tel" id="rent-phone" required placeholder="+56 9 1234 5678" />
-        </div>
-        <div class="field full">
-          <label for="rent-email">Correo</label>
-          <input type="email" id="rent-email" required />
-        </div>
-        <div class="field full">
-          <label for="rent-event">Evento</label>
-          <select id="rent-event" required>
-            <option value="">Selecciona</option>
-            <!-- Se llena dinámicamente -->
-          </select>
-        </div>
-        <div class="field full">
-          <label for="rent-voucher">Comprobante de transferencia (imagen o PDF)</label>
-          <input type="file" id="rent-voucher" accept="image/*,.pdf" required />
-        </div>
-        <div class="actions full">
-          <button type="submit" class="btn btn-primary">Enviar solicitud de arriendo</button>
-        </div>
+        <div class="field"><label for="rent-firstname">Nombres</label><input type="text" id="rent-firstname" required /></div>
+        <div class="field"><label for="rent-lastname">Apellidos</label><input type="text" id="rent-lastname" required /></div>
+        <div class="field"><label for="rent-rut">RUT</label><input type="text" id="rent-rut" required placeholder="12.345.678-9" /></div>
+        <div class="field"><label for="rent-phone">Teléfono</label><input type="tel" id="rent-phone" required placeholder="+56 9 1234 5678" /></div>
+        <div class="field full"><label for="rent-email">Correo</label><input type="email" id="rent-email" required /></div>
+        <div class="field full"><label for="rent-event">Evento</label><select id="rent-event" required><option value="">Selecciona</option></select></div>
+        <div class="field full"><label for="rent-voucher">Comprobante</label><input type="file" id="rent-voucher" accept="image/*,.pdf" required /></div>
+        <div class="actions full"><button type="submit" class="btn btn-primary">Enviar Solicitud</button></div>
       </form>
     </div>
   </div>
 
-  <!-- Voucher preview modal -->
   <div id="voucher-modal" class="modal hidden">
     <div class="modal-content">
       <button class="modal-close" id="voucher-close">&times;</button>
-      <h2>Comprobante de pago</h2>
+      <h2>Comprobante de Pago</h2>
       <div id="voucher-preview"></div>
     </div>
   </div>
 
-  <!-- Admin Events Modal -->
   <div id="admin-modal" class="modal hidden">
     <div class="modal-content">
       <button class="modal-close" id="admin-close">&times;</button>
       <h2>⚙️ Administrar Eventos</h2>
-      
-      <div class="card" style="margin-bottom: 20px;">
-        <h3>Agregar nuevo evento</h3>
+      <div class="card" style="margin-bottom: 20px; box-shadow: none; border: 1px solid #E5E7EB;">
+        <h3>Nuevo Evento</h3>
         <form id="admin-add-event-form" class="form-grid">
-          <div class="field">
-            <label for="event-name">Nombre del evento</label>
-            <input type="text" id="event-name" required placeholder="Ej: Carnaval 2027" />
-          </div>
-          <div class="field">
-            <label for="event-date">Fecha</label>
-            <input type="date" id="event-date" required />
-          </div>
-          <div class="field full">
-            <label for="event-description">Descripción</label>
-            <input type="text" id="event-description" placeholder="Descripción opcional" />
-          </div>
-          <div class="actions full">
-            <button type="submit" class="btn btn-primary">Crear Evento</button>
-          </div>
+          <div class="field"><label for="event-name">Nombre</label><input type="text" id="event-name" required placeholder="Ej: Carnaval 2027" /></div>
+          <div class="field"><label for="event-date">Fecha</label><input type="date" id="event-date" required /></div>
+          <div class="field full"><label for="event-description">Descripción</label><input type="text" id="event-description" placeholder="Opcional" /></div>
+          <div class="actions full"><button type="submit" class="btn btn-primary">Crear Evento</button></div>
         </form>
       </div>
-
-      <div class="card">
-        <h3>Eventos existentes</h3>
-        <div id="admin-events-list" class="events-list">
-          <!-- Se llena dinámicamente -->
-        </div>
+      <div class="card" style="box-shadow: none; border: 1px solid #E5E7EB;">
+        <h3>Eventos Existentes</h3>
+        <div id="admin-events-list" class="events-list"></div>
       </div>
     </div>
   </div>
