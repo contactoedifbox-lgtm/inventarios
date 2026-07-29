@@ -1,0 +1,47 @@
+﻿@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ===== Colores corporativos: ÚNICA fuente de verdad =====
+       Tailwind los consume vía hsl(var(--brand-*)) en tailwind.config.ts.
+       Para cambiar la identidad visual, edita SOLO estas 5 líneas. */
+    --brand-red: 0 68% 50%;      /* #d62828 */
+    --brand-orange: 31 100% 48%; /* #f77f00 */
+    --brand-gold: 40 97% 64%;    /* #fcbf49 */
+    --brand-dark: 0 0% 10%;      /* #1a1a1a */
+    --brand-light: 0 0% 98%;     /* #fafafa */
+
+    /* Tokens shadcn/ui derivados de la marca (consistencia total) */
+    --background: var(--brand-light);
+    --foreground: var(--brand-dark);
+    --card: 0 0% 100%;
+    --card-foreground: var(--brand-dark);
+    --popover: 0 0% 100%;
+    --popover-foreground: var(--brand-dark);
+    --primary: var(--brand-red);
+    --primary-foreground: 0 0% 100%;
+    --secondary: var(--brand-gold);
+    --secondary-foreground: var(--brand-dark);
+    --muted: 30 20% 96%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 30 100% 97%;
+    --accent-foreground: 0 68% 45%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 30 15% 90%;
+    --input: 30 15% 88%;
+    --ring: var(--brand-red);
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
