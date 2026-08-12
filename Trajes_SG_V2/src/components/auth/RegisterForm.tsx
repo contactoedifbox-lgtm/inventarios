@@ -1,6 +1,6 @@
-﻿'use client';
+'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,6 +13,7 @@ import { ROUTES, STORAGE_BUCKETS } from '@/config/constants';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Upload, Loader2, Check, AlertCircle } from 'lucide-react';
 import {
   Form,
   FormControl,
@@ -21,7 +22,44 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
+
+interface ExtendedRegisterInput extends RegisterInput {
+  role: 'propietario' | 'arrendatario';
+  agrupacion?: string;
+  bankNombre: string;
+  bankBanco: string;
+  bankTipoCuenta: string;
+  bankNumeroCuenta: string;
+  bankRut: string;
+  bankCorreo: string;
+}
+
+const extendedRegisterSchema = registerSchema.extend({
+  role: z.enum(['propietario', 'arrendatario']),
+  agrupacion: z.string().optional(),
+  bankNombre: z.string().min(1, 'El nombre del titular es obligatorio'),
+  bankBanco: z.string().min(1, 'El banco es obligatorio'),
+  bankTipoCuenta: z.string().min(1, 'El tipo de cuenta es obligatorio'),
+  bankNumeroCuenta: z.string().min(1, 'El número de cuenta es obligatorio'),
+  bankRut: z.string().min(1, 'El RUT del titular es obligatorio'),
+  bankCorreo: z.string().email('Ingresa un correo válido'),
+}).superRefine((data, ctx) => {
+  if (data.role === 'propietario' && !data.agrupacion) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Debes ingresar la agrupación a la que perteneces',
+      path: ['agrupacion'],
+    });
+  }
+});
 
 /**
  * Formulario de registro con verificación de identidad:
@@ -33,11 +71,16 @@ import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 export function RegisterForm() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [idCardFile, setIdCardFile] = useState<File | null>(null);
+  const [carnetFrontal, setCarnetFrontal] = useState<string | null>(null);
+  const [carnetTrasera, setCarnetTrasera] = useState<string | null>(null);
+  const [compressingFront, setCompressingFront] = useState(false);
+  const [compressingBack, setCompressingBack] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
+  const frontInputRef = useRef<HTMLInputElement>(null);
+  const backInputRef = useRef<HTMLInputElement>(null);
 
-  const form = useForm<RegisterInput>({
-    resolver: zodResolver(registerSchema),
+  const form = useForm<ExtendedRegisterInput>({
+    resolver: zodResolver(extendedRegisterSchema),
     defaultValues: {
       full_name: '',
       rut: '',
@@ -47,12 +90,56 @@ export function RegisterForm() {
       email: '',
       password: '',
       confirmPassword: '',
+      role: 'propietario',
+      agrupacion: '',
+      bankNombre: '',
+      bankBanco: 'BancoEstado',
+      bankTipoCuenta: 'Cuenta Vista / RUT',
+      bankNumeroCuenta: '',
+      bankRut: '',
+      bankCorreo: '',
     },
   });
 
-  const onSubmit = async (values: RegisterInput) => {
-    if (!idCardFile) {
-      setFileError('Debes adjuntar una foto de tu carnet de identidad.');
+  const watchRole = form.watch('role');
+
+  const handleCarnetUpload = async (file: File, side: 'front' | 'back') => {
+    if (!file) return;
+
+    if (side === 'front') {
+      setCompressingFront(true);
+    } else {
+      setCompressingBack(true);
+    }
+
+    try {
+      const compressed = await compressImage(file);
+      const reader = new FileReader();
+      const dataUrl = await new Promise<string>((resolve) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(compressed.blob);
+      });
+
+      if (side === 'front') {
+        setCarnetFrontal(dataUrl);
+      } else {
+        setCarnetTrasera(dataUrl);
+      }
+      setFileError(null);
+    } catch (error) {
+      toast.error('Error al procesar el carnet: ' + (error instanceof Error ? error.message : 'Error desconocido'));
+    } finally {
+      if (side === 'front') {
+        setCompressingFront(false);
+      } else {
+        setCompressingBack(false);
+      }
+    }
+  };
+
+  const onSubmit = async (values: ExtendedRegisterInput) => {
+    if (!carnetFrontal || !carnetTrasera) {
+      setFileError('Debes subir ambas fotos del carnet de identidad (frontal y trasera)');
       return;
     }
     setFileError(null);
@@ -83,14 +170,29 @@ export function RegisterForm() {
         );
       }
 
-      // 2. Insertar perfil con rol 'pending'
+      // 2. Insertar perfil con rol 'pendiente' y todos los campos de App A
       const { error: profileError } = await supabase.from('profiles').insert({
         id: user.id,
         full_name: values.full_name,
+        nombres: values.full_name.split(' ')[0] || values.full_name,
+        apellidos: values.full_name.split(' ').slice(1).join(' ') || '',
+        email: values.email,
         rut: formatRut(values.rut),
         phone: values.phone,
         address: values.address,
         city: values.city,
+        role: 'pending',
+        agrupacion: values.role === 'propietario' ? values.agrupacion : null,
+        bank_details: {
+          nombre: values.bankNombre,
+          banco: values.bankBanco,
+          tipoCuenta: values.bankTipoCuenta,
+          numeroCuenta: values.bankNumeroCuenta,
+          rut: values.bankRut,
+          correo: values.bankCorreo,
+        },
+        carnet_frontal_url: carnetFrontal,
+        carnet_trasera_url: carnetTrasera,
       });
 
       if (profileError) {
@@ -100,27 +202,7 @@ export function RegisterForm() {
         throw new Error(profileError.message);
       }
 
-      // 3. Comprimir y subir carnet (la política exige la ruta {uid}/id_card)
-      const compressed = await compressImage(idCardFile);
-      const idCardPath = `${user.id}/id_card`;
-
-      const { error: uploadError } = await supabase.storage
-        .from(STORAGE_BUCKETS.idCards)
-        .upload(idCardPath, compressed.blob, {
-          contentType: 'image/webp',
-          upsert: true,
-        });
-
-      if (uploadError) throw new Error(`Error al subir el carnet: ${uploadError.message}`);
-
-      const { error: pathError } = await supabase
-        .from('profiles')
-        .update({ id_card_path: idCardPath })
-        .eq('id', user.id);
-
-      if (pathError) throw new Error(pathError.message);
-
-      // 4. Notificar al super admin (crea tokens y envía el email)
+      // 3. Notificar al super admin
       const notifyAdmin = async (): Promise<boolean> => {
         try {
           const response = await fetch('/api/email/notify', {
@@ -134,7 +216,6 @@ export function RegisterForm() {
         }
       };
 
-      // Un reintento automático antes de informar al usuario
       let notified = await notifyAdmin();
       if (!notified) {
         await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -142,7 +223,6 @@ export function RegisterForm() {
       }
 
       if (!notified) {
-        // El registro NO se pierde: el admin puede aprobarlo desde su panel.
         toast.warning(
           'Tu cuenta se creó correctamente, pero no pudimos enviar el correo de aviso al administrador. No te preocupes: tu solicitud también aparece en su panel de revisión.',
           { duration: 8000 },
@@ -161,137 +241,382 @@ export function RegisterForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="full_name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nombre completo</FormLabel>
-              <FormControl>
-                <Input placeholder="Ej: María Fernanda Pérez Soto" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {/* DATOS PERSONALES */}
+        <div className="space-y-4">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-brand-red">1. Datos Personales</h3>
 
-        <div className="grid gap-4 sm:grid-cols-2">
           <FormField
             control={form.control}
-            name="rut"
+            name="full_name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>RUT</FormLabel>
+                <FormLabel>Nombre completo *</FormLabel>
                 <FormControl>
-                  <Input placeholder="12.345.678-9" {...field} />
+                  <Input placeholder="Ej: María Fernanda Pérez Soto" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-          <FormField
-            control={form.control}
-            name="phone"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Teléfono</FormLabel>
-                <FormControl>
-                  <Input placeholder="+56912345678" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="rut"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>RUT *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="12.345.678-9" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Teléfono *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="+56912345678" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="address"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Dirección *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Calle, número, depto" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="city"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ciudad *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Santiago" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="role"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo de Usuario *</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona tu rol" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="propietario">Propietario de Traje</SelectItem>
+                      <SelectItem value="arrendatario">Arrendatario / Comprador</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {watchRole === 'propietario' && (
+              <FormField
+                control={form.control}
+                name="agrupacion"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Agrupación a la que perteneces *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ej: Caporales San Simón" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             )}
-          />
+          </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="address"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Dirección</FormLabel>
-                <FormControl>
-                  <Input placeholder="Calle, número, depto" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="city"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Ciudad</FormLabel>
-                <FormControl>
-                  <Input placeholder="Santiago" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        {/* DATOS BANCARIOS */}
+        <div className="space-y-4 pt-4 border-t border-muted">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-brand-red">2. Datos para Transferencia Bancaria (Obligatorios)</h3>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="bankNombre"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nombre Titular Cuenta *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nombre completo del titular" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="bankBanco"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Banco *</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona tu banco" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="BancoEstado">BancoEstado</SelectItem>
+                      <SelectItem value="Banco Santander">Banco Santander</SelectItem>
+                      <SelectItem value="Banco de Chile">Banco de Chile / Edwards</SelectItem>
+                      <SelectItem value="BCI">BCI / Mach</SelectItem>
+                      <SelectItem value="Banco Falabella">Banco Falabella</SelectItem>
+                      <SelectItem value="Scotiabank">Scotiabank</SelectItem>
+                      <SelectItem value="Banco Itaú">Banco Itaú</SelectItem>
+                      <SelectItem value="Tenpo / Mercado Pago">Tenpo / Mercado Pago</SelectItem>
+                      <SelectItem value="Otro Banco">Otro Banco</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="bankTipoCuenta"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo de Cuenta *</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona el tipo" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Cuenta Vista / RUT">Cuenta Vista / RUT</SelectItem>
+                      <SelectItem value="Cuenta Corriente">Cuenta Corriente</SelectItem>
+                      <SelectItem value="Cuenta de Ahorro">Cuenta de Ahorro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="bankNumeroCuenta"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Número de Cuenta *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ej: 12345678" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="bankRut"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>RUT Titular Cuenta *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="12.345.678-9" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="bankCorreo"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Correo para Comprobante *</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="correo@ejemplo.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         </div>
 
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Correo electrónico</FormLabel>
-              <FormControl>
-                <Input type="email" placeholder="tu@correo.cl" autoComplete="email" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Contraseña</FormLabel>
-                <FormControl>
-                  <Input type="password" autoComplete="new-password" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="confirmPassword"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Confirmar contraseña</FormLabel>
-                <FormControl>
-                  <Input type="password" autoComplete="new-password" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="id_card">Foto del carnet de identidad</Label>
-          <Input
-            id="id_card"
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={(event) => {
-              const file = event.target.files?.[0] ?? null;
-              setIdCardFile(file);
-              if (file) setFileError(null);
-            }}
-          />
+        {/* FOTOS DEL CARNET */}
+        <div className="space-y-3 pt-4 border-t border-muted">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-brand-red">3. Fotos de Carnet de Identidad (Obligatorias)</h3>
           <p className="text-xs text-muted-foreground">
-            Se comprime automáticamente (máx. 1 MB, formato WebP). Solo visible para el administrador.
+            Sube ambas caras del carnet. Se comprimirán automáticamente.
           </p>
-          {fileError && <p className="text-[0.8rem] font-medium text-destructive">{fileError}</p>}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            {/* Carnet Frontal */}
+            <div>
+              <Label>Carnet Frontal *</Label>
+              <div className="mt-1">
+                <input
+                  ref={frontInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleCarnetUpload(file, 'front');
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => frontInputRef.current?.click()}
+                  disabled={compressingFront}
+                  className="w-full h-24 border-2 border-dashed border-muted rounded-lg flex flex-col items-center justify-center hover:border-brand-red transition-colors disabled:opacity-50"
+                >
+                  {compressingFront ? (
+                    <>
+                      <Loader2 className="w-6 h-6 animate-spin text-brand-red mb-1" />
+                      <span className="text-xs text-muted-foreground">Comprimiendo...</span>
+                    </>
+                  ) : carnetFrontal ? (
+                    <>
+                      <Check className="w-6 h-6 text-green-500 mb-1" />
+                      <span className="text-xs text-green-600">Foto frontal cargada</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-6 h-6 text-muted-foreground mb-1" />
+                      <span className="text-xs text-muted-foreground">Subir frente</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Carnet Trasero */}
+            <div>
+              <Label>Carnet Trasero *</Label>
+              <div className="mt-1">
+                <input
+                  ref={backInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleCarnetUpload(file, 'back');
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => backInputRef.current?.click()}
+                  disabled={compressingBack}
+                  className="w-full h-24 border-2 border-dashed border-muted rounded-lg flex flex-col items-center justify-center hover:border-brand-red transition-colors disabled:opacity-50"
+                >
+                  {compressingBack ? (
+                    <>
+                      <Loader2 className="w-6 h-6 animate-spin text-brand-red mb-1" />
+                      <span className="text-xs text-muted-foreground">Comprimiendo...</span>
+                    </>
+                  ) : carnetTrasera ? (
+                    <>
+                      <Check className="w-6 h-6 text-green-500 mb-1" />
+                      <span className="text-xs text-green-600">Foto trasera cargada</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-6 h-6 text-muted-foreground mb-1" />
+                      <span className="text-xs text-muted-foreground">Subir trasera</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {fileError && (
+            <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-2 rounded">
+              <AlertCircle className="w-4 h-4" />
+              <span>{fileError}</span>
+            </div>
+          )}
+        </div>
+
+        {/* CREDENCIALES */}
+        <div className="space-y-4 pt-4 border-t border-muted">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-brand-red">4. Credenciales de Acceso</h3>
+
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Correo electrónico *</FormLabel>
+                <FormControl>
+                  <Input type="email" placeholder="tu@correo.cl" autoComplete="email" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Contraseña *</FormLabel>
+                  <FormControl>
+                    <Input type="password" autoComplete="new-password" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Confirmar contraseña *</FormLabel>
+                  <FormControl>
+                    <Input type="password" autoComplete="new-password" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         </div>
 
         <Button type="submit" variant="brand" className="w-full" disabled={isSubmitting}>
