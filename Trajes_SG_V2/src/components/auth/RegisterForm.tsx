@@ -5,10 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
+import { z } from 'zod';
 import { createClient } from '@/lib/supabase/client';
-import { registerSchema, type RegisterInput } from '@/lib/validations/auth.schema';
 import { compressImage } from '@/lib/utils/image';
-import { formatRut } from '@/lib/utils/rut';
+import { formatRut, isValidRut } from '@/lib/utils/rut';
 import { ROUTES, STORAGE_BUCKETS } from '@/config/constants';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,18 +31,39 @@ import {
 } from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 
-interface ExtendedRegisterInput extends RegisterInput {
-  role: 'propietario' | 'arrendatario';
-  agrupacion?: string;
-  bankNombre: string;
-  bankBanco: string;
-  bankTipoCuenta: string;
-  bankNumeroCuenta: string;
-  bankRut: string;
-  bankCorreo: string;
-}
-
-const extendedRegisterSchema = registerSchema.extend({
+// Esquema de registro extendido (sin usar .extend() en un ZodEffects)
+const registerSchema = z.object({
+  full_name: z
+    .string({ required_error: 'El nombre completo es obligatorio' })
+    .min(3, 'Ingresa tu nombre completo')
+    .max(120)
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'.-]+$/, 'El nombre solo puede contener letras'),
+  rut: z
+    .string({ required_error: 'El RUT es obligatorio' })
+    .refine(isValidRut, 'RUT inválido. Verifica el dígito verificador'),
+  phone: z
+    .string({ required_error: 'El teléfono es obligatorio' })
+    .regex(/^(\+?56)?\s?9\d{8}$/, 'Ingresa un celular chileno válido (ej: +56912345678)'),
+  address: z
+    .string({ required_error: 'La dirección es obligatoria' })
+    .min(5, 'Ingresa una dirección válida')
+    .max(200),
+  city: z
+    .string({ required_error: 'La ciudad es obligatoria' })
+    .min(2, 'Ingresa una ciudad válida')
+    .max(100),
+  email: z
+    .string({ required_error: 'El correo es obligatorio' })
+    .email('Ingresa un correo válido')
+    .max(255),
+  password: z
+    .string({ required_error: 'La contraseña es obligatoria' })
+    .min(8, 'Mínimo 8 caracteres')
+    .max(72)
+    .regex(/[a-z]/, 'Debe incluir al menos una minúscula')
+    .regex(/[A-Z]/, 'Debe incluir al menos una mayúscula')
+    .regex(/[0-9]/, 'Debe incluir al menos un número'),
+  confirmPassword: z.string({ required_error: 'Confirma tu contraseña' }),
   role: z.enum(['propietario', 'arrendatario']),
   agrupacion: z.string().optional(),
   bankNombre: z.string().min(1, 'El nombre del titular es obligatorio'),
@@ -51,6 +72,9 @@ const extendedRegisterSchema = registerSchema.extend({
   bankNumeroCuenta: z.string().min(1, 'El número de cuenta es obligatorio'),
   bankRut: z.string().min(1, 'El RUT del titular es obligatorio'),
   bankCorreo: z.string().email('Ingresa un correo válido'),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: 'Las contraseñas no coinciden',
+  path: ['confirmPassword'],
 }).superRefine((data, ctx) => {
   if (data.role === 'propietario' && !data.agrupacion) {
     ctx.addIssue({
@@ -60,6 +84,8 @@ const extendedRegisterSchema = registerSchema.extend({
     });
   }
 });
+
+type RegisterFormData = z.infer<typeof registerSchema>;
 
 /**
  * Formulario de registro con verificación de identidad:
@@ -79,8 +105,8 @@ export function RegisterForm() {
   const frontInputRef = useRef<HTMLInputElement>(null);
   const backInputRef = useRef<HTMLInputElement>(null);
 
-  const form = useForm<ExtendedRegisterInput>({
-    resolver: zodResolver(extendedRegisterSchema),
+  const form = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
     defaultValues: {
       full_name: '',
       rut: '',
@@ -137,7 +163,7 @@ export function RegisterForm() {
     }
   };
 
-  const onSubmit = async (values: ExtendedRegisterInput) => {
+  const onSubmit = async (values: RegisterFormData) => {
     if (!carnetFrontal || !carnetTrasera) {
       setFileError('Debes subir ambas fotos del carnet de identidad (frontal y trasera)');
       return;
@@ -170,7 +196,7 @@ export function RegisterForm() {
         );
       }
 
-      // 2. Insertar perfil con rol 'pendiente' y todos los campos de App A
+      // 2. Insertar perfil con rol 'pending' y todos los campos de App A
       const { error: profileError } = await supabase.from('profiles').insert({
         id: user.id,
         full_name: values.full_name,
