@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
-import { QueueStatus } from '@/types/enums';
+import { QueueStatus, RentalStatus } from '@/types/enums';
 import type { Costume, Event, PublicProfile, RentalWithDetails, RentalQueue, RentalRequest } from '@/types/models';
 import type { ContactInfoInput } from '@/lib/validations/auth.schema';
 
@@ -37,7 +37,7 @@ function mapRental(row: RentalRowWithJoins): RentalWithDetails {
   return {
     ...row,
     event_name: row.event_name ?? undefined,
-    status: row.status as 'reservado' | 'arrendado',
+    status: row.status as RentalStatus,
     costume: row.costume,
     event: row.event,
     renter: row.renter ?? { id: row.renter_id, full_name: 'Usuario', city: '' },
