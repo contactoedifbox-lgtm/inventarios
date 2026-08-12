@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
@@ -26,7 +26,10 @@ interface UserDetailCardProps {
 }
 
 const roleLabels: Record<UserRole, string> = {
-  [UserRole.SuperAdmin]: 'Administrador',
+  [UserRole.SuperAdmin]: 'Super Administrador',
+  [UserRole.Maestro]: 'Maestro',
+  [UserRole.Propietario]: 'Propietario',
+  [UserRole.Arrendatario]: 'Arrendatario',
   [UserRole.Pending]: 'Pendiente',
   [UserRole.Approved]: 'Aprobado',
   [UserRole.Rejected]: 'Rechazado',
@@ -48,7 +51,6 @@ export function UserDetailCard({ user, onClose }: UserDetailCardProps) {
     const loadSignedUrl = async () => {
       setIsLoadingImage(true);
       const supabase = createClient();
-      // El super admin puede leer 'id-cards' por política RLS de storage
       const { data, error } = await supabase.storage
         .from(STORAGE_BUCKETS.idCards)
         .createSignedUrl(user.id_card_path as string, 60 * 10);
@@ -90,7 +92,7 @@ export function UserDetailCard({ user, onClose }: UserDetailCardProps) {
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            {user.full_name}
+            {user.full_name || `${user.nombres || ''} ${user.apellidos || ''}`.trim() || 'Usuario'}
             <Badge variant="secondary">{roleLabels[user.role] ?? user.role}</Badge>
           </DialogTitle>
           <DialogDescription>Registrado el {formatDateTime(user.created_at)}</DialogDescription>
@@ -114,6 +116,25 @@ export function UserDetailCard({ user, onClose }: UserDetailCardProps) {
               <p className="font-medium text-muted-foreground">Ciudad</p>
               <p>{user.city}</p>
             </div>
+            {user.agrupacion && (
+              <div className="col-span-2">
+                <p className="font-medium text-muted-foreground">Agrupación</p>
+                <p>{user.agrupacion}</p>
+              </div>
+            )}
+            {user.bank_details && (
+              <div className="col-span-2 p-3 bg-muted/30 rounded-lg border">
+                <p className="font-medium text-brand-red mb-1">Datos para Transferencia Bancaria</p>
+                <div className="grid grid-cols-2 gap-1 text-xs">
+                  <div><span className="text-muted-foreground">Titular:</span> {(user.bank_details as any).nombre}</div>
+                  <div><span className="text-muted-foreground">Banco:</span> {(user.bank_details as any).banco}</div>
+                  <div><span className="text-muted-foreground">Tipo:</span> {(user.bank_details as any).tipoCuenta}</div>
+                  <div><span className="text-muted-foreground">N° Cuenta:</span> {(user.bank_details as any).numeroCuenta}</div>
+                  <div><span className="text-muted-foreground">RUT:</span> {(user.bank_details as any).rut}</div>
+                  <div><span className="text-muted-foreground">Correo:</span> {(user.bank_details as any).correo}</div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div>
