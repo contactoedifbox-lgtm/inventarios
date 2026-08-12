@@ -197,8 +197,7 @@ export function RegisterForm() {
       }
 
       // 2. Insertar perfil con rol 'pending' y todos los campos de App A
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: user.id,
+      const { error: profileError } = await supabase.from('profiles').update({
         full_name: values.full_name,
         nombres: values.full_name.split(' ')[0] || values.full_name,
         apellidos: values.full_name.split(' ').slice(1).join(' ') || '',
@@ -219,7 +218,7 @@ export function RegisterForm() {
         },
         carnet_frontal_url: carnetFrontal,
         carnet_trasera_url: carnetTrasera,
-      });
+      }).eq('id', user.id);
 
       if (profileError) {
         if (profileError.code === '23505') {
