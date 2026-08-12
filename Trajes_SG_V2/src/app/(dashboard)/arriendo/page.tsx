@@ -23,7 +23,7 @@ import type { CostumeWithOwner, RentalWithDetails, RentalQueue } from '@/types/m
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Users, CheckCircle, XCircle, ArrowRight, CreditCard } from 'lucide-react';
+import { Clock, Users, CheckCircle, XCircle } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -106,7 +106,6 @@ export default function ArriendoPage() {
   );
 }
 
-// ---------- Mis trajes publicados en arriendo ----------
 function MyRentCostumes() {
   const { data: costumes, isLoading } = useMyCostumes(CostumeType.Rent);
   const deleteCostume = useDeleteCostume();
@@ -162,7 +161,6 @@ function MyRentCostumes() {
   );
 }
 
-// ---------- Mis solicitudes de arriendo (como arrendatario) ----------
 function MyRentals() {
   const { data: rentals, isLoading } = useMyRentals();
   const uploadVoucher = useUploadRentalVoucher();
@@ -197,7 +195,6 @@ function MyRentals() {
   );
 }
 
-// ---------- Solicitudes recibidas (como dueño) ----------
 function ReceivedRentals() {
   const { data: rentals, isLoading } = useReceivedRentals();
   const confirmRental = useConfirmRental();
@@ -244,7 +241,6 @@ function ReceivedRentals() {
   );
 }
 
-// ---------- Tarjeta compartida de arriendo ----------
 function RentalCard({
   rental,
   actions,
@@ -269,10 +265,6 @@ function RentalCard({
   );
 }
 
-// ============================================================
-// COLA DE ARRIENDO (App A style)
-// ============================================================
-
 function RentalQueueView() {
   const { profile } = useAuth();
   const { data: myQueue, isLoading: myLoading } = useMyQueueRequests();
@@ -286,10 +278,7 @@ function RentalQueueView() {
 
   if (myLoading || receivedLoading) return <SkeletonTable rows={3} columns={4} />;
 
-  // Solicitudes del usuario (como arrendatario)
   const myRequests = myQueue ?? [];
-
-  // Solicitudes recibidas (como dueño)
   const receivedRequests = receivedQueue ?? [];
 
   if (myRequests.length === 0 && receivedRequests.length === 0) {
@@ -301,30 +290,8 @@ function RentalQueueView() {
     );
   }
 
-  const getStatusBadge = (status: QueueStatus) => {
-    switch (status) {
-      case QueueStatus.VerificandoDisponibilidad:
-        return <Badge variant="warning">Verificando disponibilidad</Badge>;
-      case QueueStatus.PendienteDePago:
-        return <Badge variant="warning">Pendiente de pago (24h)</Badge>;
-      case QueueStatus.Seleccionado:
-        return <Badge variant="success">Seleccionado</Badge>;
-      case QueueStatus.Rechazado:
-        return <Badge variant="destructive">Rechazado</Badge>;
-      case QueueStatus.Completado:
-        return <Badge variant="success">Completado</Badge>;
-      case QueueStatus.Expirado:
-        return <Badge variant="destructive">Expirado</Badge>;
-      case QueueStatus.Cancelado:
-        return <Badge variant="secondary">Cancelado</Badge>;
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
-    }
-  };
-
   return (
     <div className="space-y-6">
-      {/* Mis solicitudes en cola */}
       {myRequests.length > 0 && (
         <div>
           <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
@@ -349,7 +316,7 @@ function RentalQueueView() {
                           toast.info('Función de pago en desarrollo');
                         }}
                       >
-                        <CreditCard className="w-3 h-3 mr-1" /> Proceder a pago
+                        Proceder a pago
                       </Button>
                     </div>
                   ) : req.status === QueueStatus.VerificandoDisponibilidad ? (
@@ -368,7 +335,6 @@ function RentalQueueView() {
         </div>
       )}
 
-      {/* Solicitudes recibidas (como dueño) */}
       {receivedRequests.length > 0 && isOwner && (
         <div>
           <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
@@ -389,7 +355,7 @@ function RentalQueueView() {
                         onClick={() => confirmAvailability.mutate({ requestId: req.id, suitId: req.suit_id })}
                         disabled={confirmAvailability.isPending}
                       >
-                        <CheckCircle className="w-3 h-3 mr-1" /> Confirmar disponibilidad
+                        <CheckCircle className="w-3 h-3 mr-1" /> Confirmar
                       </Button>
                       <Button
                         size="sm"
@@ -415,7 +381,7 @@ function RentalQueueView() {
                       </Button>
                     </div>
                   ) : (
-                    getStatusBadge(req.status)
+                    <Badge variant="secondary">{req.status}</Badge>
                   )
                 }
               />
@@ -428,27 +394,6 @@ function RentalQueueView() {
 }
 
 function QueueCard({ request, actions }: { request: RentalQueue; actions: React.ReactNode }) {
-  const getStatusBadge = (status: QueueStatus) => {
-    switch (status) {
-      case QueueStatus.VerificandoDisponibilidad:
-        return <Badge variant="warning">Verificando disponibilidad</Badge>;
-      case QueueStatus.PendienteDePago:
-        return <Badge variant="warning">Pendiente de pago (24h)</Badge>;
-      case QueueStatus.Seleccionado:
-        return <Badge variant="success">Seleccionado</Badge>;
-      case QueueStatus.Rechazado:
-        return <Badge variant="destructive">Rechazado</Badge>;
-      case QueueStatus.Completado:
-        return <Badge variant="success">Completado</Badge>;
-      case QueueStatus.Expirado:
-        return <Badge variant="destructive">Expirado</Badge>;
-      case QueueStatus.Cancelado:
-        return <Badge variant="secondary">Cancelado</Badge>;
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
-    }
-  };
-
   return (
     <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="space-y-1 text-sm">
@@ -461,7 +406,7 @@ function QueueCard({ request, actions }: { request: RentalQueue; actions: React.
         <p className="text-muted-foreground">
           Dueño: {request.owner_name} · Acción: {request.action_type}
         </p>
-        <div>{getStatusBadge(request.status)}</div>
+        <Badge variant="secondary">{request.status}</Badge>
       </div>
       <div className="flex items-center gap-2">{actions}</div>
     </div>
