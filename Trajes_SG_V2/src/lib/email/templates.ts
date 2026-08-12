@@ -271,3 +271,182 @@ export function emailVentaConfirmada(data: SaleConfirmedEmailData): string {
   `;
   return baseLayout('Venta confirmada', content);
 }
+
+// ============================================================
+// 9. CONFIRMACIÓN DE DISPONIBILIDAD (App A style)
+// ============================================================
+export interface ConfirmAvailabilityEmailData {
+  renterName: string;
+  renterEmail: string;
+  ownerName: string;
+  suitTitle: string;
+  rentalPrice: number;
+  eventName: string;
+  bankDetails: {
+    tipoCuenta: string;
+    banco: string;
+    numeroCuenta: string;
+    rut: string;
+    correo: string;
+    nombre: string;
+  };
+  paymentDeadline: string;
+  dashboardUrl: string;
+}
+
+export function emailConfirmAvailability(data: ConfirmAvailabilityEmailData): string {
+  const bankText = `
+    ${dataRow('Banco', data.bankDetails.banco)}
+    ${dataRow('Tipo Cuenta', data.bankDetails.tipoCuenta)}
+    ${dataRow('N° Cuenta', data.bankDetails.numeroCuenta)}
+    ${dataRow('RUT Titular', data.bankDetails.rut)}
+    ${dataRow('Nombre Titular', data.bankDetails.nombre)}
+    ${dataRow('Correo Comprobante', data.bankDetails.correo)}
+  `;
+
+  const content = `
+    ${paragraph(`¡Hola <strong>${data.renterName}</strong>!`)}
+    ${paragraph(`El propietario <strong>${data.ownerName}</strong> ha confirmado la disponibilidad de <strong>${data.suitTitle}</strong> para el evento <strong>${data.eventName}</strong>.`)}
+    ${paragraph(`Tienes un plazo límite de <strong>24 horas</strong> para realizar la transferencia bancaria y adjuntar tu comprobante.`)}
+    ${paragraph(`<strong>Monto a transferir:</strong> ${formatCLP(data.rentalPrice)}`)}
+    ${divider()}
+    ${paragraph('<strong>Datos bancarios del propietario:</strong>')}
+    ${dataTable(bankText)}
+    ${divider()}
+    <p style="text-align:center;">${button(data.dashboardUrl, 'Ir a pagar ahora', '#f77f00')}</p>
+  `;
+  return baseLayout('¡Traje disponible! Tienes 24h para pagar', content);
+}
+
+// ============================================================
+// 10. RECHAZO DE DISPONIBILIDAD (App A style)
+// ============================================================
+export interface RejectAvailabilityEmailData {
+  renterName: string;
+  ownerName: string;
+  suitTitle: string;
+}
+
+export function emailRejectAvailability(data: RejectAvailabilityEmailData): string {
+  const content = `
+    ${paragraph(`Estimado/a <strong>${data.renterName}</strong>,`)}
+    ${paragraph(`El propietario <strong>${data.ownerName}</strong> ha indicado que el traje <strong>${data.suitTitle}</strong> ya no está disponible para arriendo.`)}
+    ${paragraph('Te sugerimos buscar otros trajes disponibles en el catálogo de la plataforma.')}
+  `;
+  return baseLayout('Solicitud no disponible', content);
+}
+
+// ============================================================
+// 11. ARRENDADO A OTRO (App A style)
+// ============================================================
+export interface RentedToAnotherEmailData {
+  renterName: string;
+  ownerName: string;
+  suitTitle: string;
+}
+
+export function emailRentedToAnother(data: RentedToAnotherEmailData): string {
+  const content = `
+    ${paragraph(`Estimado/a <strong>${data.renterName}</strong>,`)}
+    ${paragraph(`El traje <strong>${data.suitTitle}</strong> ha sido arrendado a otro usuario de la cola.`)}
+    ${paragraph(`Te sugerimos buscar alternativas disponibles en el catálogo de la plataforma.`)}
+  `;
+  return baseLayout('Traje no disponible', content);
+}
+
+// ============================================================
+// 12. PAGO CONFIRMADO (App A style)
+// ============================================================
+export interface PaymentConfirmedEmailData {
+  renterName: string;
+  ownerName: string;
+  suitTitle: string;
+}
+
+export function emailPaymentConfirmed(data: PaymentConfirmedEmailData): string {
+  const content = `
+    ${paragraph(`¡Hola <strong>${data.renterName}</strong>!`)}
+    ${paragraph(`El propietario <strong>${data.ownerName}</strong> ha verificado la recepción de tu pago.`)}
+    ${paragraph(`Tu arriendo para <strong>${data.suitTitle}</strong> se encuentra oficialmente confirmado.`)}
+    ${paragraph('Coordina la entrega del traje directamente con el dueño.')}
+  `;
+  return baseLayout('¡Pago confirmado!', content);
+}
+
+// ============================================================
+// 13. TRANSFERENCIA REALIZADA (App A style)
+// ============================================================
+export interface TransferReceivedEmailData {
+  ownerName: string;
+  renterName: string;
+  suitTitle: string;
+  price: number;
+}
+
+export function emailTransferReceived(data: TransferReceivedEmailData): string {
+  const content = `
+    ${paragraph(`Estimado/a <strong>${data.ownerName}</strong>,`)}
+    ${paragraph(`El usuario <strong>${data.renterName}</strong> ha adjuntado su comprobante de transferencia bancaria por <strong>${formatCLP(data.price)}</strong>.`)}
+    ${paragraph(`Por favor, revisa tu cuenta bancaria y confirma la recepción del pago en el sistema.`)}
+  `;
+  return baseLayout('Comprobante de transferencia recibido', content);
+}
+
+// ============================================================
+// 14. LIBERACIÓN POR NO PAGO (App A style)
+// ============================================================
+export interface ExpiredPaymentEmailData {
+  ownerName: string;
+  renterName: string;
+  suitTitle: string;
+}
+
+export function emailExpiredPayment(data: ExpiredPaymentEmailData): string {
+  const content = `
+    ${paragraph(`Estimado/a <strong>${data.ownerName}</strong>,`)}
+    ${paragraph(`El arrendatario <strong>${data.renterName}</strong> no realizó la transferencia bancaria en el plazo límite de 24 horas.`)}
+    ${paragraph(`La solicitud ha sido cancelada y el traje <strong>${data.suitTitle}</strong> está disponible nuevamente. Revisa tu cola de arriendo para seleccionar al siguiente interesado.`)}
+  `;
+  return baseLayout('Plazo de pago expirado', content);
+}
+
+// ============================================================
+// 15. TRAJE LIBERADO (App A style - para suscriptores)
+// ============================================================
+export interface SuitLiberatedEmailData {
+  userEmail: string;
+  userName: string;
+  suitTitle: string;
+  suitId: string;
+  dashboardUrl: string;
+}
+
+export function emailSuitLiberated(data: SuitLiberatedEmailData): string {
+  const content = `
+    ${paragraph(`¡Hola <strong>${data.userName}</strong>!`)}
+    ${paragraph(`El traje <strong>${data.suitTitle}</strong> se encuentra disponible nuevamente para arriendo.`)}
+    <p style="text-align:center;">${button(data.dashboardUrl, 'Ver traje en el catálogo', '#f77f00')}</p>
+  `;
+  return baseLayout('¡Traje disponible nuevamente!', content);
+}
+
+// ============================================================
+// 16. ARRIENDO CANCELADO (App A style)
+// ============================================================
+export interface RentalCanceledEmailData {
+  userEmail: string;
+  userName: string;
+  suitTitle: string;
+  reason?: string;
+}
+
+export function emailRentalCanceled(data: RentalCanceledEmailData): string {
+  const content = `
+    ${paragraph(`Estimado/a <strong>${data.userName}</strong>,`)}
+    ${paragraph(`Le informamos que su reserva o arriendo del traje <strong>${data.suitTitle}</strong> ha sido cancelado.`)}
+    ${data.reason ? paragraph(`<strong>Motivo:</strong> ${data.reason}`) : ''}
+    ${paragraph('Le solicitamos amablemente buscar un nuevo traje disponible en el catálogo de la plataforma.')}
+    ${paragraph('Disculpe las molestias ocasionadas.')}
+  `;
+  return baseLayout('Arriendo cancelado', content);
+}
