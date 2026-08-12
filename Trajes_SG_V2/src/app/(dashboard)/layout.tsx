@@ -26,7 +26,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // Roles permitidos en el dashboard
   const allowedRoles = ['approved', 'super_admin', 'maestro', 'propietario', 'arrendatario'];
 
-  if (!profile || !allowedRoles.includes(profile.role)) {
+  if (!profile || !profile.role || !allowedRoles.includes(profile.role)) {
     redirect(ROUTES.pendingReview);
   }
 
