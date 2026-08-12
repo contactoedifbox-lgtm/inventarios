@@ -1,18 +1,34 @@
 import { Resend } from 'resend';
 import {
-  emailArriendoConfirmado,
+  emailNuevaSolicitudAdmin,
   emailBienvenidaAprobado,
   emailCuentaRechazada,
   emailCuentaSuspendida,
-  emailNuevaSolicitudAdmin,
   emailSolicitudArriendo,
   emailSolicitudCompra,
+  emailArriendoConfirmado,
   emailVentaConfirmada,
+  emailConfirmAvailability,
+  emailRejectAvailability,
+  emailRentedToAnother,
+  emailPaymentConfirmed,
+  emailTransferReceived,
+  emailExpiredPayment,
+  emailSuitLiberated,
+  emailRentalCanceled,
   type NewRegistrationEmailData,
   type RentConfirmedEmailData,
   type RentRequestEmailData,
   type SaleConfirmedEmailData,
   type SaleRequestEmailData,
+  type ConfirmAvailabilityEmailData,
+  type RejectAvailabilityEmailData,
+  type RentedToAnotherEmailData,
+  type PaymentConfirmedEmailData,
+  type TransferReceivedEmailData,
+  type ExpiredPaymentEmailData,
+  type SuitLiberatedEmailData,
+  type RentalCanceledEmailData,
 } from './templates';
 
 /**
@@ -168,4 +184,135 @@ export async function sendSaleConfirmed(
     `Compra confirmada: ${data.costumeSummary}`,
     emailVentaConfirmada(data),
   );
+}
+
+// ============================================================
+// NUEVAS FUNCIONES (App A style)
+// ============================================================
+
+// ---------- 9. Confirmación de disponibilidad → arrendatario ----------
+export async function sendConfirmAvailability(
+  renterEmail: string,
+  data: ConfirmAvailabilityEmailData,
+): Promise<SendResult> {
+  return sendEmail(
+    renterEmail,
+    `El traje está disponible - Tienes 24h para transferir - ${data.suitTitle}`,
+    emailConfirmAvailability(data),
+  );
+}
+
+// ---------- 10. Rechazo de disponibilidad → arrendatario ----------
+export async function sendRejectAvailability(
+  renterEmail: string,
+  data: RejectAvailabilityEmailData,
+): Promise<SendResult> {
+  return sendEmail(
+    renterEmail,
+    `Solicitud no disponible - ${data.suitTitle}`,
+    emailRejectAvailability(data),
+  );
+}
+
+// ---------- 11. Arrendado a otro → arrendatario ----------
+export async function sendRentedToAnother(
+  renterEmail: string,
+  data: RentedToAnotherEmailData,
+): Promise<SendResult> {
+  return sendEmail(
+    renterEmail,
+    `Traje no disponible - ${data.suitTitle}`,
+    emailRentedToAnother(data),
+  );
+}
+
+// ---------- 12. Pago confirmado → arrendatario ----------
+export async function sendPaymentConfirmed(
+  renterEmail: string,
+  data: PaymentConfirmedEmailData,
+): Promise<SendResult> {
+  return sendEmail(
+    renterEmail,
+    `¡Pago confirmado y arriendo activo! - ${data.suitTitle}`,
+    emailPaymentConfirmed(data),
+  );
+}
+
+// ---------- 13. Transferencia realizada → dueño ----------
+export async function sendTransferReceived(
+  ownerEmail: string,
+  data: TransferReceivedEmailData,
+): Promise<SendResult> {
+  return sendEmail(
+    ownerEmail,
+    `Comprobante de transferencia enviado - ${data.suitTitle}`,
+    emailTransferReceived(data),
+  );
+}
+
+// ---------- 14. Liberación por no pago → dueño ----------
+export async function sendExpiredPayment(
+  ownerEmail: string,
+  data: ExpiredPaymentEmailData,
+): Promise<SendResult> {
+  return sendEmail(
+    ownerEmail,
+    `Plazo de pago expirado - ${data.suitTitle}`,
+    emailExpiredPayment(data),
+  );
+}
+
+// ---------- 15. Traje liberado → suscriptores ----------
+export async function sendSuitLiberated(
+  userEmail: string,
+  data: SuitLiberatedEmailData,
+): Promise<SendResult> {
+  return sendEmail(
+    userEmail,
+    `¡Traje disponible nuevamente! - ${data.suitTitle}`,
+    emailSuitLiberated(data),
+  );
+}
+
+// ---------- 16. Arriendo cancelado → afectados ----------
+export async function sendRentalCanceled(
+  userEmail: string,
+  data: RentalCanceledEmailData,
+): Promise<SendResult> {
+  return sendEmail(
+    userEmail,
+    `CANCELACIÓN DE RESERVA / ARRIENDO - ${data.suitTitle}`,
+    emailRentalCanceled(data),
+  );
+}
+
+// ---------- 17. Enviar email del sistema (simulado o real) ----------
+export async function sendSystemEmail(
+  toEmail: string,
+  toName: string,
+  fromName: string,
+  subject: string,
+  body: string,
+): Promise<SendResult> {
+  // Enviar correo real
+  const result = await sendEmail(toEmail, subject, body);
+
+  // También guardar en la tabla system_emails (simulado)
+  try {
+    const { createClient } = await import('@/lib/supabase/server');
+    const supabase = createClient();
+    await supabase.from('system_emails').insert({
+      to_email: toEmail,
+      to_name: toName,
+      from_name: fromName,
+      subject,
+      body,
+      type: 'solicitud_registro', // tipo genérico
+      read: false,
+    });
+  } catch (err) {
+    console.warn('[email] No se pudo guardar en system_emails:', err);
+  }
+
+  return result;
 }
