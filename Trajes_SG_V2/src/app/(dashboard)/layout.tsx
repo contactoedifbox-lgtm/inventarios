@@ -1,11 +1,11 @@
-﻿import { redirect } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { ROUTES } from '@/config/constants';
 
 /**
- * Layout del área autenticada: exige sesión y rol 'approved' o 'super_admin'.
+ * Layout del área autenticada: exige sesión y rol 'approved' o 'super_admin' o 'maestro' o 'propietario' o 'arrendatario'.
  * El middleware ya filtra; esto es defensa en profundidad del lado del servidor.
  */
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -23,7 +23,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
     .eq('id', user.id)
     .single();
 
-  if (!profile || (profile.role !== 'approved' && profile.role !== 'super_admin')) {
+  // Roles permitidos en el dashboard
+  const allowedRoles = ['approved', 'super_admin', 'maestro', 'propietario', 'arrendatario'];
+
+  if (!profile || !allowedRoles.includes(profile.role)) {
     redirect(ROUTES.pendingReview);
   }
 
