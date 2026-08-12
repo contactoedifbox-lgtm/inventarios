@@ -46,3 +46,58 @@ export const ROUTES = {
     auditoria: '/admin/auditoria',
   },
 } as const;
+
+// ---------- Roles de App A ----------
+export const ROLES = {
+  MAESTRO: 'maestro',
+  PROPIETARIO: 'propietario',
+  ARRENDATARIO: 'arrendatario',
+  PENDING: 'pending',
+  APPROVED: 'approved',
+  REJECTED: 'rejected',
+  SUSPENDED: 'suspended',
+  SUPER_ADMIN: 'super_admin',
+} as const;
+
+// Roles permitidos en el dashboard
+export const ALLOWED_DASHBOARD_ROLES = [
+  ROLES.APPROVED,
+  ROLES.SUPER_ADMIN,
+  ROLES.MAESTRO,
+  ROLES.PROPIETARIO,
+  ROLES.ARRENDATARIO,
+];
+
+// Roles permitidos en admin
+export const ALLOWED_ADMIN_ROLES = [
+  ROLES.SUPER_ADMIN,
+  ROLES.MAESTRO,
+];
+
+// ---------- Estados de la cola de arriendo (App A) ----------
+export const QUEUE_STATUS = {
+  VERIFICANDO: 'Verificando disponibilidad',
+  PENDIENTE_PAGO: 'Pendiente de pago',
+  SELECCIONADO: 'Seleccionado',
+  RECHAZADO: 'Rechazado',
+  COMPLETADO: 'Completado',
+  EXPIRADO: 'Expirado',
+  CANCELADO: 'Cancelado',
+} as const;
+
+// ---------- Estados de traje (App A) ----------
+export const SUIT_STATUS = {
+  DISPONIBLE: 'Disponible',
+  VERIFICANDO: 'Verificando disponibilidad',
+  PENDIENTE_PAGO: 'Pendiente de pago',
+  RESERVADO: 'Reservado',
+  ARRENDADO: 'Arrendado',
+  VENDIDO: 'Vendido',
+} as const;
+
+// ---------- Tipos de listing (App A) ----------
+export const LISTING_TYPES = {
+  ARRIENDO: 'arriendo',
+  VENTA: 'venta',
+  AMBOS: 'ambos',
+} as const;
