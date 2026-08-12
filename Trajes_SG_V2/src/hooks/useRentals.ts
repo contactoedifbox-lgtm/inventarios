@@ -3,8 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
-import { RentalStatus } from '@/types/enums';
-import type { Costume, Event, PublicProfile, RentalWithDetails } from '@/types/models';
+import { QueueStatus } from '@/types/enums';
+import type { Costume, Event, PublicProfile, RentalWithDetails, RentalQueue, RentalRequest } from '@/types/models';
 import type { ContactInfoInput } from '@/lib/validations/auth.schema';
 
 /**
@@ -23,8 +23,9 @@ interface RentalRowWithJoins {
   phone: string;
   email: string;
   event_id: string;
+  event_name: string | null;
   voucher_path: string | null;
-  status: RentalStatus;
+  status: string;
   created_at: string;
   updated_at: string;
   costume: Costume;
@@ -90,7 +91,6 @@ export function useReceivedRentals() {
       } = await supabase.auth.getUser();
       if (!user) return [];
 
-      // Trajes del usuario → rentals de esos trajes
       const { data: myCostumes, error: costumesError } = await supabase
         .from('costumes')
         .select('id')
@@ -213,5 +213,228 @@ export function useUploadRentalVoucher() {
       queryClient.invalidateQueries({ queryKey: ['rentals'] });
     },
     onError: (error: Error) => toast.error(`Error al subir comprobante: ${error.message}`),
+  });
+}
+
+// ============================================================
+// NUEVAS FUNCIONES - COLA DE ARRIENDO (App A style)
+// ============================================================
+
+// ---------- Obtener la cola de un traje ----------
+export function useRentalQueue(suitId: string) {
+  const supabase = createClient();
+
+  return useQuery({
+    queryKey: ['rental-queue', suitId],
+    queryFn: async (): Promise<RentalQueue[]> => {
+      const { data, error } = await supabase
+        .from('rental_queue')
+        .select('*')
+        .eq('suit_id', suitId)
+        .order('order_index', { ascending: true });
+
+      if (error) throw new Error(error.message);
+      return (data ?? []) as RentalQueue[];
+    },
+    enabled: Boolean(suitId),
+  });
+}
+
+// ---------- Crear solicitud de arriendo (cola) ----------
+export interface CreateQueueRequestPayload {
+  suitId: string;
+  renterId: string;
+  renterName: string;
+  renterEmail: string;
+  ownerId: string;
+  ownerName: string;
+  eventName: string;
+  actionType: 'Reserva' | 'Arriendo';
+}
+
+export function useCreateQueueRequest() {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: CreateQueueRequestPayload) => {
+      const { data, error } = await supabase.rpc('create_rental_request', {
+        p_suit_id: payload.suitId,
+        p_renter_id: payload.renterId,
+        p_renter_name: payload.renterName,
+        p_renter_email: payload.renterEmail,
+        p_owner_id: payload.ownerId,
+        p_owner_name: payload.ownerName,
+        p_event_name: payload.eventName,
+        p_action_type: payload.actionType,
+      });
+
+      if (error) {
+        // El error de la función RPC viene en error.message
+        const message = error.message.includes('raise_exception')
+          ? error.message.split('raise_exception')[1]?.trim() || error.message
+          : error.message;
+        throw new Error(message);
+      }
+
+      return data as string; // retorna el request_id
+    },
+    onSuccess: (_, variables) => {
+      toast.success('Solicitud enviada al propietario');
+      queryClient.invalidateQueries({ queryKey: ['rental-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['costumes'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'No se pudo crear la solicitud');
+    },
+  });
+}
+
+// ---------- Confirmar disponibilidad (propietario) ----------
+export function useConfirmAvailability() {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ requestId, suitId }: { requestId: string; suitId: string }) => {
+      const { error } = await supabase.rpc('confirm_availability', {
+        p_request_id: requestId,
+        p_suit_id: suitId,
+      });
+
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      toast.success('Disponibilidad confirmada. El arrendatario tiene 24h para pagar.');
+      queryClient.invalidateQueries({ queryKey: ['rental-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['costumes'] });
+      queryClient.invalidateQueries({ queryKey: ['rentals'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Error al confirmar disponibilidad');
+    },
+  });
+}
+
+// ---------- Rechazar disponibilidad (propietario) ----------
+export function useRejectAvailability() {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ requestId, suitId }: { requestId: string; suitId: string }) => {
+      const { error } = await supabase.rpc('reject_availability', {
+        p_request_id: requestId,
+        p_suit_id: suitId,
+      });
+
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      toast.success('Disponibilidad rechazada. El traje vuelve a estar disponible.');
+      queryClient.invalidateQueries({ queryKey: ['rental-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['costumes'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Error al rechazar disponibilidad');
+    },
+  });
+}
+
+// ---------- Confirmar pago (propietario) ----------
+export function useConfirmPayment() {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ requestId, suitId }: { requestId: string; suitId: string }) => {
+      const { error } = await supabase.rpc('confirm_payment', {
+        p_request_id: requestId,
+        p_suit_id: suitId,
+      });
+
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      toast.success('Pago confirmado. El arriendo está activo.');
+      queryClient.invalidateQueries({ queryKey: ['rental-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['costumes'] });
+      queryClient.invalidateQueries({ queryKey: ['rentals'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Error al confirmar pago');
+    },
+  });
+}
+
+// ---------- Obtener solicitudes de un usuario ----------
+export function useMyQueueRequests() {
+  const supabase = createClient();
+
+  return useQuery({
+    queryKey: ['rental-queue', 'mine'],
+    queryFn: async (): Promise<RentalQueue[]> => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      const { data, error } = await supabase
+        .from('rental_queue')
+        .select('*')
+        .eq('renter_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw new Error(error.message);
+      return (data ?? []) as RentalQueue[];
+    },
+  });
+}
+
+// ---------- Obtener solicitudes recibidas (como dueño) ----------
+export function useReceivedQueueRequests() {
+  const supabase = createClient();
+
+  return useQuery({
+    queryKey: ['rental-queue', 'received'],
+    queryFn: async (): Promise<RentalQueue[]> => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      const { data, error } = await supabase
+        .from('rental_queue')
+        .select('*')
+        .eq('owner_id', user.id)
+        .order('order_index', { ascending: true });
+
+      if (error) throw new Error(error.message);
+      return (data ?? []) as RentalQueue[];
+    },
+  });
+}
+
+// ---------- Cancelar solicitud ----------
+export function useCancelQueueRequest() {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ requestId }: { requestId: string }) => {
+      const { error } = await supabase
+        .from('rental_queue')
+        .update({ status: 'Cancelado', updated_at: new Date().toISOString() })
+        .eq('id', requestId);
+
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      toast.success('Solicitud cancelada');
+      queryClient.invalidateQueries({ queryKey: ['rental-queue'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Error al cancelar solicitud');
+    },
   });
 }
