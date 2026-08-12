@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
 
   const { data: requesterProfile } = await supabase
     .from('profiles')
-    .select('role, nombres, apellidos, email')
+    .select('role, nombres, apellidos, email, full_name')
     .eq('id', user.id)
     .single();
 
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
   // Obtener datos del traje y su dueño
   const { data: costume, error: costumeError } = await admin
     .from('costumes')
-    .select('owner_id, owner_name, price, size, year, title')
+    .select('owner_id, price, size, year')
     .eq('id', input.costume_id)
     .single();
 
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
     p_renter_name: `${input.first_name} ${input.last_name}`.trim(),
     p_renter_email: input.email,
     p_owner_id: costume.owner_id,
-    p_owner_name: costume.owner_name || 'Propietario',
+    p_owner_name: requesterProfile.full_name || requesterProfile.nombres || 'Propietario',
     p_event_name: event.name,
     p_action_type: 'Arriendo',
   });
