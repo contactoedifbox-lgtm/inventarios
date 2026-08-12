@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { X, Plus, Info } from 'lucide-react';
+import { X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useCreateCostume } from '@/hooks/useCostumes';
 import { useUpcomingEvents } from '@/hooks/useEvents';
@@ -62,7 +62,7 @@ const costumeFormSchema = z.object({
   rental_price: z.number().min(0),
   sale_price: z.number().min(0),
 }).superRefine((data, ctx) => {
-  if (data.listing_type === ListingType.Sale && data.event_ids.length > 0) {
+  if (data.listing_type === ListingType.Venta && data.event_ids.length > 0) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: 'Los trajes de venta no pueden asociarse a eventos',
