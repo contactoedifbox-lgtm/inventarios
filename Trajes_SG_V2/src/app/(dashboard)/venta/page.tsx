@@ -1,9 +1,15 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import { useMyCostumes, useDeleteCostume } from '@/hooks/useCostumes';
-import { useMySales, useReceivedSales, useUploadSaleVoucher } from '@/hooks/useSales';
-import { CostumeType, SaleStatus } from '@/types/enums';
+import {
+  useMySales,
+  useReceivedSales,
+  useUploadSaleVoucher,
+  useCreateTransaction,
+} from '@/hooks/useSales';
+import { useAuth } from '@/hooks/useAuth';
+import { CostumeType, SaleStatus, UserRole } from '@/types/enums';
 import { formatCLP } from '@/lib/utils/currency';
 import type { CostumeWithOwner, SaleWithDetails } from '@/types/models';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
