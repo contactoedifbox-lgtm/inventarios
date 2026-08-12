@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient as createServerClient } from '@/lib/supabase/server';
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: 'Tokens incompletos' }, { status: 500 });
   }
 
-  // URL firmada del carnet (válida 24 horas)
+  // URL firmada del carnet (válida 24 horas) - usar carnet_frontal_url si existe
   let idCardSignedUrl: string | null = null;
   if (profile.id_card_path) {
     const { data: signed } = await admin.storage
@@ -106,14 +106,15 @@ export async function POST(request: NextRequest) {
     idCardSignedUrl = signed?.signedUrl ?? null;
   }
 
-  // Enviar email al super admin
+  // Enviar email al super admin con todos los datos de App A
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
   const emailResult = await sendNewRegistrationToAdmin({
-    fullName: profile.full_name,
-    rut: profile.rut,
-    phone: profile.phone,
-    email: user.email ?? 'sin-correo',
-    address: profile.address,
-    city: profile.city,
+    fullName: profile.full_name || `${profile.nombres || ''} ${profile.apellidos || ''}`.trim(),
+    rut: profile.rut || '',
+    phone: profile.phone || '',
+    email: profile.email || user.email || 'sin-correo',
+    address: profile.address || '',
+    city: profile.city || '',
     idCardSignedUrl,
     approveUrl: buildApprovalUrl('approve', approveToken),
     rejectUrl: buildApprovalUrl('reject', rejectToken),
