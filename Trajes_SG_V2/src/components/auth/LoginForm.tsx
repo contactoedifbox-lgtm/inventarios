@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -8,7 +8,6 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { loginSchema, type LoginInput } from '@/lib/validations/auth.schema';
 import { ROUTES } from '@/config/constants';
-import { UserRole } from '@/types/enums';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -54,11 +53,14 @@ export function LoginForm() {
 
     toast.success('Sesión iniciada');
 
-    if (profile?.role === UserRole.Pending) {
+    // Roles de App A
+    const role = profile?.role;
+
+    if (role === 'pending' || role === 'rejected' || role === 'suspended') {
       router.push(ROUTES.pendingReview);
-    } else if (profile?.role === UserRole.SuperAdmin) {
+    } else if (role === 'super_admin' || role === 'maestro') {
       router.push(ROUTES.admin.home);
-    } else if (profile?.role === UserRole.Approved) {
+    } else if (role === 'approved' || role === 'propietario' || role === 'arrendatario') {
       router.push(ROUTES.dashboard.arriendo);
     } else {
       router.push(ROUTES.pendingReview);
