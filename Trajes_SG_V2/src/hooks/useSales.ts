@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -44,7 +44,10 @@ const SALE_SELECT = `
   buyer:profiles!sales_buyer_profiles_fkey(id, full_name, city)
 `;
 
+// ============================================================
 // Mis compras (como comprador)
+// ============================================================
+
 export function useMySales() {
   const supabase = createClient();
 
@@ -68,7 +71,10 @@ export function useMySales() {
   });
 }
 
+// ============================================================
 // Solicitudes de compra recibidas (como dueño)
+// ============================================================
+
 export function useReceivedSales() {
   const supabase = createClient();
 
@@ -101,7 +107,10 @@ export function useReceivedSales() {
   });
 }
 
+// ============================================================
 // Crear solicitud de compra (API route)
+// ============================================================
+
 export interface CreateSalePayload extends ContactInfoInput {
   costume_id: string;
 }
@@ -136,7 +145,10 @@ export function useCreateSale() {
   });
 }
 
+// ============================================================
 // Confirmar venta (dueño, vía API route → soft delete del traje)
+// ============================================================
+
 export function useConfirmSale() {
   const queryClient = useQueryClient();
 
@@ -160,7 +172,10 @@ export function useConfirmSale() {
   });
 }
 
+// ============================================================
 // Subir comprobante de compra — bucket privado 'vouchers'
+// ============================================================
+
 export function useUploadSaleVoucher() {
   const supabase = createClient();
   const queryClient = useQueryClient();
@@ -192,5 +207,112 @@ export function useUploadSaleVoucher() {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
     },
     onError: (error: Error) => toast.error(`Error al subir comprobante: ${error.message}`),
+  });
+}
+
+// ============================================================
+// NUEVAS FUNCIONES - TRANSACCIONES (App A style)
+// ============================================================
+
+// ---------- Crear transacción (App A style) ----------
+export interface CreateTransactionPayload {
+  suitId: string;
+  suitTitle: string;
+  suitPhoto: string;
+  buyerOrRenterId: string;
+  buyerOrRenterName: string;
+  buyerOrRenterEmail: string;
+  ownerId: string;
+  ownerName: string;
+  type: 'Reserva' | 'Arriendo' | 'Compra';
+  price: number;
+  eventName?: string;
+  transferReceiptUrl: string;
+}
+
+export function useCreateTransaction() {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: CreateTransactionPayload) => {
+      const trxId = `TRX-${Math.floor(100000 + Math.random() * 900000)}`;
+
+      const { error } = await supabase.from('transactions').insert({
+        id: trxId,
+        suit_id: payload.suitId,
+        suit_title: payload.suitTitle,
+        suit_photo: payload.suitPhoto,
+        buyer_or_renter_id: payload.buyerOrRenterId,
+        buyer_or_renter_name: payload.buyerOrRenterName,
+        buyer_or_renter_email: payload.buyerOrRenterEmail,
+        owner_id: payload.ownerId,
+        owner_name: payload.ownerName,
+        type: payload.type,
+        price: payload.price,
+        event_name: payload.eventName,
+        transfer_receipt_url: payload.transferReceiptUrl,
+        status: 'pendiente',
+        created_at: new Date().toISOString(),
+      });
+
+      if (error) throw new Error(error.message);
+      return trxId;
+    },
+    onSuccess: () => {
+      toast.success('Comprobante enviado al propietario');
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Error al crear transacción');
+    },
+  });
+}
+
+// ---------- Obtener transacciones ----------
+export function useTransactions() {
+  const supabase = createClient();
+
+  return useQuery({
+    queryKey: ['transactions'],
+    queryFn: async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .or(`buyer_or_renter_id.eq.${user.id},owner_id.eq.${user.id}`)
+        .order('created_at', { ascending: false });
+
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+  });
+}
+
+// ---------- Actualizar estado de transacción ----------
+export function useUpdateTransactionStatus() {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ trxId, status }: { trxId: string; status: string }) => {
+      const { error } = await supabase
+        .from('transactions')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', trxId);
+
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      toast.success('Estado de transacción actualizado');
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Error al actualizar transacción');
+    },
   });
 }
