@@ -179,6 +179,36 @@ export interface Database {
           }
         ];
       };
+      costume_events: {
+        Row: {
+          costume_id: string;
+          event_id: string;
+        };
+        Insert: {
+          costume_id: string;
+          event_id: string;
+        };
+        Update: {
+          costume_id?: string;
+          event_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'costume_events_costume_id_fkey';
+            columns: ['costume_id'];
+            isOneToOne: false;
+            referencedRelation: 'costumes';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'costume_events_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'events';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
       events: {
         Row: {
           id: string;
