@@ -36,6 +36,7 @@ interface RentalRowWithJoins {
 function mapRental(row: RentalRowWithJoins): RentalWithDetails {
   return {
     ...row,
+    event_name: row.event_name ?? undefined,
     costume: row.costume,
     event: row.event,
     renter: row.renter ?? { id: row.renter_id, full_name: 'Usuario', city: '' },
@@ -270,14 +271,13 @@ export function useCreateQueueRequest() {
       });
 
       if (error) {
-        // El error de la función RPC viene en error.message
         const message = error.message.includes('raise_exception')
           ? error.message.split('raise_exception')[1]?.trim() || error.message
           : error.message;
         throw new Error(message);
       }
 
-      return data as string; // retorna el request_id
+      return data as string;
     },
     onSuccess: (_, variables) => {
       toast.success('Solicitud enviada al propietario');
