@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -29,6 +29,7 @@ const actionLabels: Record<AuditAction, string> = {
   [AuditAction.EventDeleted]: 'Evento eliminado',
   [AuditAction.RentalConfirmed]: 'Arriendo confirmado',
   [AuditAction.SaleConfirmed]: 'Venta confirmada',
+  [AuditAction.CarnetViewed]: 'Carnet visualizado',
 };
 
 /** Tabla paginada del registro de auditoría (solo super admin) */
