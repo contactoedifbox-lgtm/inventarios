@@ -1,10 +1,10 @@
-﻿import { redirect } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { ROUTES } from '@/config/constants';
 
-/** Layout del panel admin: exige sesión y rol 'super_admin' (defensa en profundidad). */
+/** Layout del panel admin: exige sesión y rol 'super_admin' o 'maestro' (defensa en profundidad). */
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient();
 
@@ -20,7 +20,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     .eq('id', user.id)
     .single();
 
-  if (!profile || profile.role !== 'super_admin') {
+  // Permitir super_admin y maestro
+  if (!profile || (profile.role !== 'super_admin' && profile.role !== 'maestro')) {
     redirect(ROUTES.dashboard.arriendo);
   }
 
