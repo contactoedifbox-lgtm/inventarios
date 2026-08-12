@@ -1,16 +1,16 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { X } from 'lucide-react';
+import { X, Plus, Info } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { costumeSchema, type CostumeInput } from '@/lib/validations/costume.schema';
 import { useCreateCostume } from '@/hooks/useCostumes';
 import { useUpcomingEvents } from '@/hooks/useEvents';
 import { compressImage } from '@/lib/utils/image';
-import { CostumeType } from '@/types/enums';
+import { CostumeType, ListingType } from '@/types/enums';
 import {
   ACCEPTED_IMAGE_TYPES,
   MAX_COSTUME_IMAGES,
@@ -18,7 +18,6 @@ import {
 } from '@/config/constants';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -66,16 +65,49 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
   const createCostume = useCreateCostume();
   const { data: events } = useUpcomingEvents();
 
-  const form = useForm<CostumeInput>({
-    resolver: zodResolver(costumeSchema),
+  // App A fields
+  const [characterType, setCharacterType] = useState('Macho');
+  const [bellCount, setBellCount] = useState(6);
+  const [includesAccessories, setIncludesAccessories] = useState(true);
+  const [listingType, setListingType] = useState<ListingType>(ListingType.Arriendo);
+  const [rentalPrice, setRentalPrice] = useState(25000);
+  const [salePrice, setSalePrice] = useState(350000);
+
+  const form = useForm<CostumeInput & {
+    agrupacion: string;
+    character_type: string;
+    bell_count: number;
+    includes_accessories: boolean;
+    listing_type: ListingType;
+    rental_price: number;
+    sale_price: number;
+  }>({
+    resolver: zodResolver(
+      costumeSchema.extend({
+        agrupacion: z.string().min(1, 'La agrupación es obligatoria'),
+        character_type: z.string().min(1, 'El tipo de personaje es obligatorio'),
+        bell_count: z.number().min(0).max(12),
+        includes_accessories: z.boolean(),
+        listing_type: z.nativeEnum(ListingType),
+        rental_price: z.number().min(0),
+        sale_price: z.number().min(0),
+      })
+    ),
     defaultValues: {
-      type: defaultType,
+      type: defaultType === CostumeType.Rent ? CostumeType.Rent : CostumeType.Sale,
       year: '',
       size: '',
       boot_size: '',
       price: 0,
       bank_info: '',
       event_ids: [],
+      agrupacion: '',
+      character_type: 'Macho',
+      bell_count: 6,
+      includes_accessories: true,
+      listing_type: ListingType.Arriendo,
+      rental_price: 25000,
+      sale_price: 350000,
     },
   });
 
@@ -90,7 +122,11 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
     setImageFiles(next);
   };
 
-  const onSubmit = async (values: CostumeInput) => {
+  const removeImage = (index: number) => {
+    setImageFiles(imageFiles.filter((_, i) => i !== index));
+  };
+
+  const onSubmit = async (values: any) => {
     if (imageFiles.length === 0) {
       toast.error('Debes adjuntar al menos una foto del traje.');
       return;
@@ -104,13 +140,11 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
       } = await supabase.auth.getUser();
       if (!user) throw new Error('Sesión no válida.');
 
-      // Carpeta única para las imágenes de este traje
+      // Subir imágenes
       const folderId = crypto.randomUUID();
       const total = imageFiles.length;
       setUploadProgress({ done: 0, total });
 
-      // Subida EN PARALELO: una imagen que falla NO cancela a las demás.
-      // Cada tarea comprime + sube y reporta su progreso.
       const results = await Promise.allSettled(
         imageFiles.map(async (file, i) => {
           const compressed = await compressImage(file);
@@ -128,28 +162,31 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
       const uploadedPaths = results
         .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled')
         .map((r) => r.value);
-      const failedCount = results.length - uploadedPaths.length;
 
       if (uploadedPaths.length === 0) {
-        const firstError = results.find((r) => r.status === 'rejected') as
-          | PromiseRejectedResult
-          | undefined;
-        throw new Error(
-          `No se pudo subir ninguna imagen. ${firstError?.reason instanceof Error ? firstError.reason.message : ''}`.trim(),
-        );
+        throw new Error('No se pudo subir ninguna imagen.');
       }
 
-      await createCostume.mutateAsync({ ...values, image_paths: uploadedPaths });
-
-      if (failedCount > 0) {
-        toast.warning(
-          `Traje publicado, pero ${failedCount} de ${total} imágenes no se pudieron subir. Puedes editarlo e intentarlo de nuevo.`,
-        );
-      }
+      // Crear el traje con todos los campos de App A
+      await createCostume.mutateAsync({
+        ...values,
+        type: values.type === CostumeType.Rent ? CostumeType.Rent : CostumeType.Sale,
+        price: values.listing_type === ListingType.Venta ? values.sale_price : values.rental_price,
+        rental_price: values.rental_price,
+        sale_price: values.sale_price,
+        listing_type: values.listing_type,
+        character_type: values.character_type,
+        bell_count: values.bell_count,
+        includes_accessories: values.includes_accessories,
+        agrupacion: values.agrupacion,
+        image_paths: uploadedPaths,
+        event_ids: values.type === CostumeType.Rent ? values.event_ids : [],
+      });
 
       form.reset();
       setImageFiles([]);
       setOpen(false);
+      toast.success('Traje publicado correctamente');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Error al publicar el traje.');
     } finally {
@@ -167,33 +204,106 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
         <DialogHeader>
           <DialogTitle>Publicar traje</DialogTitle>
           <DialogDescription>
-            Completa los datos del traje. Los campos con evento solo aplican a arriendo.
+            Completa los detalles del traje. Todos los campos son obligatorios.
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tipo de publicación</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+            {/* TIPO DE PUBLICACIÓN */}
+            <div>
+              <Label>Tipo de publicación</Label>
+              <div className="grid grid-cols-3 gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setListingType(ListingType.Arriendo);
+                    form.setValue('listing_type', ListingType.Arriendo);
+                    form.setValue('type', CostumeType.Rent);
+                  }}
+                  className={`py-2 px-3 text-xs font-semibold rounded-md border transition-all ${
+                    listingType === ListingType.Arriendo
+                      ? 'bg-brand-red text-white border-brand-red'
+                      : 'bg-muted text-muted-foreground border-muted'
+                  }`}
+                >
+                  Solo Arriendo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setListingType(ListingType.Venta);
+                    form.setValue('listing_type', ListingType.Venta);
+                    form.setValue('type', CostumeType.Sale);
+                  }}
+                  className={`py-2 px-3 text-xs font-semibold rounded-md border transition-all ${
+                    listingType === ListingType.Venta
+                      ? 'bg-brand-red text-white border-brand-red'
+                      : 'bg-muted text-muted-foreground border-muted'
+                  }`}
+                >
+                  Solo Venta
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setListingType(ListingType.Ambos);
+                    form.setValue('listing_type', ListingType.Ambos);
+                    form.setValue('type', CostumeType.Rent);
+                  }}
+                  className={`py-2 px-3 text-xs font-semibold rounded-md border transition-all ${
+                    listingType === ListingType.Ambos
+                      ? 'bg-brand-red text-white border-brand-red'
+                      : 'bg-muted text-muted-foreground border-muted'
+                  }`}
+                >
+                  Arriendo y Venta
+                </button>
+              </div>
+            </div>
+
+            {/* DETALLES DEL TRAJE */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="character_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de Personaje *</FormLabel>
+                    <Select onValueChange={(value) => {
+                      field.onChange(value);
+                      setCharacterType(value);
+                    }} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Macho">Macho</SelectItem>
+                        <SelectItem value="Machona">Machona</SelectItem>
+                        <SelectItem value="Warmi">Warmi</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="agrupacion"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Agrupación / Fraternidad *</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona el tipo" />
-                      </SelectTrigger>
+                      <Input placeholder="Ej: Caporales San Simón" {...field} />
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value={CostumeType.Rent}>Arriendo</SelectItem>
-                      <SelectItem value={CostumeType.Sale}>Venta</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
               <FormField
@@ -201,7 +311,7 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
                 name="year"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Año del traje</FormLabel>
+                    <FormLabel>Año *</FormLabel>
                     <FormControl>
                       <Input placeholder="2024" {...field} />
                     </FormControl>
@@ -214,10 +324,21 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
                 name="size"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Talla</FormLabel>
-                    <FormControl>
-                      <Input placeholder="M / 48 / XL" {...field} />
-                    </FormControl>
+                    <FormLabel>Talla *</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Talla" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="S">S</SelectItem>
+                        <SelectItem value="M">M</SelectItem>
+                        <SelectItem value="L">L</SelectItem>
+                        <SelectItem value="XL">XL</SelectItem>
+                        <SelectItem value="XXL">XXL</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -227,7 +348,7 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
                 name="boot_size"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Talla de botas</FormLabel>
+                    <FormLabel>Talla de Botas *</FormLabel>
                     <FormControl>
                       <Input placeholder="42" {...field} />
                     </FormControl>
@@ -237,36 +358,121 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="price"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Precio (CLP)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min={1}
-                      placeholder="150000"
-                      {...field}
-                      onChange={(event) => field.onChange(event.target.valueAsNumber)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Cascabeles o Accesorios */}
+            {characterType === 'Warmi' ? (
+              <FormField
+                control={form.control}
+                name="includes_accessories"
+                render={({ field }) => (
+                  <FormItem className="flex items-center space-x-2 space-y-0">
+                    <FormControl>
+                      <Checkbox checked={field.value} onCheckedChange={(checked) => {
+                        field.onChange(checked);
+                        setIncludesAccessories(!!checked);
+                      }} />
+                    </FormControl>
+                    <FormLabel className="font-normal">Incluye Accesorios (Joyas, grecas y tulmas)</FormLabel>
+                  </FormItem>
+                )}
+              />
+            ) : (
+              <FormField
+                control={form.control}
+                name="bell_count"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cantidad de Cascabeles</FormLabel>
+                    <FormControl>
+                      <div className="flex items-center gap-4">
+                        <input
+                          type="range"
+                          min="0"
+                          max="12"
+                          step="1"
+                          value={field.value}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            field.onChange(val);
+                            setBellCount(val);
+                          }}
+                          className="flex-1 accent-brand-red"
+                        />
+                        <span className="font-bold text-brand-red min-w-[30px] text-center">
+                          {field.value}
+                        </span>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
+            {/* PRECIOS */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              {(listingType === ListingType.Arriendo || listingType === ListingType.Ambos) && (
+                <FormField
+                  control={form.control}
+                  name="rental_price"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Precio de Arriendo ($) *</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="0"
+                          placeholder="25000"
+                          {...field}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            field.onChange(val);
+                            setRentalPrice(val);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {(listingType === ListingType.Venta || listingType === ListingType.Ambos) && (
+                <FormField
+                  control={form.control}
+                  name="sale_price"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Precio de Venta ($) *</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="0"
+                          placeholder="350000"
+                          {...field}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            field.onChange(val);
+                            setSalePrice(val);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
+
+            {/* DATOS BANCARIOS */}
             <FormField
               control={form.control}
               name="bank_info"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Datos bancarios para el pago</FormLabel>
+                  <FormLabel>Datos bancarios para el pago *</FormLabel>
                   <FormControl>
-                    <Textarea
+                    <Input
                       placeholder="Banco, tipo de cuenta, número, RUT, correo"
-                      rows={3}
                       {...field}
                     />
                   </FormControl>
@@ -275,14 +481,15 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
               )}
             />
 
-            {watchType === CostumeType.Rent && (
+            {/* EVENTOS (solo arriendo) */}
+            {(listingType === ListingType.Arriendo || listingType === ListingType.Ambos) && (
               <FormField
                 control={form.control}
                 name="event_ids"
                 render={() => (
                   <FormItem>
-                    <FormLabel>Eventos en los que estará disponible</FormLabel>
-                    <div className="space-y-2 rounded-md border p-3">
+                    <FormLabel>Eventos en los que estará disponible *</FormLabel>
+                    <div className="space-y-2 rounded-md border p-3 max-h-40 overflow-y-auto">
                       {(events ?? []).length === 0 && (
                         <p className="text-sm text-muted-foreground">
                           No hay eventos vigentes disponibles.
@@ -320,48 +527,48 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
               />
             )}
 
+            {/* FOTOS */}
             <div className="space-y-2">
-              <Label htmlFor="costume-images">Fotos del traje (máx. {MAX_COSTUME_IMAGES})</Label>
+              <Label>Fotos del traje (máx. {MAX_COSTUME_IMAGES}) *</Label>
               <Input
-                id="costume-images"
                 type="file"
                 accept={ACCEPTED_IMAGE_TYPES}
                 multiple
                 onChange={(event) => addImages(event.target.files)}
               />
               {imageFiles.length > 0 && (
-                <ul className="space-y-1">
+                <div className="grid grid-cols-3 gap-2 mt-2">
                   {imageFiles.map((file, index) => (
-                    <li
-                      key={`${file.name}-${index}`}
-                      className="flex items-center justify-between rounded-md border px-3 py-1.5 text-sm"
-                    >
-                      <span className="truncate">{file.name}</span>
+                    <div key={index} className="relative aspect-square border rounded-lg overflow-hidden group">
+                      <img
+                        src={URL.createObjectURL(file)}
+                        alt={`Foto ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
                       <button
                         type="button"
-                        onClick={() => setImageFiles(imageFiles.filter((_, i) => i !== index))}
-                        className="text-destructive hover:opacity-70"
-                        aria-label={`Quitar ${file.name}`}
+                        onClick={() => removeImage(index)}
+                        className="absolute top-1 right-1 bg-black/70 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
-                        <X className="h-4 w-4" />
+                        <X className="w-4 h-4" />
                       </button>
-                    </li>
+                    </div>
                   ))}
-                </ul>
+                </div>
               )}
             </div>
 
             <Button type="submit" variant="brand" className="w-full" disabled={isUploading}>
               {isUploading ? (
-        <>
-          <LoadingSpinner size={18} className="mr-2 text-white" />
-          {uploadProgress
-            ? `Subiendo fotos ${uploadProgress.done}/${uploadProgress.total}...`
-            : 'Publicando...'}
-        </>
-      ) : (
-        'Publicar traje'
-      )}
+                <>
+                  <LoadingSpinner size={18} className="mr-2 text-white" />
+                  {uploadProgress
+                    ? `Subiendo fotos ${uploadProgress.done}/${uploadProgress.total}...`
+                    : 'Publicando...'}
+                </>
+              ) : (
+                'Publicar traje'
+              )}
             </Button>
           </form>
         </Form>
