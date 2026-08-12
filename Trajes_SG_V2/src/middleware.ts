@@ -1,12 +1,12 @@
-﻿import { createServerClient } from '@supabase/ssr';
+import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Database } from '@/types/database.types';
 
 /**
  * Middleware de protección de rutas:
  * - Refresca la sesión de Supabase en cada request (cookies)
- * - /arriendo, /venta, /perfil  → requieren sesión + rol 'approved' (o super_admin)
- * - /admin/*                    → requieren sesión + rol 'super_admin'
+ * - /arriendo, /venta, /perfil  → requieren sesión + rol permitido
+ * - /admin/*                    → requieren sesión + rol 'super_admin' o 'maestro'
  * - /login, /register           → redirigen al dashboard si ya hay sesión
  * - /cuenta-en-revision         → requiere sesión (usuarios pendientes)
  */
@@ -15,6 +15,11 @@ const PROTECTED_PREFIXES = ['/arriendo', '/venta', '/perfil'];
 const ADMIN_PREFIX = '/admin';
 const AUTH_ROUTES = ['/login', '/register'];
 const PENDING_ROUTE = '/cuenta-en-revision';
+
+// Roles permitidos en el dashboard
+const ALLOWED_DASHBOARD_ROLES = ['approved', 'super_admin', 'maestro', 'propietario', 'arrendatario'];
+// Roles permitidos en admin
+const ALLOWED_ADMIN_ROLES = ['super_admin', 'maestro'];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -38,7 +43,6 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  // Importante: no ejecutar código entre createServerClient y getUser()
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -72,16 +76,20 @@ export async function middleware(request: NextRequest) {
   // Usuarios logueados no deben ver login/register
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone();
-    if (role === 'super_admin') url.pathname = '/admin';
-    else if (role === 'approved') url.pathname = '/arriendo';
-    else url.pathname = PENDING_ROUTE;
+    if (role === 'super_admin' || role === 'maestro') {
+      url.pathname = '/admin';
+    } else if (role && ALLOWED_DASHBOARD_ROLES.includes(role)) {
+      url.pathname = '/arriendo';
+    } else {
+      url.pathname = PENDING_ROUTE;
+    }
     url.search = '';
     return NextResponse.redirect(url);
   }
 
   // Rutas de usuario aprobado
   if (user && isProtected) {
-    if (role === 'pending' || role === 'rejected' || role === 'suspended') {
+    if (!role || !ALLOWED_DASHBOARD_ROLES.includes(role)) {
       const url = request.nextUrl.clone();
       url.pathname = PENDING_ROUTE;
       url.search = '';
@@ -90,9 +98,9 @@ export async function middleware(request: NextRequest) {
   }
 
   // Rutas de administración
-  if (user && isAdminRoute && role !== 'super_admin') {
+  if (user && isAdminRoute && !ALLOWED_ADMIN_ROLES.includes(role || '')) {
     const url = request.nextUrl.clone();
-    url.pathname = role === 'approved' ? '/arriendo' : PENDING_ROUTE;
+    url.pathname = role && ALLOWED_DASHBOARD_ROLES.includes(role) ? '/arriendo' : PENDING_ROUTE;
     url.search = '';
     return NextResponse.redirect(url);
   }
