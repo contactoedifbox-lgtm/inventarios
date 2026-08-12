@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient as createServerClient } from '@/lib/supabase/server';
@@ -15,10 +15,8 @@ const createRentalSchema = contactInfoSchema.extend({
 
 /**
  * POST /api/rentals
- * Crea una solicitud de arriendo mediante la función RPC create_rental(),
- * que ejecuta TODAS las validaciones (disponibilidad, pertenencia al
- * evento, límites global y por usuario) + el insert + el cambio de estado
- * del traje en UNA SOLA TRANSACCIÓN atómica de PostgreSQL.
+ * Crea una solicitud de arriendo mediante la función RPC create_rental_request(),
+ * que ejecuta TODAS las validaciones (disponibilidad, cola, etc.)
  */
 export async function POST(request: NextRequest) {
   const ip = getClientIp() ?? 'unknown';
@@ -56,71 +54,76 @@ export async function POST(request: NextRequest) {
 
   const { data: requesterProfile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, nombres, apellidos, email')
     .eq('id', user.id)
     .single();
 
-  if (!requesterProfile || (requesterProfile.role !== 'approved' && requesterProfile.role !== 'super_admin')) {
+  if (!requesterProfile || (requesterProfile.role !== 'approved' && requesterProfile.role !== 'super_admin' && requesterProfile.role !== 'propietario' && requesterProfile.role !== 'arrendatario')) {
     return NextResponse.json({ ok: false, error: 'Tu cuenta no está aprobada' }, { status: 403 });
   }
 
   const admin = createAdminClient();
 
-  // Creación transaccional: validaciones + insert + update en una sola llamada
-  const { data: rentalId, error: rpcError } = await admin.rpc('create_rental', {
-    p_costume_id: input.costume_id,
-    p_renter_id: user.id,
-    p_first_name: input.first_name,
-    p_last_name: input.last_name,
-    p_rut: input.rut,
-    p_phone: input.phone,
-    p_email: input.email,
-    p_event_id: input.event_id,
-  });
-
-  if (rpcError) {
-    // Los RAISE EXCEPTION de la función llegan en rpcError.message
-    const message = rpcError.message.includes('raise_exception')
-      ? rpcError.message
-      : (rpcError.message.split('\n')[0] ?? 'No se pudo crear la solicitud');
-    return NextResponse.json({ ok: false, error: message }, { status: 409 });
-  }
-
-  // Datos para la notificación al dueño (fuera de la transacción)
-  const { data: costume } = await admin
+  // Obtener datos del traje y su dueño
+  const { data: costume, error: costumeError } = await admin
     .from('costumes')
-    .select('owner_id, price, size, year')
+    .select('owner_id, owner_name, price, size, year, title')
     .eq('id', input.costume_id)
     .single();
 
-  const { data: event } = await admin
+  if (costumeError || !costume) {
+    return NextResponse.json({ ok: false, error: 'Traje no encontrado' }, { status: 404 });
+  }
+
+  const { data: event, error: eventError } = await admin
     .from('events')
     .select('name, event_date')
     .eq('id', input.event_id)
     .single();
 
-  if (costume && event) {
-    const [{ data: owner }, { data: ownerAuth }] = await Promise.all([
-      admin.from('profiles').select('full_name').eq('id', costume.owner_id).single(),
-      admin.auth.admin.getUserById(costume.owner_id),
-    ]);
-
-    if (ownerAuth.user?.email) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
-      await sendRentRequest(ownerAuth.user.email, {
-        ownerName: owner?.full_name ?? 'Integrante',
-        renterFullName: `${input.first_name} ${input.last_name}`,
-        renterRut: input.rut,
-        renterPhone: input.phone,
-        renterEmail: input.email,
-        costumeSummary: `Traje talla ${costume.size} (${costume.year})`,
-        eventName: event.name,
-        eventDate: event.event_date,
-        price: costume.price,
-        dashboardUrl: `${appUrl}/arriendo`,
-      });
-    }
+  if (eventError || !event) {
+    return NextResponse.json({ ok: false, error: 'Evento no encontrado' }, { status: 404 });
   }
 
-  return NextResponse.json({ ok: true, rental_id: rentalId });
+  // Crear solicitud en la cola usando create_rental_request
+  const { data: requestId, error: rpcError } = await admin.rpc('create_rental_request', {
+    p_suit_id: input.costume_id,
+    p_renter_id: user.id,
+    p_renter_name: `${input.first_name} ${input.last_name}`.trim(),
+    p_renter_email: input.email,
+    p_owner_id: costume.owner_id,
+    p_owner_name: costume.owner_name || 'Propietario',
+    p_event_name: event.name,
+    p_action_type: 'Arriendo',
+  });
+
+  if (rpcError) {
+    const message = rpcError.message.split('\n')[0] ?? 'No se pudo crear la solicitud';
+    return NextResponse.json({ ok: false, error: message }, { status: 409 });
+  }
+
+  // Notificar al dueño del traje
+  const { data: owner, error: ownerError } = await admin
+    .from('profiles')
+    .select('email, full_name')
+    .eq('id', costume.owner_id)
+    .single();
+
+  if (!ownerError && owner?.email) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+    await sendRentRequest(owner.email, {
+      ownerName: owner.full_name || 'Propietario',
+      renterFullName: `${input.first_name} ${input.last_name}`.trim(),
+      renterRut: input.rut,
+      renterPhone: input.phone,
+      renterEmail: input.email,
+      costumeSummary: `Traje talla ${costume.size} (${costume.year})`,
+      eventName: event.name,
+      eventDate: event.event_date,
+      price: costume.price,
+      dashboardUrl: `${appUrl}/arriendo`,
+    });
+  }
+
+  return NextResponse.json({ ok: true, rental_id: requestId });
 }
