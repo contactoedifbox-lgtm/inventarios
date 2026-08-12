@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { adminUserActionSchema } from '@/lib/validations/user.schema';
@@ -25,7 +25,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     return NextResponse.json({ ok: false, error: 'Demasiadas solicitudes' }, { status: 429 });
   }
 
-  // Solo super admin
+  // Solo super admin o maestro
   const supabase = createServerClient();
   const {
     data: { user },
@@ -41,7 +41,9 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     .eq('id', user.id)
     .single();
 
-  if (requesterProfile?.role !== 'super_admin') {
+  const isAdmin = requesterProfile?.role === 'super_admin' || requesterProfile?.role === 'maestro';
+
+  if (!isAdmin) {
     return NextResponse.json({ ok: false, error: 'Solo el administrador puede realizar esta acción' }, { status: 403 });
   }
 
@@ -69,7 +71,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
   const { data: target, error: targetError } = await admin
     .from('profiles')
-    .select('full_name, id_card_path, role')
+    .select('full_name, nombres, apellidos, id_card_path, carnet_frontal_url, carnet_trasera_url, role')
     .eq('id', targetUserId)
     .single();
 
@@ -80,6 +82,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const { data: targetAuth } = await admin.auth.admin.getUserById(targetUserId);
   const targetEmail = targetAuth.user?.email;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+  const fullName = target.full_name || `${target.nombres || ''} ${target.apellidos || ''}`.trim() || 'Usuario';
 
   switch (action) {
     case 'approve': {
@@ -97,7 +100,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
         .eq('used', false);
 
       if (targetEmail) {
-        await sendWelcomeApproved(targetEmail, target.full_name, `${appUrl}/login`);
+        await sendWelcomeApproved(targetEmail, fullName, `${appUrl}/login`);
       }
 
       await logAdminAction({
@@ -116,13 +119,14 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
         .eq('id', targetUserId);
       if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
 
+      // Eliminar fotos del carnet (datos sensibles)
       if (target.id_card_path) {
         await admin.storage.from(STORAGE_BUCKETS.idCards).remove([target.id_card_path]);
         await admin.from('profiles').update({ id_card_path: null }).eq('id', targetUserId);
       }
 
       if (targetEmail) {
-        await sendAccountRejected(targetEmail, target.full_name, reason ?? 'Sin motivo especificado');
+        await sendAccountRejected(targetEmail, fullName, reason ?? 'Sin motivo especificado');
       }
 
       await logAdminAction({
@@ -146,7 +150,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
 
       if (targetEmail) {
-        await sendAccountSuspended(targetEmail, target.full_name, reason ?? 'Sin motivo especificado');
+        await sendAccountSuspended(targetEmail, fullName, reason ?? 'Sin motivo especificado');
       }
 
       await logAdminAction({
@@ -183,7 +187,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
         adminId: user.id,
         action: AuditAction.UserDeleted,
         targetUserId,
-        details: { deleted_name: target.full_name },
+        details: { deleted_name: fullName },
       });
       break;
     }
