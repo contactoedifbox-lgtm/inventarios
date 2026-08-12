@@ -227,3 +227,66 @@ export function useAdminStats() {
     },
   });
 }
+
+// ============================================================
+// NUEVA FUNCIÓN - Auditoría de Carnet (App A style)
+// ============================================================
+
+export function useLogCarnetAccess() {
+  const supabase = createClient();
+
+  return useMutation({
+    mutationFn: async ({
+      viewerId,
+      viewerName,
+      viewerRole,
+      targetUserId,
+      targetUserName,
+      photoType,
+    }: {
+      viewerId: string;
+      viewerName: string;
+      viewerRole: string;
+      targetUserId: string;
+      targetUserName: string;
+      photoType: 'frente' | 'trasera' | 'ambas';
+    }) => {
+      const { error } = await supabase.from('carnet_access_logs').insert({
+        viewer_id: viewerId,
+        viewer_name: viewerName,
+        viewer_role: viewerRole,
+        target_user_id: targetUserId,
+        target_user_name: targetUserName,
+        photo_type: photoType,
+        timestamp: new Date().toISOString(),
+      });
+
+      if (error) throw new Error(error.message);
+    },
+    onError: (error: Error) => {
+      console.error('Error al registrar auditoría de carnet:', error);
+    },
+  });
+}
+
+// ============================================================
+// Obtener logs de auditoría de carnet
+// ============================================================
+
+export function useCarnetAccessLogs() {
+  const supabase = createClient();
+
+  return useQuery({
+    queryKey: ['admin', 'carnet-logs'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('carnet_access_logs')
+        .select('*')
+        .order('timestamp', { ascending: false });
+
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+    enabled: false, // Solo se activa cuando se llama explícitamente
+  });
+}
