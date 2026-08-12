@@ -37,6 +37,7 @@ function mapRental(row: RentalRowWithJoins): RentalWithDetails {
   return {
     ...row,
     event_name: row.event_name ?? undefined,
+    status: row.status as 'reservado' | 'arrendado',
     costume: row.costume,
     event: row.event,
     renter: row.renter ?? { id: row.renter_id, full_name: 'Usuario', city: '' },
