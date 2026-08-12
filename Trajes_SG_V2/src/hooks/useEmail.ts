@@ -32,6 +32,7 @@ export function useSystemEmails() {
         .single();
 
       const userEmail = profile?.email || user.email;
+      if (!userEmail) return [];
 
       const { data, error } = await supabase
         .from('system_emails')
@@ -67,6 +68,7 @@ export function useUnreadEmails() {
         .single();
 
       const userEmail = profile?.email || user.email;
+      if (!userEmail) return [];
 
       const { data, error } = await supabase
         .from('system_emails')
@@ -203,6 +205,7 @@ export function useUnreadCount() {
         .single();
 
       const userEmail = profile?.email || user.email;
+      if (!userEmail) return 0;
 
       const { count, error } = await supabase
         .from('system_emails')
