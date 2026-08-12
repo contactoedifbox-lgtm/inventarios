@@ -37,7 +37,7 @@ export function usePendingUsers() {
         .order('created_at', { ascending: true });
 
       if (error) throw new Error(error.message);
-      return (data ?? []) as Profile[];
+      return (data ?? []) as unknown as Profile[];
     },
   });
 }
@@ -65,7 +65,7 @@ export function useUsers(page = 1, role?: UserRole, pageSize = DEFAULT_PAGE_SIZE
 
       const total = count ?? 0;
       return {
-        data: (data ?? []) as Profile[],
+        data: (data ?? []) as unknown as Profile[],
         count: total,
         page,
         pageSize,
