@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient as createServerClient } from '@/lib/supabase/server';
@@ -14,9 +14,7 @@ const createSaleSchema = contactInfoSchema.extend({
 
 /**
  * POST /api/sales
- * Crea una solicitud de compra mediante la función RPC create_sale(),
- * que valida (tipo, disponibilidad, propiedad) + inserta + reserva el
- * traje en UNA SOLA TRANSACCIÓN atómica de PostgreSQL.
+ * Crea una solicitud de compra directamente en la tabla sales
  */
 export async function POST(request: NextRequest) {
   const ip = getClientIp() ?? 'unknown';
@@ -54,59 +52,86 @@ export async function POST(request: NextRequest) {
 
   const { data: requesterProfile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, nombres, apellidos, email')
     .eq('id', user.id)
     .single();
 
-  if (!requesterProfile || (requesterProfile.role !== 'approved' && requesterProfile.role !== 'super_admin')) {
+  if (!requesterProfile || (requesterProfile.role !== 'approved' && requesterProfile.role !== 'super_admin' && requesterProfile.role !== 'propietario' && requesterProfile.role !== 'arrendatario')) {
     return NextResponse.json({ ok: false, error: 'Tu cuenta no está aprobada' }, { status: 403 });
   }
 
   const admin = createAdminClient();
 
-  // Creación transaccional: validaciones + insert + update en una sola llamada
-  const { data: saleId, error: rpcError } = await admin.rpc('create_sale', {
-    p_costume_id: input.costume_id,
-    p_buyer_id: user.id,
-    p_first_name: input.first_name,
-    p_last_name: input.last_name,
-    p_rut: input.rut,
-    p_phone: input.phone,
-    p_email: input.email,
-  });
-
-  if (rpcError) {
-    const message = rpcError.message.split('\n')[0] ?? 'No se pudo crear la solicitud';
-    return NextResponse.json({ ok: false, error: message }, { status: 409 });
-  }
-
-  // Datos para la notificación al dueño (fuera de la transacción)
-  const { data: costume } = await admin
+  // Obtener datos del traje
+  const { data: costume, error: costumeError } = await admin
     .from('costumes')
-    .select('owner_id, price, size, year')
+    .select('owner_id, price, size, year, status, is_sold, type')
     .eq('id', input.costume_id)
     .single();
 
-  if (costume) {
-    const [{ data: owner }, { data: ownerAuth }] = await Promise.all([
-      admin.from('profiles').select('full_name').eq('id', costume.owner_id).single(),
-      admin.auth.admin.getUserById(costume.owner_id),
-    ]);
-
-    if (ownerAuth.user?.email) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
-      await sendSaleRequest(ownerAuth.user.email, {
-        ownerName: owner?.full_name ?? 'Integrante',
-        buyerFullName: `${input.first_name} ${input.last_name}`,
-        buyerRut: input.rut,
-        buyerPhone: input.phone,
-        buyerEmail: input.email,
-        costumeSummary: `Traje talla ${costume.size} (${costume.year})`,
-        price: costume.price,
-        dashboardUrl: `${appUrl}/venta`,
-      });
-    }
+  if (costumeError || !costume) {
+    return NextResponse.json({ ok: false, error: 'Traje no encontrado' }, { status: 404 });
   }
 
-  return NextResponse.json({ ok: true, sale_id: saleId });
+  // Validar que el traje esté disponible para venta
+  if (costume.status !== 'Disponible' || costume.is_sold) {
+    return NextResponse.json({ ok: false, error: 'El traje ya no está disponible para venta' }, { status: 409 });
+  }
+
+  if (costume.type !== 'sale' && costume.type !== 'ambos') {
+    return NextResponse.json({ ok: false, error: 'Este traje no está en venta' }, { status: 409 });
+  }
+
+  if (costume.owner_id === user.id) {
+    return NextResponse.json({ ok: false, error: 'No puedes comprar tu propio traje' }, { status: 409 });
+  }
+
+  // Crear la solicitud de compra directamente
+  const { data: sale, error: insertError } = await admin
+    .from('sales')
+    .insert({
+      costume_id: input.costume_id,
+      buyer_id: user.id,
+      first_name: input.first_name,
+      last_name: input.last_name,
+      rut: input.rut,
+      phone: input.phone,
+      email: input.email,
+      status: 'reservado',
+    })
+    .select()
+    .single();
+
+  if (insertError) {
+    return NextResponse.json({ ok: false, error: insertError.message }, { status: 500 });
+  }
+
+  // Actualizar estado del traje a reservado
+  await admin
+    .from('costumes')
+    .update({ status: 'Reservado' })
+    .eq('id', input.costume_id);
+
+  // Notificar al dueño
+  const { data: owner, error: ownerError } = await admin
+    .from('profiles')
+    .select('email, full_name')
+    .eq('id', costume.owner_id)
+    .single();
+
+  if (!ownerError && owner?.email) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+    await sendSaleRequest(owner.email, {
+      ownerName: owner.full_name || 'Propietario',
+      buyerFullName: `${input.first_name} ${input.last_name}`.trim(),
+      buyerRut: input.rut,
+      buyerPhone: input.phone,
+      buyerEmail: input.email,
+      costumeSummary: `Traje talla ${costume.size} (${costume.year})`,
+      price: costume.price,
+      dashboardUrl: `${appUrl}/venta`,
+    });
+  }
+
+  return NextResponse.json({ ok: true, sale_id: sale.id });
 }
