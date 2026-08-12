@@ -25,7 +25,10 @@ import {
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 
 const roleLabels: Record<UserRole, string> = {
-  [UserRole.SuperAdmin]: 'Administrador',
+  [UserRole.SuperAdmin]: 'Super Administrador',
+  [UserRole.Maestro]: 'Maestro',
+  [UserRole.Propietario]: 'Propietario',
+  [UserRole.Arrendatario]: 'Arrendatario',
   [UserRole.Pending]: 'Pendiente de aprobación',
   [UserRole.Approved]: 'Aprobado',
   [UserRole.Rejected]: 'Rechazado',
