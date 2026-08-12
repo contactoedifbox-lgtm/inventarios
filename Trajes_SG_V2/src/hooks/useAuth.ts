@@ -47,7 +47,7 @@ export function useAuth(): AuthState {
         .single();
 
       if (error || !profile) return { user, profile: null };
-      return { user, profile: profile as Profile };
+      return { user, profile: profile as unknown as Profile };
     },
     staleTime: 1000 * 60 * 5, // 5 minutos
     refetchOnWindowFocus: true,
@@ -93,8 +93,8 @@ export function useAuth(): AuthState {
     profile,
     isLoading,
     isAuthenticated: Boolean(data?.user),
-    isApproved: profile?.role === UserRole.Approved || profile?.role === UserRole.SuperAdmin,
-    isSuperAdmin: profile?.role === UserRole.SuperAdmin,
+    isApproved: profile?.role === UserRole.Approved || profile?.role === UserRole.SuperAdmin || profile?.role === UserRole.Propietario || profile?.role === UserRole.Arrendatario || profile?.role === UserRole.Maestro,
+    isSuperAdmin: profile?.role === UserRole.SuperAdmin || profile?.role === UserRole.Maestro,
     signOut,
     refreshProfile,
   };
