@@ -145,7 +145,7 @@ function MyRentCostumes() {
               <Button
                 size="sm"
                 variant="destructive"
-                disabled={deleteCostume.isPending || costume.status !== 'disponible'}
+                disabled={deleteCostume.isPending || costume.status !== 'Disponible'}
                 onClick={() => {
                   if (window.confirm('¿Eliminar este traje? Esta acción no se puede deshacer.')) {
                     deleteCostume.mutate(costume.id);
