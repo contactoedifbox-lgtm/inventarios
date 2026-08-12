@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { AuditAction } from '@/types/enums';
-import type { Event } from '@/types/models';
+import type { Event, EventRequest } from '@/types/models';
 import type { Json } from '@/types/database.types';
 import type { EventInput } from '@/lib/validations/user.schema';
 
@@ -174,5 +174,139 @@ export function useDeleteEvent() {
       queryClient.invalidateQueries({ queryKey: ['events'] });
     },
     onError: (error: Error) => toast.error(`Error al eliminar: ${error.message}`),
+  });
+}
+
+// ============================================================
+// NUEVAS FUNCIONES - Solicitudes de Eventos (App A style)
+// ============================================================
+
+// ---------- Obtener todas las solicitudes de eventos ----------
+export function useEventRequests() {
+  const supabase = createClient();
+
+  return useQuery({
+    queryKey: ['event-requests'],
+    queryFn: async (): Promise<EventRequest[]> => {
+      const { data, error } = await supabase
+        .from('event_requests')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw new Error(error.message);
+      return (data ?? []) as EventRequest[];
+    },
+  });
+}
+
+// ---------- Crear solicitud de evento ----------
+export interface CreateEventRequestPayload {
+  eventName: string;
+  date: string;
+  location: string;
+  description: string;
+  ownerId: string;
+  ownerName: string;
+}
+
+export function useCreateEventRequest() {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: CreateEventRequestPayload) => {
+      const { data, error } = await supabase.rpc('create_event_request', {
+        p_event_name: payload.eventName,
+        p_date: payload.date,
+        p_location: payload.location,
+        p_description: payload.description,
+        p_owner_id: payload.ownerId,
+        p_owner_name: payload.ownerName,
+      });
+
+      if (error) throw new Error(error.message);
+      return data as string;
+    },
+    onSuccess: () => {
+      toast.success('Solicitud de evento enviada al administrador');
+      queryClient.invalidateQueries({ queryKey: ['event-requests'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Error al crear solicitud de evento');
+    },
+  });
+}
+
+// ---------- Aprobar solicitud de evento ----------
+export function useApproveEventRequest() {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (requestId: string) => {
+      // Obtener la solicitud
+      const { data: request, error: fetchError } = await supabase
+        .from('event_requests')
+        .select('*')
+        .eq('id', requestId)
+        .single();
+
+      if (fetchError) throw new Error(fetchError.message);
+
+      // Actualizar estado de la solicitud
+      const { error: updateError } = await supabase
+        .from('event_requests')
+        .update({ status: 'aprobado' })
+        .eq('id', requestId);
+
+      if (updateError) throw new Error(updateError.message);
+
+      // Crear el evento
+      const { error: eventError } = await supabase
+        .from('events')
+        .insert({
+          name: request.event_name,
+          event_date: request.date,
+          description: request.description,
+          max_global_rentals: 50,
+          max_user_rentals: 1,
+          is_archived: false,
+          created_by: request.owner_id,
+        });
+
+      if (eventError) throw new Error(eventError.message);
+    },
+    onSuccess: () => {
+      toast.success('Solicitud aprobada y evento creado');
+      queryClient.invalidateQueries({ queryKey: ['event-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Error al aprobar solicitud');
+    },
+  });
+}
+
+// ---------- Rechazar solicitud de evento ----------
+export function useRejectEventRequest() {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (requestId: string) => {
+      const { error } = await supabase
+        .from('event_requests')
+        .update({ status: 'rechazado' })
+        .eq('id', requestId);
+
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      toast.success('Solicitud rechazada');
+      queryClient.invalidateQueries({ queryKey: ['event-requests'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Error al rechazar solicitud');
+    },
   });
 }
