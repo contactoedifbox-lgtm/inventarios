@@ -4,9 +4,9 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
+import { z } from 'zod';
 import { X, Plus, Info } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { costumeSchema, type CostumeInput } from '@/lib/validations/costume.schema';
 import { useCreateCostume } from '@/hooks/useCostumes';
 import { useUpcomingEvents } from '@/hooks/useEvents';
 import { compressImage } from '@/lib/utils/image';
@@ -45,6 +45,41 @@ import {
 } from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 
+// Esquema completo del formulario (sin .extend())
+const costumeFormSchema = z.object({
+  type: z.nativeEnum(CostumeType),
+  year: z.string().min(4, 'Ingresa un año válido').max(4).regex(/^(19|20)\d{2}$/),
+  size: z.string().min(1, 'La talla es obligatoria'),
+  boot_size: z.string().min(1, 'La talla de botas es obligatoria'),
+  price: z.number().positive('El precio debe ser mayor a 0'),
+  bank_info: z.string().min(10, 'Los datos bancarios son obligatorios'),
+  event_ids: z.array(z.string().uuid()).default([]),
+  agrupacion: z.string().min(1, 'La agrupación es obligatoria'),
+  character_type: z.string().min(1, 'El tipo de personaje es obligatorio'),
+  bell_count: z.number().min(0).max(12),
+  includes_accessories: z.boolean(),
+  listing_type: z.nativeEnum(ListingType),
+  rental_price: z.number().min(0),
+  sale_price: z.number().min(0),
+}).superRefine((data, ctx) => {
+  if (data.listing_type === ListingType.Sale && data.event_ids.length > 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Los trajes de venta no pueden asociarse a eventos',
+      path: ['event_ids'],
+    });
+  }
+  if ((data.listing_type === ListingType.Arriendo || data.listing_type === ListingType.Ambos) && data.event_ids.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Selecciona al menos un evento para el arriendo',
+      path: ['event_ids'],
+    });
+  }
+});
+
+type CostumeFormValues = z.infer<typeof costumeFormSchema>;
+
 interface CostumeFormProps {
   defaultType: CostumeType;
   triggerLabel: string;
@@ -73,26 +108,8 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
   const [rentalPrice, setRentalPrice] = useState(25000);
   const [salePrice, setSalePrice] = useState(350000);
 
-  const form = useForm<CostumeInput & {
-    agrupacion: string;
-    character_type: string;
-    bell_count: number;
-    includes_accessories: boolean;
-    listing_type: ListingType;
-    rental_price: number;
-    sale_price: number;
-  }>({
-    resolver: zodResolver(
-      costumeSchema.extend({
-        agrupacion: z.string().min(1, 'La agrupación es obligatoria'),
-        character_type: z.string().min(1, 'El tipo de personaje es obligatorio'),
-        bell_count: z.number().min(0).max(12),
-        includes_accessories: z.boolean(),
-        listing_type: z.nativeEnum(ListingType),
-        rental_price: z.number().min(0),
-        sale_price: z.number().min(0),
-      })
-    ),
+  const form = useForm<CostumeFormValues>({
+    resolver: zodResolver(costumeFormSchema),
     defaultValues: {
       type: defaultType === CostumeType.Rent ? CostumeType.Rent : CostumeType.Sale,
       year: '',
@@ -111,8 +128,6 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
     },
   });
 
-  const watchType = form.watch('type');
-
   const addImages = (files: FileList | null) => {
     if (!files) return;
     const next = [...imageFiles, ...Array.from(files)].slice(0, MAX_COSTUME_IMAGES);
@@ -126,7 +141,7 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
     setImageFiles(imageFiles.filter((_, i) => i !== index));
   };
 
-  const onSubmit = async (values: any) => {
+  const onSubmit = async (values: CostumeFormValues) => {
     if (imageFiles.length === 0) {
       toast.error('Debes adjuntar al menos una foto del traje.');
       return;
@@ -169,19 +184,23 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
 
       // Crear el traje con todos los campos de App A
       await createCostume.mutateAsync({
-        ...values,
-        type: values.type === CostumeType.Rent ? CostumeType.Rent : CostumeType.Sale,
+        type: values.listing_type === ListingType.Venta ? CostumeType.Sale : CostumeType.Rent,
+        year: values.year,
+        size: values.size,
+        boot_size: values.boot_size,
         price: values.listing_type === ListingType.Venta ? values.sale_price : values.rental_price,
-        rental_price: values.rental_price,
-        sale_price: values.sale_price,
-        listing_type: values.listing_type,
+        bank_info: values.bank_info,
+        image_paths: uploadedPaths,
+        event_ids: values.listing_type === ListingType.Venta ? [] : values.event_ids,
+        agrupacion: values.agrupacion,
         character_type: values.character_type,
         bell_count: values.bell_count,
         includes_accessories: values.includes_accessories,
-        agrupacion: values.agrupacion,
-        image_paths: uploadedPaths,
-        event_ids: values.type === CostumeType.Rent ? values.event_ids : [],
-      });
+        listing_type: values.listing_type,
+        rental_price: values.rental_price,
+        sale_price: values.sale_price,
+        status: 'Disponible',
+      } as any);
 
       form.reset();
       setImageFiles([]);
