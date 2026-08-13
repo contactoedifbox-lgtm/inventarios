@@ -140,7 +140,7 @@ export function useMyCostumes(type?: CostumeType) {
 }
 
 // ============================================================
-// Crear traje (+ asociar eventos si es de arriendo)
+// Crear traje (+ asociar eventos si es de arriendo o ambos)
 // ============================================================
 
 export function useCreateCostume() {
@@ -154,6 +154,7 @@ export function useCreateCostume() {
       } = await supabase.auth.getUser();
       if (!user) throw new Error('Debes iniciar sesión para publicar.');
 
+      // Insertar el traje con TODOS los campos
       const { data: costume, error } = await supabase
         .from('costumes')
         .insert({
@@ -166,21 +167,40 @@ export function useCreateCostume() {
           bank_info: input.bank_info,
           image_paths: input.image_paths,
           status: CostumeStatus.Disponible,
+          // Campos nuevos que antes faltaban:
+          listing_type: input.listing_type,
+          rental_price: input.rental_price,
+          sale_price: input.sale_price,
+          character_type: input.character_type,
+          bell_count: input.bell_count,
+          includes_accessories: input.includes_accessories,
+          agrupacion: input.agrupacion,
         })
         .select()
         .single();
 
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error('Error insertando traje:', error);
+        throw new Error(error.message || 'No se pudo guardar el traje. Revisa los datos.');
+      }
 
-      // Asociar eventos (solo arriendo)
-      if (input.type === CostumeType.Rent && input.event_ids.length > 0) {
+      if (!costume) {
+        throw new Error('El traje se creó pero no se pudo recuperar el registro.');
+      }
+
+      // Asociar eventos (solo si NO es venta pura)
+      const needsEvents = input.listing_type === ListingType.Arriendo || input.listing_type === ListingType.Ambos;
+      if (needsEvents && input.event_ids.length > 0) {
         const { error: ceError } = await supabase.from('costume_events').insert(
           input.event_ids.map((eventId) => ({
             costume_id: costume.id,
             event_id: eventId,
           })),
         );
-        if (ceError) throw new Error(ceError.message);
+        if (ceError) {
+          console.error('Error asociando eventos:', ceError);
+          throw new Error(`El traje se creó pero no se pudieron asociar los eventos: ${ceError.message}`);
+        }
       }
 
       return costume;
