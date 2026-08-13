@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { DEFAULT_PAGE_SIZE } from '@/config/constants';
-import { CostumeStatus, CostumeType } from '@/types/enums';
+import { CostumeStatus, CostumeType, ListingType } from '@/types/enums';
 import type {
   Costume,
   CostumeFilters,
