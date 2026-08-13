@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { CostumeType } from '@/types/enums';
+import { CostumeType, ListingType } from '@/types/enums';
 
-/** Schema para crear/editar un traje */
+/** Schema para crear/editar un traje (COMPLETO) */
 export const costumeSchema = z
   .object({
     type: z.nativeEnum(CostumeType, {
@@ -30,17 +30,45 @@ export const costumeSchema = z
       .min(10, 'Ingresa los datos bancarios completos (banco, tipo de cuenta, número, titular)')
       .max(500),
     event_ids: z.array(z.string().uuid()).optional().default([]),
+    
+    // Campos nuevos del formulario (antes faltaban en el schema)
+    listing_type: z.nativeEnum(ListingType, {
+      errorMap: () => ({ message: 'Selecciona el tipo de publicación' }),
+    }),
+    rental_price: z
+      .number({ invalid_type_error: 'Ingresa un número' })
+      .int()
+      .min(0, 'El precio no puede ser negativo')
+      .max(100_000_000),
+    sale_price: z
+      .number({ invalid_type_error: 'Ingresa un número' })
+      .int()
+      .min(0, 'El precio no puede ser negativo')
+      .max(100_000_000),
+    character_type: z
+      .string({ required_error: 'El tipo de personaje es obligatorio' })
+      .min(1, 'Selecciona el tipo de personaje'),
+    bell_count: z
+      .number({ invalid_type_error: 'Ingresa un número' })
+      .int()
+      .min(0, 'Mínimo 0 cascabeles')
+      .max(12, 'Máximo 12 cascabeles'),
+    includes_accessories: z.boolean().default(false),
+    agrupacion: z
+      .string({ required_error: 'La agrupación es obligatoria' })
+      .min(1, 'Ingresa la agrupación o fraternidad'),
   })
   .superRefine((data, ctx) => {
-    // Solo los trajes de arriendo pueden (y deben) tener eventos asociados
-    if (data.type === CostumeType.Sale && data.event_ids.length > 0) {
+    // Solo los trajes de VENTA pura no pueden tener eventos
+    if (data.listing_type === ListingType.Venta && data.event_ids.length > 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'Los trajes de venta no pueden asociarse a eventos',
         path: ['event_ids'],
       });
     }
-    if (data.type === CostumeType.Rent && data.event_ids.length === 0) {
+    // Los trajes de arriendo o ambos DEBEN tener al menos un evento
+    if ((data.listing_type === ListingType.Arriendo || data.listing_type === ListingType.Ambos) && data.event_ids.length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'Selecciona al menos un evento para el arriendo',
