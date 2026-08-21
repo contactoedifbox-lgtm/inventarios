@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CostumeType, ListingType } from '@/types/enums';
+import { CostumeType, ListingType, CostumeStatus } from '@/types/enums';
 
 /** Schema para crear/editar un traje (COMPLETO) */
 export const costumeSchema = z
@@ -31,7 +31,7 @@ export const costumeSchema = z
       .max(500),
     event_ids: z.array(z.string().uuid()).optional().default([]),
     
-    // Campos nuevos del formulario (antes faltaban en el schema)
+    // Campos nuevos del formulario
     listing_type: z.nativeEnum(ListingType, {
       errorMap: () => ({ message: 'Selecciona el tipo de publicación' }),
     }),
@@ -57,9 +57,11 @@ export const costumeSchema = z
     agrupacion: z
       .string({ required_error: 'La agrupación es obligatoria' })
       .min(1, 'Ingresa la agrupación o fraternidad'),
+    
+    // Status: opcional, se setea automáticamente en el servidor
+    status: z.nativeEnum(CostumeStatus).optional(),
   })
   .superRefine((data, ctx) => {
-    // Solo los trajes de VENTA pura no pueden tener eventos
     if (data.listing_type === ListingType.Venta && data.event_ids.length > 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -67,7 +69,6 @@ export const costumeSchema = z
         path: ['event_ids'],
       });
     }
-    // Los trajes de arriendo o ambos DEBEN tener al menos un evento
     if ((data.listing_type === ListingType.Arriendo || data.listing_type === ListingType.Ambos) && data.event_ids.length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
