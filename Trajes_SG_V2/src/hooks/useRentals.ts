@@ -47,8 +47,7 @@ function mapRental(row: RentalRowWithJoins): RentalWithDetails {
 const RENTAL_SELECT = `
   *,
   costume:costumes(*),
-  event:events(*),
-  renter:profiles!rentals_renter_profiles_fkey(id, full_name, city)
+  renter:profiles!fk_rentals_renter(id, full_name, city)
 `;
 
 // ============================================================
@@ -309,7 +308,6 @@ export function useConfirmAvailability() {
       toast.success('Disponibilidad confirmada. El arrendatario tiene 24h para pagar.');
       queryClient.invalidateQueries({ queryKey: ['rental-queue'] });
       queryClient.invalidateQueries({ queryKey: ['costumes'] });
-      queryClient.invalidateQueries({ queryKey: ['rentals'] });
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Error al confirmar disponibilidad');
@@ -332,12 +330,12 @@ export function useRejectAvailability() {
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
-      toast.success('Disponibilidad rechazada. El traje vuelve a estar disponible.');
+      toast.success('Solicitud rechazada. El traje vuelve a estar disponible.');
       queryClient.invalidateQueries({ queryKey: ['rental-queue'] });
       queryClient.invalidateQueries({ queryKey: ['costumes'] });
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Error al rechazar disponibilidad');
+      toast.error(error.message || 'Error al rechazar solicitud');
     },
   });
 }
@@ -357,10 +355,9 @@ export function useConfirmPayment() {
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
-      toast.success('Pago confirmado. El arriendo está activo.');
+      toast.success('Pago confirmado. Arriendo completado.');
       queryClient.invalidateQueries({ queryKey: ['rental-queue'] });
       queryClient.invalidateQueries({ queryKey: ['costumes'] });
-      queryClient.invalidateQueries({ queryKey: ['rentals'] });
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Error al confirmar pago');
@@ -368,13 +365,13 @@ export function useConfirmPayment() {
   });
 }
 
-// ---------- Obtener solicitudes de un usuario ----------
+// ---------- Obtener solicitudes del usuario (App A style) ----------
 export function useMyQueueRequests() {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ['rental-queue', 'mine'],
-    queryFn: async (): Promise<RentalQueue[]> => {
+    queryKey: ['queue-requests', 'mine'],
+    queryFn: async (): Promise<RentalRequest[]> => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -387,18 +384,18 @@ export function useMyQueueRequests() {
         .order('created_at', { ascending: false });
 
       if (error) throw new Error(error.message);
-      return (data ?? []) as RentalQueue[];
+      return (data ?? []) as RentalRequest[];
     },
   });
 }
 
-// ---------- Obtener solicitudes recibidas (como dueño) ----------
+// ---------- Obtener solicitudes recibidas (App A style) ----------
 export function useReceivedQueueRequests() {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ['rental-queue', 'received'],
-    queryFn: async (): Promise<RentalQueue[]> => {
+    queryKey: ['queue-requests', 'received'],
+    queryFn: async (): Promise<RentalRequest[]> => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -411,31 +408,7 @@ export function useReceivedQueueRequests() {
         .order('order_index', { ascending: true });
 
       if (error) throw new Error(error.message);
-      return (data ?? []) as RentalQueue[];
-    },
-  });
-}
-
-// ---------- Cancelar solicitud ----------
-export function useCancelQueueRequest() {
-  const supabase = createClient();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ requestId }: { requestId: string }) => {
-      const { error } = await supabase
-        .from('rental_queue')
-        .update({ status: 'Cancelado', updated_at: new Date().toISOString() })
-        .eq('id', requestId);
-
-      if (error) throw new Error(error.message);
-    },
-    onSuccess: () => {
-      toast.success('Solicitud cancelada');
-      queryClient.invalidateQueries({ queryKey: ['rental-queue'] });
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Error al cancelar solicitud');
+      return (data ?? []) as RentalRequest[];
     },
   });
 }
