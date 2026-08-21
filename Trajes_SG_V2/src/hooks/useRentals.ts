@@ -412,3 +412,60 @@ export function useReceivedQueueRequests() {
     },
   });
 }
+
+// ---------- Cancelar solicitud de arriendo (arrendatario) ----------
+export function useCancelQueueRequest() {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ requestId }: { requestId: string }) => {
+      // 1. Obtener la solicitud para saber el suit_id
+      const { data: request, error: fetchError } = await supabase
+        .from('rental_queue')
+        .select('suit_id, status')
+        .eq('id', requestId)
+        .single();
+
+      if (fetchError) throw new Error(fetchError.message);
+      if (!request) throw new Error('Solicitud no encontrada');
+
+      // 2. Marcar la solicitud como cancelada
+      const { error: updateError } = await supabase
+        .from('rental_queue')
+        .update({ status: 'Cancelado', updated_at: new Date().toISOString() })
+        .eq('id', requestId);
+
+      if (updateError) throw new Error(updateError.message);
+
+      // 3. Verificar si quedan solicitudes activas para este traje
+      const { data: activeRequests, error: countError } = await supabase
+        .from('rental_queue')
+        .select('id')
+        .eq('suit_id', request.suit_id)
+        .in('status', ['Verificando disponibilidad', 'Pendiente de pago', 'Seleccionado']);
+
+      if (countError) throw new Error(countError.message);
+
+      // 4. Si no quedan solicitudes activas, volver el traje a Disponible
+      if (!activeRequests || activeRequests.length === 0) {
+        const { error: costumeError } = await supabase
+          .from('costumes')
+          .update({ status: 'Disponible', updated_at: new Date().toISOString() })
+          .eq('id', request.suit_id);
+
+        if (costumeError) throw new Error(costumeError.message);
+      }
+
+      return { success: true };
+    },
+    onSuccess: () => {
+      toast.success('Solicitud cancelada');
+      queryClient.invalidateQueries({ queryKey: ['rental-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['costumes'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Error al cancelar la solicitud');
+    },
+  });
+}
