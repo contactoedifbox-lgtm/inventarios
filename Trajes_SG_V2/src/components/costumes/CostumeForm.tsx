@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useCreateCostume } from '@/hooks/useCostumes';
 import { useUpcomingEvents } from '@/hooks/useEvents';
 import { compressImage } from '@/lib/utils/image';
-import { CostumeType, ListingType } from '@/types/enums';
+import { CostumeType, CostumeStatus, ListingType } from '@/types/enums';
 import {
   ACCEPTED_IMAGE_TYPES,
   MAX_COSTUME_IMAGES,
@@ -45,13 +45,12 @@ import {
 } from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 
-// Esquema completo del formulario (sin .extend())
+// Schema del formulario: SIN 'price' (se calcula en el onSubmit)
 const costumeFormSchema = z.object({
   type: z.nativeEnum(CostumeType),
   year: z.string().min(4, 'Ingresa un año válido').max(4).regex(/^(19|20)\d{2}$/),
   size: z.string().min(1, 'La talla es obligatoria'),
   boot_size: z.string().min(1, 'La talla de botas es obligatoria'),
-  price: z.number().positive('El precio debe ser mayor a 0'),
   bank_info: z.string().min(10, 'Los datos bancarios son obligatorios'),
   event_ids: z.array(z.string().uuid()).default([]),
   agrupacion: z.string().min(1, 'La agrupación es obligatoria'),
@@ -100,13 +99,8 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
   const createCostume = useCreateCostume();
   const { data: events } = useUpcomingEvents();
 
-  // App A fields
-  const [characterType, setCharacterType] = useState('Macho');
-  const [bellCount, setBellCount] = useState(6);
-  const [includesAccessories, setIncludesAccessories] = useState(true);
+  // Estado local solo para UI condicional (mostrar/ocultar campos)
   const [listingType, setListingType] = useState<ListingType>(ListingType.Arriendo);
-  const [rentalPrice, setRentalPrice] = useState(25000);
-  const [salePrice, setSalePrice] = useState(350000);
 
   const form = useForm<CostumeFormValues>({
     resolver: zodResolver(costumeFormSchema),
@@ -115,7 +109,6 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
       year: '',
       size: '',
       boot_size: '',
-      price: 0,
       bank_info: '',
       event_ids: [],
       agrupacion: '',
@@ -142,6 +135,8 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
   };
 
   const onSubmit = async (values: CostumeFormValues) => {
+    console.log('🚀 onSubmit ejecutado con valores:', values);
+
     if (imageFiles.length === 0) {
       toast.error('Debes adjuntar al menos una foto del traje.');
       return;
@@ -182,13 +177,20 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
         throw new Error('No se pudo subir ninguna imagen.');
       }
 
-      // Crear el traje con todos los campos de App A
+      // Calcular price según el tipo de publicación
+      const calculatedPrice = values.listing_type === ListingType.Venta
+        ? values.sale_price
+        : values.rental_price;
+
+      console.log('💰 Precio calculado:', calculatedPrice);
+
+      // Crear el traje con TODOS los campos
       await createCostume.mutateAsync({
         type: values.listing_type === ListingType.Venta ? CostumeType.Sale : CostumeType.Rent,
         year: values.year,
         size: values.size,
         boot_size: values.boot_size,
-        price: values.listing_type === ListingType.Venta ? values.sale_price : values.rental_price,
+        price: calculatedPrice,
         bank_info: values.bank_info,
         image_paths: uploadedPaths,
         event_ids: values.listing_type === ListingType.Venta ? [] : values.event_ids,
@@ -199,14 +201,15 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
         listing_type: values.listing_type,
         rental_price: values.rental_price,
         sale_price: values.sale_price,
-        status: 'Disponible',
-      } as any);
+        status: CostumeStatus.Disponible,
+      });
 
       form.reset();
       setImageFiles([]);
       setOpen(false);
       toast.success('Traje publicado correctamente');
     } catch (error) {
+      console.error('❌ Error en onSubmit:', error);
       toast.error(error instanceof Error ? error.message : 'Error al publicar el traje.');
     } finally {
       setIsUploading(false);
@@ -237,8 +240,8 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
                   type="button"
                   onClick={() => {
                     setListingType(ListingType.Arriendo);
-                    form.setValue('listing_type', ListingType.Arriendo);
-                    form.setValue('type', CostumeType.Rent);
+                    form.setValue('listing_type', ListingType.Arriendo, { shouldValidate: true });
+                    form.setValue('type', CostumeType.Rent, { shouldValidate: true });
                   }}
                   className={`py-2 px-3 text-xs font-semibold rounded-md border transition-all ${
                     listingType === ListingType.Arriendo
@@ -252,8 +255,8 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
                   type="button"
                   onClick={() => {
                     setListingType(ListingType.Venta);
-                    form.setValue('listing_type', ListingType.Venta);
-                    form.setValue('type', CostumeType.Sale);
+                    form.setValue('listing_type', ListingType.Venta, { shouldValidate: true });
+                    form.setValue('type', CostumeType.Sale, { shouldValidate: true });
                   }}
                   className={`py-2 px-3 text-xs font-semibold rounded-md border transition-all ${
                     listingType === ListingType.Venta
@@ -267,8 +270,8 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
                   type="button"
                   onClick={() => {
                     setListingType(ListingType.Ambos);
-                    form.setValue('listing_type', ListingType.Ambos);
-                    form.setValue('type', CostumeType.Rent);
+                    form.setValue('listing_type', ListingType.Ambos, { shouldValidate: true });
+                    form.setValue('type', CostumeType.Rent, { shouldValidate: true });
                   }}
                   className={`py-2 px-3 text-xs font-semibold rounded-md border transition-all ${
                     listingType === ListingType.Ambos
@@ -279,9 +282,14 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
                   Arriendo y Venta
                 </button>
               </div>
+              <FormField
+                control={form.control}
+                name="listing_type"
+                render={() => <FormMessage />}
+              />
             </div>
 
-            {/* DETALLES DEL TRAJE */}
+            {/* TIPO DE PERSONAJE + AGRUPACIÓN */}
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
@@ -289,10 +297,7 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Tipo de Personaje *</FormLabel>
-                    <Select onValueChange={(value) => {
-                      field.onChange(value);
-                      setCharacterType(value);
-                    }} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecciona" />
@@ -316,7 +321,7 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
                   <FormItem>
                     <FormLabel>Agrupación / Fraternidad *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ej: Caporales San Simón" {...field} />
+                      <Input placeholder="Ej: San Gabriel" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -324,6 +329,7 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
               />
             </div>
 
+            {/* AÑO + TALLA + BOTAS */}
             <div className="grid gap-4 sm:grid-cols-3">
               <FormField
                 control={form.control}
@@ -332,36 +338,27 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
                   <FormItem>
                     <FormLabel>Año *</FormLabel>
                     <FormControl>
-                      <Input placeholder="2024" {...field} />
+                      <Input placeholder="2025" maxLength={4} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
                 name="size"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Talla *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Talla" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="S">S</SelectItem>
-                        <SelectItem value="M">M</SelectItem>
-                        <SelectItem value="L">L</SelectItem>
-                        <SelectItem value="XL">XL</SelectItem>
-                        <SelectItem value="XXL">XXL</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <Input placeholder="Ej: S, M, L" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
                 name="boot_size"
@@ -369,7 +366,7 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
                   <FormItem>
                     <FormLabel>Talla de Botas *</FormLabel>
                     <FormControl>
-                      <Input placeholder="42" {...field} />
+                      <Input placeholder="Ej: 42" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -377,20 +374,21 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
               />
             </div>
 
-            {/* Cascabeles o Accesorios */}
-            {characterType === 'Warmi' ? (
+            {/* CASCABELES / ACCESORIOS */}
+            {form.watch('character_type') === 'Warmi' ? (
               <FormField
                 control={form.control}
                 name="includes_accessories"
                 render={({ field }) => (
                   <FormItem className="flex items-center space-x-2 space-y-0">
                     <FormControl>
-                      <Checkbox checked={field.value} onCheckedChange={(checked) => {
-                        field.onChange(checked);
-                        setIncludesAccessories(!!checked);
-                      }} />
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
                     </FormControl>
-                    <FormLabel className="font-normal">Incluye Accesorios (Joyas, grecas y tulmas)</FormLabel>
+                    <FormLabel className="font-normal">Incluye accesorios</FormLabel>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -402,24 +400,13 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
                   <FormItem>
                     <FormLabel>Cantidad de Cascabeles</FormLabel>
                     <FormControl>
-                      <div className="flex items-center gap-4">
-                        <input
-                          type="range"
-                          min="0"
-                          max="12"
-                          step="1"
-                          value={field.value}
-                          onChange={(e) => {
-                            const val = Number(e.target.value);
-                            field.onChange(val);
-                            setBellCount(val);
-                          }}
-                          className="flex-1 accent-brand-red"
-                        />
-                        <span className="font-bold text-brand-red min-w-[30px] text-center">
-                          {field.value}
-                        </span>
-                      </div>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={12}
+                        {...field}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -442,11 +429,7 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
                           min="0"
                           placeholder="25000"
                           {...field}
-                          onChange={(e) => {
-                            const val = Number(e.target.value);
-                            field.onChange(val);
-                            setRentalPrice(val);
-                          }}
+                          onChange={(e) => field.onChange(Number(e.target.value))}
                         />
                       </FormControl>
                       <FormMessage />
@@ -468,11 +451,7 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
                           min="0"
                           placeholder="350000"
                           {...field}
-                          onChange={(e) => {
-                            const val = Number(e.target.value);
-                            field.onChange(val);
-                            setSalePrice(val);
-                          }}
+                          onChange={(e) => field.onChange(Number(e.target.value))}
                         />
                       </FormControl>
                       <FormMessage />
@@ -490,31 +469,23 @@ export function CostumeForm({ defaultType, triggerLabel }: CostumeFormProps) {
                 <FormItem>
                   <FormLabel>Datos bancarios para el pago *</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="Banco, tipo de cuenta, número, RUT, correo"
-                      {...field}
-                    />
+                    <Input placeholder="Banco, tipo de cuenta, número, titular" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* EVENTOS (solo arriendo) */}
-            {(listingType === ListingType.Arriendo || listingType === ListingType.Ambos) && (
+            {/* EVENTOS */}
+            {listingType !== ListingType.Venta && events && events.length > 0 && (
               <FormField
                 control={form.control}
                 name="event_ids"
                 render={() => (
                   <FormItem>
                     <FormLabel>Eventos en los que estará disponible *</FormLabel>
-                    <div className="space-y-2 rounded-md border p-3 max-h-40 overflow-y-auto">
-                      {(events ?? []).length === 0 && (
-                        <p className="text-sm text-muted-foreground">
-                          No hay eventos vigentes disponibles.
-                        </p>
-                      )}
-                      {(events ?? []).map((event) => (
+                    <div className="grid gap-2 mt-2">
+                      {events.map((event) => (
                         <FormField
                           key={event.id}
                           control={form.control}
