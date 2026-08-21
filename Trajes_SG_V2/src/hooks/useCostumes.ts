@@ -43,7 +43,7 @@ export function useCostumes(filters: CostumeFilters) {
         .select(
           `
           *,
-          owner:profiles!costumes_owner_profiles_fkey(id, full_name, city),
+          owner:profiles!fk_costumes_owner(id, full_name, city),
           costume_events(events(*))
         `,
           { count: 'exact' },
@@ -117,7 +117,7 @@ export function useMyCostumes(type?: CostumeType) {
         .select(
           `
           *,
-          owner:profiles!costumes_owner_profiles_fkey(id, full_name, city),
+          owner:profiles!fk_costumes_owner(id, full_name, city),
           costume_events(events(*))
         `,
         )
