@@ -249,7 +249,7 @@
 
     function enviarOcrAN8N() {
       // ⚠️ RECUERDA CAMBIAR A LA URL DE PRODUCCIÓN (SIN -test) CUANDO YA ESTÉ EN USO
-      const WEBHOOK_OCR_URL = 'https://n8n.srv1233440.hstgr.cloud/webhook-test/af6da9c5-01e4-44f5-9fe6-7854016aa065'; 
+      const WEBHOOK_OCR_URL = 'https://n8n.srv1233440.hstgr.cloud/webhook/af6da9c5-01e4-44f5-9fe6-7854016aa065'; 
 
       const datos = {
         initData: Telegram.WebApp.initData,
@@ -316,7 +316,7 @@
         imagenBase64: imagenBase64 
       };
 
-      const WEBHOOK_GUARDAR_URL = 'https://n8n.srv1233440.hstgr.cloud/webhook-test/Ingreso_Gasto';
+      const WEBHOOK_GUARDAR_URL = 'https://n8n.srv1233440.hstgr.cloud/webhook/Ingreso_Gasto';
 
       fetch(WEBHOOK_GUARDAR_URL, {
         method: 'POST',
