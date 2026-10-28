@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registro de Gastos</title>
+  <!-- Esta línea conecta tu página con Telegram -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <h1>Mi App de Gastos</h1>
+  <p id="saludo">Cargando...</p>
+  <button onclick="Telegram.WebApp.close()">Cerrar</button>
+
+  <script>
+    // Le decimos a Telegram que la app está lista
+    Telegram.WebApp.ready();
+    // (Opcional) Expandir a pantalla completa
+    Telegram.WebApp.expand();
+    
+    // Solo para probar: mostramos el nombre del usuario
+    const user = Telegram.WebApp.initDataUnsafe?.user;
+    if (user) {
+      document.getElementById('saludo').innerText = `Hola, ${user.first_name}`;
+    } else {
+      document.getElementById('saludo').innerText = 'Hola (modo prueba)';
+    }
+  </script>
+</body>
+</html>
