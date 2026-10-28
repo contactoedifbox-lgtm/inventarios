@@ -2,43 +2,182 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Registro de Gastos</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    body { font-family: -apple-system, system-ui, sans-serif; padding: 15px; background: var(--tg-theme-bg-color, #fff); color: var(--tg-theme-text-color, #000); }
+    /* Variables de color (se adaptan al tema de Telegram) */
+    :root {
+      --primary-color: #0ea5e9; /* Celeste moderno */
+      --primary-hover: #0284c7;
+      --bg-color: var(--tg-theme-bg-color, #f8fafc);
+      --card-bg: var(--tg-theme-secondary-bg-color, #ffffff);
+      --text-main: var(--tg-theme-text-color, #1e293b);
+      --text-muted: var(--tg-theme-hint-color, #64748b);
+      --border-color: #e2e8f0;
+      --input-bg: var(--tg-theme-bg-color, #ffffff);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+      padding: 20px 15px; 
+      background: var(--bg-color); 
+      color: var(--text-main); 
+      -webkit-font-smoothing: antialiased;
+    }
+
     .hidden { display: none !important; }
-    .card { background: var(--tg-theme-secondary-bg-color, #f4f4f5); padding: 15px; border-radius: 12px; margin-bottom: 15px; }
-    label { display: block; font-weight: bold; margin-top: 10px; font-size: 13px; color: var(--tg-theme-hint-color, #666); }
-    input, select { width: 100%; padding: 12px; margin-top: 5px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-size: 16px; background: var(--tg-theme-bg-color, #fff); color: var(--tg-theme-text-color, #000); }
-    button { width: 100%; padding: 15px; background: var(--tg-theme-button-color, #2481cc); color: var(--tg-theme-button-text-color, #fff); border: none; border-radius: 10px; font-size: 16px; font-weight: bold; margin-top: 15px; cursor: pointer; }
-    button:disabled { opacity: 0.5; }
-    .loader { border: 4px solid #f3f3f3; border-top: 4px solid #2481cc; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; }
+
+    h2 { 
+      text-align: center; 
+      font-size: 22px; 
+      font-weight: 700; 
+      margin-bottom: 25px; 
+      color: var(--text-main);
+      letter-spacing: -0.5px;
+    }
+
+    .card { 
+      background: var(--card-bg); 
+      padding: 20px; 
+      border-radius: 16px; 
+      margin-bottom: 20px; 
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+      border: 1px solid var(--border-color);
+    }
+
+    label { 
+      display: block; 
+      font-weight: 600; 
+      margin-top: 15px; 
+      margin-bottom: 6px;
+      font-size: 13px; 
+      color: var(--text-muted); 
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    label:first-child { margin-top: 0; }
+
+    input, select { 
+      width: 100%; 
+      padding: 14px; 
+      border-radius: 10px; 
+      border: 1.5px solid var(--border-color); 
+      font-size: 16px; 
+      background: var(--input-bg); 
+      color: var(--text-main); 
+      transition: all 0.2s ease;
+      appearance: none; /* Quita el estilo por defecto en iOS */
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+    }
+
+    /* Estilo para el botón de subir foto */
+    .btn-upload {
+      background: var(--card-bg);
+      color: var(--primary-color);
+      border: 2px dashed var(--primary-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    .btn-upload:hover {
+      background: rgba(14, 165, 233, 0.05);
+    }
+
+    .btn-upload svg {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 15px;
+      stroke: var(--primary-color);
+    }
+
+    /* Botón principal */
+    button.btn-primary { 
+      width: 100%; 
+      padding: 16px; 
+      background: var(--primary-color); 
+      color: #ffffff; 
+      border: none; 
+      border-radius: 12px; 
+      font-size: 16px; 
+      font-weight: 700; 
+      margin-top: 20px; 
+      cursor: pointer; 
+      transition: background 0.2s;
+      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+    }
+
+    button.btn-primary:hover { background: var(--primary-hover); }
+    button.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
+
+    /* Loader animado */
+    .loader-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 50vh;
+    }
+
+    .loader { 
+      border: 4px solid rgba(14, 165, 233, 0.2); 
+      border-top: 4px solid var(--primary-color); 
+      border-radius: 50%; 
+      width: 40px; 
+      height: 40px; 
+      animation: spin 1s linear infinite; 
+      margin-bottom: 20px;
+    }
+
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    .loader-text {
+      color: var(--text-muted);
+      font-weight: 500;
+      font-size: 15px;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
 
   <!-- PANTALLA 1: FOTO -->
   <div id="pantalla1">
-    <h2 style="text-align:center;">📸 Subir Documento</h2>
-    <div class="card">
-      <p style="text-align:center; font-size: 14px;">Toma una foto clara de la boleta, factura o transferencia.</p>
-      <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none;" onchange="procesarImagen(event)">
-      <button onclick="document.getElementById('fileInput').click()">Seleccionar / Tomar Foto</button>
+    <h2>Subir Documento</h2>
+    <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none;" onchange="procesarImagen(event)">
+    
+    <div class="btn-upload" onclick="document.getElementById('fileInput').click()">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+      Tomar o Seleccionar Foto
     </div>
+    <p style="text-align:center; font-size: 13px; color: var(--text-muted); margin-top: 15px;">Asegúrate de que el documento se vea claro y completo.</p>
   </div>
 
   <!-- PANTALLA DE CARGA -->
-  <div id="pantallaCarga" class="hidden">
-    <h2 style="text-align:center; margin-top: 50px;">🤖 Analizando...</h2>
+  <div id="pantallaCarga" class="hidden loader-container">
     <div class="loader"></div>
-    <p style="text-align:center; color: #666;">Extrayendo datos de la imagen</p>
+    <p class="loader-text">Analizando documento con IA...<br><span style="font-size: 12px; opacity: 0.7;">Esto puede tardar unos segundos</span></p>
   </div>
 
   <!-- PANTALLA 2: FORMULARIO -->
   <div id="pantalla2" class="hidden">
-    <h2 style="text-align:center;">✏️ Validar Datos</h2>
+    <h2>Validar Datos</h2>
     
     <div class="card">
       <label>Tipo de Documento</label>
@@ -49,7 +188,7 @@
       </select>
 
       <label>Monto Total</label>
-      <input type="number" id="monto" step="1">
+      <input type="number" id="monto" step="1" placeholder="Ej: 45000">
 
       <label>Fecha</label>
       <input type="date" id="fecha">
@@ -83,7 +222,7 @@
       </select>
     </div>
 
-    <button onclick="guardarGasto()" id="btnGuardar">Guardar Gasto</button>
+    <button onclick="guardarGasto()" id="btnGuardar" class="btn-primary">Guardar Gasto</button>
   </div>
 
   <script>
@@ -92,7 +231,6 @@
 
     let imagenBase64 = ""; 
 
-    // --- FUNCIÓN PARA PROCESAR LA FOTO ---
     function procesarImagen(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -109,9 +247,8 @@
       reader.readAsDataURL(file);
     }
 
-    // --- ENVIAR A N8N (OCR + OBRAS) ---
     function enviarOcrAN8N() {
-      // ⚠️ SI YA PASÓ A PRODUCCIÓN, QUITA EL "-test" DE LA URL
+      // ⚠️ RECUERDA CAMBIAR A LA URL DE PRODUCCIÓN (SIN -test) CUANDO YA ESTÉ EN USO
       const WEBHOOK_OCR_URL = 'https://n8n.srv1233440.hstgr.cloud/webhook-test/af6da9c5-01e4-44f5-9fe6-7854016aa065'; 
 
       const datos = {
@@ -131,12 +268,10 @@
       .then(res => {
         const resultado = Array.isArray(res) ? res[0] : res;
 
-        // 1. Llenamos los datos
         document.getElementById('tipoDoc').value = resultado.tipoDoc || 'Boleta';
         document.getElementById('monto').value = resultado.monto || 0;
         document.getElementById('fecha').value = resultado.fecha || new Date().toISOString().split('T')[0];
 
-        // 2. Llenamos las obras
         const selectObra = document.getElementById('obra');
         selectObra.innerHTML = ''; 
         
@@ -151,7 +286,6 @@
           selectObra.innerHTML = '<option value="N/A">No hay obras cargadas</option>';
         }
 
-        // 3. Mostramos el formulario
         document.getElementById('pantallaCarga').classList.add('hidden');
         document.getElementById('pantalla2').classList.remove('hidden');
       })
@@ -163,7 +297,6 @@
       });
     }
 
-    // --- GUARDAR GASTO FINAL ---
     function guardarGasto() {
       const btn = document.getElementById('btnGuardar');
       btn.innerText = "Guardando...";
@@ -183,7 +316,6 @@
         imagenBase64: imagenBase64 
       };
 
-      // ⚠️ SI YA PASÓ A PRODUCCIÓN, QUITA EL "-test" DE LA URL
       const WEBHOOK_GUARDAR_URL = 'https://n8n.srv1233440.hstgr.cloud/webhook-test/Ingreso_Gasto';
 
       fetch(WEBHOOK_GUARDAR_URL, {
@@ -204,7 +336,6 @@
       });
     }
 
-    // --- MOSTRAR U OBTENER OBRAS ---
     function actualizarObras() {
       const empresa = document.getElementById('empresa').value;
       const divObras = document.getElementById('divObras');
