@@ -92,23 +92,8 @@
 
     let imagenBase64 = ""; 
 
-    function procesarImagen(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function() {
-        imagenBase64 = reader.result.split(',')[1]; 
-        
-        document.getElementById('pantalla1').classList.add('hidden');
-        document.getElementById('pantallaCarga').classList.remove('hidden');
-
-        enviarOcrAN8N();
-      };
-      reader.readAsDataURL(file);
-    }
-
-    function enviarOcrAN8N() {
+       function enviarOcrAN8N() {
+      // Recuerda usar la URL de producción (sin -test)
       const WEBHOOK_OCR_URL = 'https://n8n.srv1233440.hstgr.cloud/webhook-test/af6da9c5-01e4-44f5-9fe6-7854016aa065'; 
 
       const datos = {
@@ -122,58 +107,42 @@
         body: JSON.stringify(datos)
       })
       .then(response => {
-        // Si el servidor responde con error (500, 404, etc)
-        if (!response.ok) {
-          return response.text().then(text => { 
-            throw new Error("ERROR DEL SERVIDOR N8N (Código " + response.status + "): " + text); 
-          });
-        }
-        return response.text(); // Leemos como texto crudo para no romper nada
+        if (!response.ok) throw new Error("Error HTTP: " + response.status);
+        return response.json(); // Leemos directo como JSON
       })
-      .then(texto => {
-        // --- RAYOS X: MOSTRAMOS EL TEXTO CRUDO ---
-        Telegram.WebApp.showAlert("RAYOS X - LO QUE LLEGÓ DE N8N:\n\n" + texto.substring(0, 500)); // Cortamos a 500 letras para que quepa en pantalla
+      .then(res => {
+        // n8n ahora envía el objeto directo, pero por si acaso comprobamos si viene en arreglo
+        const resultado = Array.isArray(res) ? res[0] : res;
 
-        let res;
-        try {
-          const parsed = JSON.parse(texto);
-          res = Array.isArray(parsed) ? parsed[0] : parsed;
-        } catch (e) {
-          throw new Error("El texto de arriba NO es un JSON válido. Revisa el nodo Respond to Webhook en n8n.");
-        }
+        // 1. Llenamos los datos
+        document.getElementById('tipoDoc').value = resultado.tipoDoc || 'Boleta';
+        document.getElementById('monto').value = resultado.monto || 0;
+        document.getElementById('fecha').value = resultado.fecha || new Date().toISOString().split('T')[0];
 
-        // Llenamos los datos
-        document.getElementById('tipoDoc').value = res.tipoDoc || 'Boleta';
-        document.getElementById('monto').value = res.monto || 0;
-        document.getElementById('fecha').value = res.fecha || new Date().toISOString().split('T')[0];
-
-        // Llenamos obras
+        // 2. Llenamos las obras
         const selectObra = document.getElementById('obra');
         selectObra.innerHTML = ''; 
         
-        if (res.data && Array.isArray(res.data)) {
-          res.data.forEach(item => {
+        if (resultado.data && Array.isArray(resultado.data)) {
+          resultado.data.forEach(item => {
             const option = document.createElement('option');
             option.value = item.OBRA; 
             option.text = item.OBRA; 
             selectObra.appendChild(option);
           });
         } else {
-          selectObra.innerHTML = '<option value="N/A">No hay obras</option>';
+          selectObra.innerHTML = '<option value="N/A">No hay obras cargadas</option>';
         }
 
-        // Pasamos a la pantalla 2
+        // 3. Mostramos el formulario
         document.getElementById('pantallaCarga').classList.add('hidden');
         document.getElementById('pantalla2').classList.remove('hidden');
       })
       .catch(err => {
-        // --- RAYOS X: MOSTRAMOS EL ERROR DE RED ---
-        console.error("Fallo general:", err);
-        Telegram.WebApp.showAlert("RAYOS X - ERROR DE CONEXIÓN:\n\n" + err.message);
-        
-        // Lo pasamos a la pantalla 2 para que el trabajador no se quede trabado
+        console.error("Detalle del error:", err);
+        Telegram.WebApp.showAlert("Error de conexión. Revisa tu internet.");
         document.getElementById('pantallaCarga').classList.add('hidden');
-        document.getElementById('pantalla2').classList.remove('hidden'); 
+        document.getElementById('pantalla1').classList.remove('hidden');
       });
     }
 
