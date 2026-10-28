@@ -1,3 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registro de Gastos</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body { font-family: -apple-system, system-ui, sans-serif; padding: 15px; background: var(--tg-theme-bg-color, #fff); color: var(--tg-theme-text-color, #000); }
+    .hidden { display: none !important; }
+    .card { background: var(--tg-theme-secondary-bg-color, #f4f4f5); padding: 15px; border-radius: 12px; margin-bottom: 15px; }
+    label { display: block; font-weight: bold; margin-top: 10px; font-size: 13px; color: var(--tg-theme-hint-color, #666); }
+    input, select { width: 100%; padding: 12px; margin-top: 5px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-size: 16px; background: var(--tg-theme-bg-color, #fff); color: var(--tg-theme-text-color, #000); }
+    button { width: 100%; padding: 15px; background: var(--tg-theme-button-color, #2481cc); color: var(--tg-theme-button-text-color, #fff); border: none; border-radius: 10px; font-size: 16px; font-weight: bold; margin-top: 15px; cursor: pointer; }
+    button:disabled { opacity: 0.5; }
+    .loader { border: 4px solid #f3f3f3; border-top: 4px solid #2481cc; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <!-- PANTALLA 1: FOTO -->
+  <div id="pantalla1">
+    <h2 style="text-align:center;">📸 Subir Documento</h2>
+    <div class="card">
+      <p style="text-align:center; font-size: 14px;">Toma una foto clara de la boleta, factura o transferencia.</p>
+      <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none;" onchange="procesarImagen(event)">
+      <button onclick="document.getElementById('fileInput').click()">Seleccionar / Tomar Foto</button>
+    </div>
+  </div>
+
+  <!-- PANTALLA DE CARGA -->
+  <div id="pantallaCarga" class="hidden">
+    <h2 style="text-align:center; margin-top: 50px;">🤖 Analizando...</h2>
+    <div class="loader"></div>
+    <p style="text-align:center; color: #666;">Extrayendo datos de la imagen</p>
+  </div>
+
+  <!-- PANTALLA 2: FORMULARIO -->
+  <div id="pantalla2" class="hidden">
+    <h2 style="text-align:center;">✏️ Validar Datos</h2>
+    
+    <div class="card">
+      <label>Tipo de Documento</label>
+      <select id="tipoDoc">
+        <option value="Boleta">Boleta</option>
+        <option value="Factura">Factura</option>
+        <option value="Transferencia">Transferencia</option>
+      </select>
+
+      <label>Monto Total</label>
+      <input type="number" id="monto" step="1">
+
+      <label>Fecha</label>
+      <input type="date" id="fecha">
+    </div>
+
+    <div class="card">
+      <label>Empresa</label>
+      <select id="empresa" onchange="actualizarObras()">
+        <option value="Surcos">Surcos (Ingeniería)</option>
+        <option value="Trazado Sur">Trazado Sur (Constructora)</option>
+        <option value="Petra Sur">Petra Sur</option>
+      </select>
+
+      <div id="divObras" class="hidden">
+        <label>Obra (Solo Trazado Sur)</label>
+        <select id="obra">
+          <!-- Se llena dinámicamente -->
+        </select>
+      </div>
+
+      <label>Tipo de Gasto</label>
+      <select id="tipoGasto">
+        <option value="Combustible">1. Combustible</option>
+        <option value="Peaje">2. Peaje</option>
+        <option value="Estacionamiento">3. Estacionamiento</option>
+        <option value="Alimentación">4. Alimentación</option>
+        <option value="Oficina">5. Oficina</option>
+        <option value="Materiales">6. Materiales</option>
+        <option value="Herramientas o equipos">7. Herramientas o equipos</option>
+        <option value="Gastos SD">8. Gastos SD</option>
+      </select>
+    </div>
+
+    <button onclick="guardarGasto()" id="btnGuardar">Guardar Gasto</button>
+  </div>
+
+  <script>
+    Telegram.WebApp.ready();
+    Telegram.WebApp.expand();
+
+    let imagenBase64 = ""; 
+
+    function procesarImagen(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function() {
+        imagenBase64 = reader.result.split(',')[1]; 
+        
+        document.getElementById('pantalla1').classList.add('hidden');
+        document.getElementById('pantallaCarga').classList.remove('hidden');
+
+        enviarOcrAN8N();
+      };
+      reader.readAsDataURL(file);
+    }
+
     function enviarOcrAN8N() {
       const WEBHOOK_OCR_URL = 'https://n8n.srv1233440.hstgr.cloud/webhook-test/af6da9c5-01e4-44f5-9fe6-7854016aa065'; 
 
@@ -12,33 +122,32 @@
         body: JSON.stringify(datos)
       })
       .then(response => {
-        // Si n8n devuelve un error 500 o 404, lo atrapamos aquí
+        // Si el servidor responde con error (500, 404, etc)
         if (!response.ok) {
           return response.text().then(text => { 
-            throw new Error("Error de n8n (Código " + response.status + "): " + text); 
+            throw new Error("ERROR DEL SERVIDOR N8N (Código " + response.status + "): " + text); 
           });
         }
-        return response.text(); 
+        return response.text(); // Leemos como texto crudo para no romper nada
       })
       .then(texto => {
-        // 1. Mostramos el texto exacto que devolvió n8n
-        // Telegram.WebApp.showAlert("Respuesta de n8n: " + texto); 
-        
+        // --- RAYOS X: MOSTRAMOS EL TEXTO CRUDO ---
+        Telegram.WebApp.showAlert("RAYOS X - LO QUE LLEGÓ DE N8N:\n\n" + texto.substring(0, 500)); // Cortamos a 500 letras para que quepa en pantalla
+
         let res;
         try {
           const parsed = JSON.parse(texto);
           res = Array.isArray(parsed) ? parsed[0] : parsed;
         } catch (e) {
-          // Si n8n devolvió HTML o texto en lugar de JSON, saltará aquí
-          throw new Error("n8n no devolvió un JSON válido. Recibido: " + texto);
+          throw new Error("El texto de arriba NO es un JSON válido. Revisa el nodo Respond to Webhook en n8n.");
         }
 
-        // 2. Llenamos los datos
+        // Llenamos los datos
         document.getElementById('tipoDoc').value = res.tipoDoc || 'Boleta';
         document.getElementById('monto').value = res.monto || 0;
         document.getElementById('fecha').value = res.fecha || new Date().toISOString().split('T')[0];
 
-        // 3. Llenamos las obras
+        // Llenamos obras
         const selectObra = document.getElementById('obra');
         selectObra.innerHTML = ''; 
         
@@ -53,16 +162,69 @@
           selectObra.innerHTML = '<option value="N/A">No hay obras</option>';
         }
 
-        // 4. Pasamos a la pantalla 2
+        // Pasamos a la pantalla 2
         document.getElementById('pantallaCarga').classList.add('hidden');
         document.getElementById('pantalla2').classList.remove('hidden');
       })
       .catch(err => {
-        // AQUÍ MOSTRAMOS EL ERROR REAL EN PANTALLA
-        console.error(err);
-        Telegram.WebApp.showAlert("⚠️ Fallo la comunicación:\n\n" + err.message);
+        // --- RAYOS X: MOSTRAMOS EL ERROR DE RED ---
+        console.error("Fallo general:", err);
+        Telegram.WebApp.showAlert("RAYOS X - ERROR DE CONEXIÓN:\n\n" + err.message);
         
+        // Lo pasamos a la pantalla 2 para que el trabajador no se quede trabado
         document.getElementById('pantallaCarga').classList.add('hidden');
-        document.getElementById('pantalla2').classList.remove('hidden'); // Lo dejamos pasar a mano
+        document.getElementById('pantalla2').classList.remove('hidden'); 
       });
     }
+
+    function guardarGasto() {
+      const btn = document.getElementById('btnGuardar');
+      btn.innerText = "Guardando...";
+      btn.disabled = true;
+
+      const idUnico = Date.now().toString() + Math.floor(Math.random() * 1000);
+
+      const datos = {
+        initData: Telegram.WebApp.initData,
+        idUnico: idUnico,
+        tipoDoc: document.getElementById('tipoDoc').value,
+        monto: document.getElementById('monto').value,
+        fecha: document.getElementById('fecha').value,
+        empresa: document.getElementById('empresa').value,
+        obra: document.getElementById('divObras').classList.contains('hidden') ? "N/A" : document.getElementById('obra').value,
+        tipoGasto: document.getElementById('tipoGasto').value,
+        imagenBase64: imagenBase64 
+      };
+
+      const WEBHOOK_GUARDAR_URL = 'https://n8n.srv1233440.hstgr.cloud/webhook-test/Ingreso_Gasto';
+
+      fetch(WEBHOOK_GUARDAR_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(datos)
+      })
+      .then(response => response.text())
+      .then(res => {
+        Telegram.WebApp.showAlert("✅ Gasto guardado con éxito.");
+        Telegram.WebApp.close();
+      })
+      .catch(err => {
+        console.error(err);
+        Telegram.WebApp.showAlert("❌ Error al guardar. Verifica tu conexión.");
+        btn.innerText = "Guardar Gasto";
+        btn.disabled = false;
+      });
+    }
+
+    function actualizarObras() {
+      const empresa = document.getElementById('empresa').value;
+      const divObras = document.getElementById('divObras');
+      if (empresa === 'Trazado Sur') {
+        divObras.classList.remove('hidden');
+      } else {
+        divObras.classList.add('hidden');
+      }
+    }
+  </script>
+</body>
+</html>
