@@ -13,7 +13,6 @@
     input, select { width: 100%; padding: 12px; margin-top: 5px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-size: 16px; background: var(--tg-theme-bg-color, #fff); color: var(--tg-theme-text-color, #000); }
     button { width: 100%; padding: 15px; background: var(--tg-theme-button-color, #2481cc); color: var(--tg-theme-button-text-color, #fff); border: none; border-radius: 10px; font-size: 16px; font-weight: bold; margin-top: 15px; }
     button:disabled { opacity: 0.5; }
-    #preview { width: 100%; border-radius: 10px; margin-top: 10px; display: none; }
     .loader { border: 4px solid #f3f3f3; border-top: 4px solid #2481cc; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
@@ -27,18 +26,22 @@
       <p style="text-align:center; font-size: 14px;">Toma una foto clara de la boleta, factura o transferencia.</p>
       <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none;" onchange="procesarImagen(event)">
       <button onclick="document.getElementById('fileInput').click()">Seleccionar / Tomar Foto</button>
-      <img id="preview">
     </div>
-    <div id="loaderOcr" class="loader hidden"></div>
-    <p id="statusOcr" style="text-align:center; font-weight:bold; color: #2481cc;"></p>
   </div>
 
-  <!-- PANTALLA 2: FORMULARIO -->
+  <!-- PANTALLA DE CARGA (Mientras n8n hace el OCR) -->
+  <div id="pantallaCarga" class="hidden">
+    <h2 style="text-align:center; margin-top: 50px;">🤖 Analizando...</h2>
+    <div class="loader"></div>
+    <p style="text-align:center; color: #666;">Extrayendo datos de la imagen</p>
+  </div>
+
+  <!-- PANTALLA 2: FORMULARIO (Se llena con la respuesta de n8n) -->
   <div id="pantalla2" class="hidden">
-    <h2 style="text-align:center;">✏️ Revisar Datos</h2>
+    <h2 style="text-align:center;">✏️ Validar Datos</h2>
     
     <div class="card">
-      <label>Tipo de Documento (OCR)</label>
+      <label>Tipo de Documento</label>
       <select id="tipoDoc">
         <option value="Boleta">Boleta</option>
         <option value="Factura">Factura</option>
@@ -82,118 +85,77 @@
       </select>
     </div>
 
-    <button onclick="enviarAN8N()" id="btnGuardar">Guardar Gasto</button>
+    <button onclick="guardarGasto()" id="btnGuardar">Guardar Gasto</button>
   </div>
 
   <script>
     Telegram.WebApp.ready();
     Telegram.WebApp.expand();
 
-    // PON AQUÍ TU CLAVE DE OPENAI (Cuidado con no compartirla públicamente)
-    // En producción, es mejor que n8n haga el OCR para no exponer tu clave, 
-    // pero para probar esto rápido, la ponemos aquí.
-    const OPENAI_API_KEY = "sk-proj-TU_CLAVE_AQUI"; 
-
     let imagenBase64 = ""; 
-    let imagenFile = null; // Guardamos el archivo original para enviarlo a n8n
 
-    // --- PANTALLA 1: OCR ---
-    async function procesarImagen(event) {
+    // 1. EL USUARIO SUBE LA FOTO
+    function procesarImagen(event) {
       const file = event.target.files[0];
       if (!file) return;
 
-      imagenFile = file;
-      const preview = document.getElementById('preview');
-      preview.src = URL.createObjectURL(file);
-      preview.style.display = 'block';
-
-      document.getElementById('loaderOcr').classList.remove('hidden');
-      document.getElementById('statusOcr').innerText = "🤖 Analizando con IA...";
-
-      // Convertir a Base64
       const reader = new FileReader();
-      reader.onload = async function() {
-        imagenBase64 = reader.result.split(',')[1]; // Quitamos el encabezado data:image/jpeg;base64,
-        await llamarAOpenAI(imagenBase64);
+      reader.onload = function() {
+        imagenBase64 = reader.result.split(',')[1]; // Solo el texto base64
+        
+        // Cambiamos a pantalla de carga
+        document.getElementById('pantalla1').classList.add('hidden');
+        document.getElementById('pantallaCarga').classList.remove('hidden');
+
+        // Enviamos solo la foto y el usuario a n8n para que haga el OCR
+        enviarOcrAN8N();
       };
       reader.readAsDataURL(file);
     }
 
-    async function llamarAOpenAI(base64Image) {
-      const prompt = `Eres un experto en contabilidad. Analiza esta imagen y extrae los datos. Devuelve SOLO un JSON válido con esta estructura exacta: {"tipoDoc": "Boleta" | "Factura" | "Transferencia", "monto": (número entero sin puntos ni comas), "fecha": "YYYY-MM-DD"}. Si no puedes leer algo, pon 0 en monto y la fecha de hoy.`;
+    // 2. N8N RECIBE LA FOTO Y DEVUELVE EL TEXTO
+    function enviarOcrAN8N() {
+      // REEMPLAZA ESTA URL POR LA DE TU WEBHOOK DE N8N PARA OCR
+      const WEBHOOK_OCR_URL = 'https://TU-N8N-URL.com/webhook/ocr-gastos'; 
 
-      try {
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${OPENAI_API_KEY}`
-          },
-          body: JSON.stringify({
-            model: "gpt-4o", // Modelo con visión
-            messages: [
-              {
-                role: "user",
-                content: [
-                  { type: "text", text: prompt },
-                  { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Image}` } }
-                ]
-              }
-            ],
-            max_tokens: 300
-          })
-        });
+      const datos = {
+        initData: Telegram.WebApp.initData,
+        imagenBase64: imagenBase64
+      };
 
-        const data = await response.json();
-        let textoIA = data.choices[0].message.content;
-        
-        // Limpiamos posibles formatos markdown que devuelva la IA
-        textoIA = textoIA.replace(/```json/g, "").replace(/```/g, "").trim();
-        const resultado = JSON.parse(textoIA);
+      fetch(WEBHOOK_OCR_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(datos)
+      })
+      .then(response => response.json())
+      .then(res => {
+        // n8n nos devuelve los datos extraídos
+        document.getElementById('tipoDoc').value = res.tipoDoc || 'Boleta';
+        document.getElementById('monto').value = res.monto || 0;
+        document.getElementById('fecha').value = res.fecha || new Date().toISOString().split('T')[0];
 
-        // Llenar Pantalla 2
-        document.getElementById('tipoDoc').value = resultado.tipoDoc || 'Boleta';
-        document.getElementById('monto').value = resultado.monto || 0;
-        document.getElementById('fecha').value = resultado.fecha || new Date().toISOString().split('T')[0];
-
-        // Cambiar de pantalla
-        document.getElementById('loaderOcr').classList.add('hidden');
-        document.getElementById('statusOcr').innerText = "";
-        document.getElementById('pantalla1').classList.add('hidden');
+        // Mostramos el formulario
+        document.getElementById('pantallaCarga').classList.add('hidden');
         document.getElementById('pantalla2').classList.remove('hidden');
-
-      } catch (error) {
-        console.error(error);
-        document.getElementById('loaderOcr').classList.add('hidden');
-        document.getElementById('statusOcr').innerText = "❌ Error al leer. Intenta de nuevo o llena a mano.";
-        // Si falla, pasamos a la pantalla 2 para que lo llene a mano
-        document.getElementById('pantalla1').classList.add('hidden');
-        document.getElementById('pantalla2').classList.remove('hidden');
-      }
+      })
+      .catch(err => {
+        Telegram.WebApp.showAlert("Error al leer la imagen. Intenta de nuevo.");
+        document.getElementById('pantallaCarga').classList.add('hidden');
+        document.getElementById('pantalla1').classList.remove('hidden');
+      });
     }
 
-    // --- PANTALLA 2: Lógica de Empresas ---
-    function actualizarObras() {
-      const empresa = document.getElementById('empresa').value;
-      const divObras = document.getElementById('divObras');
-      if (empresa === 'Constructora') {
-        divObras.classList.remove('hidden');
-      } else {
-        divObras.classList.add('hidden');
-      }
-    }
-
-    // --- ENVIAR A N8N ---
-    function enviarAN8N() {
+    // 3. EL USUARIO CONFIRMA Y GUARDA
+    function guardarGasto() {
       const btn = document.getElementById('btnGuardar');
       btn.innerText = "Guardando...";
       btn.disabled = true;
 
-      // Generar un ID único para el nombre de la foto en Drive
       const idUnico = Date.now().toString() + Math.floor(Math.random() * 1000);
 
       const datos = {
-        initData: Telegram.WebApp.initData, // Validación de usuario
+        initData: Telegram.WebApp.initData,
         idUnico: idUnico,
         tipoDoc: document.getElementById('tipoDoc').value,
         monto: document.getElementById('monto').value,
@@ -201,15 +163,13 @@
         empresa: document.getElementById('empresa').value,
         obra: document.getElementById('divObras').classList.contains('hidden') ? "N/A" : document.getElementById('obra').value,
         tipoGasto: document.getElementById('tipoGasto').value,
-        imagenBase64: imagenBase64 // Enviamos la imagen a n8n para que la guarde en Drive
+        imagenBase64: imagenBase64 
       };
 
-      // URL DE TU WEBHOOK DE N8N
-      const WEBHOOK_URL = 'https://n8n.srv1233440.hstgr.cloud/webhook-test/Ingreso_Gasto';
+      // REEMPLAZA ESTA URL POR LA DE TU WEBHOOK DE N8N PARA GUARDAR
+      const WEBHOOK_GUARDAR_URL = 'https://n8n.srv1233440.hstgr.cloud/webhook-test/Ingreso_Gasto';
 
-       
-      // COMENTADO PARA PROBAR PRIMERO SIN N8N
-      fetch(WEBHOOK_URL, {
+      fetch(WEBHOOK_GUARDAR_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(datos)
@@ -220,18 +180,20 @@
         Telegram.WebApp.close();
       })
       .catch(err => {
-        Telegram.WebApp.showAlert("❌ Error de conexión con el servidor.");
+        Telegram.WebApp.showAlert("❌ Error al guardar.");
         btn.innerText = "Guardar Gasto";
         btn.disabled = false;
       });
-      
+    }
 
-      // Simulación de éxito (Quita esto cuando pongas tu URL real)
-      console.log("Datos listos para n8n:", datos);
-      setTimeout(() => {
-        Telegram.WebApp.showAlert(`✅ Gasto preparado.\nMonto: $${datos.monto}\nEmpresa: ${datos.empresa}\nID Imagen: ${datos.idUnico}.jpg`);
-        Telegram.WebApp.close();
-      }, 1500);
+    function actualizarObras() {
+      const empresa = document.getElementById('empresa').value;
+      const divObras = document.getElementById('divObras');
+      if (empresa === 'Constructora') {
+        divObras.classList.remove('hidden');
+      } else {
+        divObras.classList.add('hidden');
+      }
     }
   </script>
 </body>
