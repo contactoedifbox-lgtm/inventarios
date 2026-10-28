@@ -29,7 +29,7 @@
     </div>
   </div>
 
-  <!-- PANTALLA DE CARGA (Mientras n8n hace el OCR) -->
+  <!-- PANTALLA DE CARGA -->
   <div id="pantallaCarga" class="hidden">
     <h2 style="text-align:center; margin-top: 50px;">🤖 Analizando...</h2>
     <div class="loader"></div>
@@ -66,9 +66,7 @@
       <div id="divObras" class="hidden">
         <label>Obra (Solo Trazado Sur)</label>
         <select id="obra">
-          <option value="Obra 1">Obra 1</option>
-          <option value="Obra 2">Obra 2</option>
-          <option value="Obra 3">Obra 3</option>
+          <!-- Se llenará dinámicamente -->
         </select>
       </div>
 
@@ -94,7 +92,6 @@
 
     let imagenBase64 = ""; 
 
-    // 1. EL USUARIO SUBE LA FOTO
     function procesarImagen(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -111,8 +108,8 @@
       reader.readAsDataURL(file);
     }
 
-        // 2. N8N RECIBE LA FOTO Y DEVUELVE OCR + OBRAS
-        function enviarOcrAN8N() {
+    function enviarOcrAN8N() {
+      // ⚠️ RECUERDA: Si cambias a producción, quita el "-test" de la URL
       const WEBHOOK_OCR_URL = 'https://n8n.srv1233440.hstgr.cloud/webhook-test/af6da9c5-01e4-44f5-9fe6-7854016aa065'; 
 
       const datos = {
@@ -126,41 +123,44 @@
         body: JSON.stringify(datos)
       })
       .then(response => {
-        if (!response.ok) {
-          throw new Error("Respuesta de n8n no fue exitosa (Status: " + response.status + ")");
-        }
-        return response.text(); // Leemos como texto primero para evitar errores de parseo
+        if (!response.ok) throw new Error("Error HTTP: " + response.status);
+        return response.text(); 
       })
       .then(texto => {
-        console.log("Respuesta cruda de n8n:", texto); // Esto te ayudará a depurar
-        let res;
+        console.log("Respuesta cruda de n8n:", texto);
+        
+        // --- SALVAVIDAS: Si n8n no devuelve nada o falla el JSON ---
+        let res = {};
         try {
-          res = JSON.parse(texto); // Convertimos el texto a JSON
+          const parsed = JSON.parse(texto);
+          // Si viene en arreglo, tomamos el primero. Si viene como objeto, lo usamos directo.
+          res = Array.isArray(parsed) ? parsed[0] : parsed;
         } catch (e) {
-          throw new Error("n8n no devolvió un JSON válido. Revisa que en el 'Respond to Webhook' esté en formato JSON.");
+          console.warn("No se pudo parsear el JSON, se usará formulario vacío.");
         }
 
-        // Si el JSON es un arreglo (como el tuyo), tomamos el primer elemento
-        const resultado = Array.isArray(res) ? res[0] : res;
-
-        // 1. Llenamos los datos
-        document.getElementById('tipoDoc').value = resultado.tipoDoc || 'Boleta';
-        document.getElementById('monto').value = resultado.monto || 0;
-        document.getElementById('fecha').value = resultado.fecha || new Date().toISOString().split('T')[0];
+        // 1. Llenamos los datos (Si no vienen, ponemos valores por defecto)
+        document.getElementById('tipoDoc').value = res.tipoDoc || 'Boleta';
+        document.getElementById('monto').value = res.monto || 0;
+        document.getElementById('fecha').value = res.fecha || new Date().toISOString().split('T')[0];
 
         // 2. Llenamos las obras
         const selectObra = document.getElementById('obra');
         selectObra.innerHTML = ''; 
         
-        if (resultado.data && Array.isArray(resultado.data)) {
-          resultado.data.forEach(item => {
+        // Verificamos si las obras vienen en res.data o res.obras (por si acaso)
+        const listaObras = res.data || res.obras || [];
+
+        if (Array.isArray(listaObras) && listaObras.length > 0) {
+          listaObras.forEach(item => {
             const option = document.createElement('option');
-            option.value = item.OBRA; 
-            option.text = item.OBRA; 
+            // Busca la propiedad OBRA, o nombreObra, o el nombre que tenga
+            option.value = item.OBRA || item.nombreObra || item.obra || "Desconocida";
+            option.text = option.value; 
             selectObra.appendChild(option);
           });
         } else {
-          selectObra.innerHTML = '<option value="N/A">No hay obras disponibles</option>';
+          selectObra.innerHTML = '<option value="N/A">No hay obras cargadas</option>';
         }
 
         // 3. Mostramos el formulario
@@ -169,13 +169,13 @@
       })
       .catch(err => {
         console.error("Detalle del error:", err);
-        Telegram.WebApp.showAlert("Error de conexión. Intenta de nuevo.");
+        Telegram.WebApp.showAlert("⚠️ Ojo: No se pudo conectar con el lector (n8n). Puedes llenar los datos a mano.");
+        // Lo pasamos a la pantalla 2 igual para que el trabajador no se quede trabado
         document.getElementById('pantallaCarga').classList.add('hidden');
-        document.getElementById('pantalla1').classList.remove('hidden'); // Lo devolvemos a la foto
+        document.getElementById('pantalla2').classList.remove('hidden');
       });
     }
 
-    // 3. EL USUARIO CONFIRMA Y GUARDA (URL DE INGRESO CORREGIDA)
     function guardarGasto() {
       const btn = document.getElementById('btnGuardar');
       btn.innerText = "Guardando...";
@@ -195,6 +195,7 @@
         imagenBase64: imagenBase64 
       };
 
+      // ⚠️ RECUERDA: Si cambias a producción, quita el "-test" de la URL
       const WEBHOOK_GUARDAR_URL = 'https://n8n.srv1233440.hstgr.cloud/webhook-test/Ingreso_Gasto';
 
       fetch(WEBHOOK_GUARDAR_URL, {
@@ -202,7 +203,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(datos)
       })
-      .then(response => response.json())
+      .then(response => response.text())
       .then(res => {
         Telegram.WebApp.showAlert("✅ Gasto guardado con éxito.");
         Telegram.WebApp.close();
@@ -215,7 +216,6 @@
       });
     }
 
-    // Cambiar menú de obras según la empresa
     function actualizarObras() {
       const empresa = document.getElementById('empresa').value;
       const divObras = document.getElementById('divObras');
