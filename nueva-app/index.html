@@ -112,7 +112,7 @@
     }
 
         // 2. N8N RECIBE LA FOTO Y DEVUELVE OCR + OBRAS
-    function enviarOcrAN8N() {
+        function enviarOcrAN8N() {
       const WEBHOOK_OCR_URL = 'https://n8n.srv1233440.hstgr.cloud/webhook-test/af6da9c5-01e4-44f5-9fe6-7854016aa065'; 
 
       const datos = {
@@ -125,25 +125,36 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(datos)
       })
-      .then(response => response.json())
-      .then(res => {
-        // n8n devuelve un arreglo con un solo objeto adentro, así que extraemos el primer elemento
-        const resultado = res[0]; 
+      .then(response => {
+        if (!response.ok) {
+          throw new Error("Respuesta de n8n no fue exitosa (Status: " + response.status + ")");
+        }
+        return response.text(); // Leemos como texto primero para evitar errores de parseo
+      })
+      .then(texto => {
+        console.log("Respuesta cruda de n8n:", texto); // Esto te ayudará a depurar
+        let res;
+        try {
+          res = JSON.parse(texto); // Convertimos el texto a JSON
+        } catch (e) {
+          throw new Error("n8n no devolvió un JSON válido. Revisa que en el 'Respond to Webhook' esté en formato JSON.");
+        }
 
-        // 1. Llenamos los datos del OCR
+        // Si el JSON es un arreglo (como el tuyo), tomamos el primer elemento
+        const resultado = Array.isArray(res) ? res[0] : res;
+
+        // 1. Llenamos los datos
         document.getElementById('tipoDoc').value = resultado.tipoDoc || 'Boleta';
         document.getElementById('monto').value = resultado.monto || 0;
         document.getElementById('fecha').value = resultado.fecha || new Date().toISOString().split('T')[0];
 
-        // 2. Llenamos el menú de obras usando la propiedad "data"
+        // 2. Llenamos las obras
         const selectObra = document.getElementById('obra');
-        selectObra.innerHTML = ''; // Limpiamos el menú por defecto
+        selectObra.innerHTML = ''; 
         
-        // Verificamos que "data" exista y sea un arreglo
         if (resultado.data && Array.isArray(resultado.data)) {
           resultado.data.forEach(item => {
             const option = document.createElement('option');
-            // OJO: Tu columna en Sheets se llama "OBRA" en mayúsculas
             option.value = item.OBRA; 
             option.text = item.OBRA; 
             selectObra.appendChild(option);
@@ -157,10 +168,10 @@
         document.getElementById('pantalla2').classList.remove('hidden');
       })
       .catch(err => {
-        console.error(err);
-        Telegram.WebApp.showAlert("Error al leer la imagen. Intenta de nuevo.");
+        console.error("Detalle del error:", err);
+        Telegram.WebApp.showAlert("Error de conexión. Intenta de nuevo.");
         document.getElementById('pantallaCarga').classList.add('hidden');
-        document.getElementById('pantalla2').classList.remove('hidden'); 
+        document.getElementById('pantalla1').classList.remove('hidden'); // Lo devolvemos a la foto
       });
     }
 
