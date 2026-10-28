@@ -11,7 +11,7 @@
     .card { background: var(--tg-theme-secondary-bg-color, #f4f4f5); padding: 15px; border-radius: 12px; margin-bottom: 15px; }
     label { display: block; font-weight: bold; margin-top: 10px; font-size: 13px; color: var(--tg-theme-hint-color, #666); }
     input, select { width: 100%; padding: 12px; margin-top: 5px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-size: 16px; background: var(--tg-theme-bg-color, #fff); color: var(--tg-theme-text-color, #000); }
-    button { width: 100%; padding: 15px; background: var(--tg-theme-button-color, #2481cc); color: var(--tg-theme-button-text-color, #fff); border: none; border-radius: 10px; font-size: 16px; font-weight: bold; margin-top: 15px; }
+    button { width: 100%; padding: 15px; background: var(--tg-theme-button-color, #2481cc); color: var(--tg-theme-button-text-color, #fff); border: none; border-radius: 10px; font-size: 16px; font-weight: bold; margin-top: 15px; cursor: pointer; }
     button:disabled { opacity: 0.5; }
     .loader { border: 4px solid #f3f3f3; border-top: 4px solid #2481cc; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -36,7 +36,7 @@
     <p style="text-align:center; color: #666;">Extrayendo datos de la imagen</p>
   </div>
 
-  <!-- PANTALLA 2: FORMULARIO (Se llena con la respuesta de n8n) -->
+  <!-- PANTALLA 2: FORMULARIO -->
   <div id="pantalla2" class="hidden">
     <h2 style="text-align:center;">✏️ Validar Datos</h2>
     
@@ -58,30 +58,30 @@
     <div class="card">
       <label>Empresa</label>
       <select id="empresa" onchange="actualizarObras()">
-        <option value="Ingenieria">1. Empresa de Ingeniería</option>
-        <option value="Constructora">2. Constructora</option>
-        <option value="Tercera">3. Tercera Empresa</option>
+        <option value="Surcos">Surcos (Ingeniería)</option>
+        <option value="Trazado Sur">Trazado Sur (Constructora)</option>
+        <option value="Petra Sur">Petra Sur</option>
       </select>
 
       <div id="divObras" class="hidden">
-        <label>Obra (Solo Constructora)</label>
+        <label>Obra (Solo Trazado Sur)</label>
         <select id="obra">
-          <option value="Obra A">Obra A - Edificio Central</option>
-          <option value="Obra B">Obra B - Condominio Norte</option>
-          <option value="Obra C">Obra C - Puente Sur</option>
+          <option value="Obra 1">Obra 1</option>
+          <option value="Obra 2">Obra 2</option>
+          <option value="Obra 3">Obra 3</option>
         </select>
       </div>
 
       <label>Tipo de Gasto</label>
       <select id="tipoGasto">
-        <option value="Materiales">Materiales</option>
-        <option value="Mano de Obra">Mano de Obra</option>
-        <option value="Herramientas">Herramientas</option>
-        <option value="Combustible">Combustible</option>
-        <option value="Fletes">Fletes / Transporte</option>
-        <option value="Servicios Básicos">Servicios Básicos</option>
-        <option value="Alimentación">Alimentación</option>
-        <option value="Otros">Otros Gastos</option>
+        <option value="Combustible">1. Combustible</option>
+        <option value="Peaje">2. Peaje</option>
+        <option value="Estacionamiento">3. Estacionamiento</option>
+        <option value="Alimentación">4. Alimentación</option>
+        <option value="Oficina">5. Oficina</option>
+        <option value="Materiales">6. Materiales</option>
+        <option value="Herramientas o equipos">7. Herramientas o equipos</option>
+        <option value="Gastos SD">8. Gastos SD</option>
       </select>
     </div>
 
@@ -101,21 +101,18 @@
 
       const reader = new FileReader();
       reader.onload = function() {
-        imagenBase64 = reader.result.split(',')[1]; // Solo el texto base64
+        imagenBase64 = reader.result.split(',')[1]; 
         
-        // Cambiamos a pantalla de carga
         document.getElementById('pantalla1').classList.add('hidden');
         document.getElementById('pantallaCarga').classList.remove('hidden');
 
-        // Enviamos solo la foto y el usuario a n8n para que haga el OCR
         enviarOcrAN8N();
       };
       reader.readAsDataURL(file);
     }
 
-    // 2. N8N RECIBE LA FOTO Y DEVUELVE EL TEXTO
+    // 2. N8N RECIBE LA FOTO Y DEVUELVE EL TEXTO (URL DE OCR CORREGIDA)
     function enviarOcrAN8N() {
-      // REEMPLAZA ESTA URL POR LA DE TU WEBHOOK DE N8N PARA OCR
       const WEBHOOK_OCR_URL = 'https://n8n.srv1233440.hstgr.cloud/webhook-test/af6da9c5-01e4-44f5-9fe6-7854016aa065'; 
 
       const datos = {
@@ -130,23 +127,22 @@
       })
       .then(response => response.json())
       .then(res => {
-        // n8n nos devuelve los datos extraídos
         document.getElementById('tipoDoc').value = res.tipoDoc || 'Boleta';
         document.getElementById('monto').value = res.monto || 0;
         document.getElementById('fecha').value = res.fecha || new Date().toISOString().split('T')[0];
 
-        // Mostramos el formulario
         document.getElementById('pantallaCarga').classList.add('hidden');
         document.getElementById('pantalla2').classList.remove('hidden');
       })
       .catch(err => {
-        Telegram.WebApp.showAlert("Error al leer la imagen. Intenta de nuevo.");
+        console.error(err);
+        Telegram.WebApp.showAlert("Error al leer la imagen. Intenta de nuevo o llena los datos a mano.");
         document.getElementById('pantallaCarga').classList.add('hidden');
-        document.getElementById('pantalla1').classList.remove('hidden');
+        document.getElementById('pantalla2').classList.remove('hidden'); // Lo dejamos pasar para que llene a mano
       });
     }
 
-    // 3. EL USUARIO CONFIRMA Y GUARDA
+    // 3. EL USUARIO CONFIRMA Y GUARDA (URL DE INGRESO CORREGIDA)
     function guardarGasto() {
       const btn = document.getElementById('btnGuardar');
       btn.innerText = "Guardando...";
@@ -166,7 +162,6 @@
         imagenBase64: imagenBase64 
       };
 
-      // REEMPLAZA ESTA URL POR LA DE TU WEBHOOK DE N8N PARA GUARDAR
       const WEBHOOK_GUARDAR_URL = 'https://n8n.srv1233440.hstgr.cloud/webhook-test/Ingreso_Gasto';
 
       fetch(WEBHOOK_GUARDAR_URL, {
@@ -180,16 +175,18 @@
         Telegram.WebApp.close();
       })
       .catch(err => {
-        Telegram.WebApp.showAlert("❌ Error al guardar.");
+        console.error(err);
+        Telegram.WebApp.showAlert("❌ Error al guardar. Verifica tu conexión.");
         btn.innerText = "Guardar Gasto";
         btn.disabled = false;
       });
     }
 
+    // Cambiar menú de obras según la empresa
     function actualizarObras() {
       const empresa = document.getElementById('empresa').value;
       const divObras = document.getElementById('divObras');
-      if (empresa === 'Constructora') {
+      if (empresa === 'Trazado Sur') {
         divObras.classList.remove('hidden');
       } else {
         divObras.classList.add('hidden');
