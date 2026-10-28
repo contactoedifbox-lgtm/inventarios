@@ -111,7 +111,7 @@
       reader.readAsDataURL(file);
     }
 
-    // 2. N8N RECIBE LA FOTO Y DEVUELVE EL TEXTO (URL DE OCR CORREGIDA)
+        // 2. N8N RECIBE LA FOTO Y DEVUELVE OCR + OBRAS
     function enviarOcrAN8N() {
       const WEBHOOK_OCR_URL = 'https://n8n.srv1233440.hstgr.cloud/webhook-test/af6da9c5-01e4-44f5-9fe6-7854016aa065'; 
 
@@ -127,18 +127,40 @@
       })
       .then(response => response.json())
       .then(res => {
-        document.getElementById('tipoDoc').value = res.tipoDoc || 'Boleta';
-        document.getElementById('monto').value = res.monto || 0;
-        document.getElementById('fecha').value = res.fecha || new Date().toISOString().split('T')[0];
+        // n8n devuelve un arreglo con un solo objeto adentro, así que extraemos el primer elemento
+        const resultado = res[0]; 
 
+        // 1. Llenamos los datos del OCR
+        document.getElementById('tipoDoc').value = resultado.tipoDoc || 'Boleta';
+        document.getElementById('monto').value = resultado.monto || 0;
+        document.getElementById('fecha').value = resultado.fecha || new Date().toISOString().split('T')[0];
+
+        // 2. Llenamos el menú de obras usando la propiedad "data"
+        const selectObra = document.getElementById('obra');
+        selectObra.innerHTML = ''; // Limpiamos el menú por defecto
+        
+        // Verificamos que "data" exista y sea un arreglo
+        if (resultado.data && Array.isArray(resultado.data)) {
+          resultado.data.forEach(item => {
+            const option = document.createElement('option');
+            // OJO: Tu columna en Sheets se llama "OBRA" en mayúsculas
+            option.value = item.OBRA; 
+            option.text = item.OBRA; 
+            selectObra.appendChild(option);
+          });
+        } else {
+          selectObra.innerHTML = '<option value="N/A">No hay obras disponibles</option>';
+        }
+
+        // 3. Mostramos el formulario
         document.getElementById('pantallaCarga').classList.add('hidden');
         document.getElementById('pantalla2').classList.remove('hidden');
       })
       .catch(err => {
         console.error(err);
-        Telegram.WebApp.showAlert("Error al leer la imagen. Intenta de nuevo o llena los datos a mano.");
+        Telegram.WebApp.showAlert("Error al leer la imagen. Intenta de nuevo.");
         document.getElementById('pantallaCarga').classList.add('hidden');
-        document.getElementById('pantalla2').classList.remove('hidden'); // Lo dejamos pasar para que llene a mano
+        document.getElementById('pantalla2').classList.remove('hidden'); 
       });
     }
 
