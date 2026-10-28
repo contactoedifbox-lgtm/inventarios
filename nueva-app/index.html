@@ -92,8 +92,26 @@
 
     let imagenBase64 = ""; 
 
-       function enviarOcrAN8N() {
-      // Recuerda usar la URL de producción (sin -test)
+    // --- FUNCIÓN PARA PROCESAR LA FOTO ---
+    function procesarImagen(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function() {
+        imagenBase64 = reader.result.split(',')[1]; 
+        
+        document.getElementById('pantalla1').classList.add('hidden');
+        document.getElementById('pantallaCarga').classList.remove('hidden');
+
+        enviarOcrAN8N();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // --- ENVIAR A N8N (OCR + OBRAS) ---
+    function enviarOcrAN8N() {
+      // ⚠️ SI YA PASÓ A PRODUCCIÓN, QUITA EL "-test" DE LA URL
       const WEBHOOK_OCR_URL = 'https://n8n.srv1233440.hstgr.cloud/webhook-test/af6da9c5-01e4-44f5-9fe6-7854016aa065'; 
 
       const datos = {
@@ -108,10 +126,9 @@
       })
       .then(response => {
         if (!response.ok) throw new Error("Error HTTP: " + response.status);
-        return response.json(); // Leemos directo como JSON
+        return response.json(); 
       })
       .then(res => {
-        // n8n ahora envía el objeto directo, pero por si acaso comprobamos si viene en arreglo
         const resultado = Array.isArray(res) ? res[0] : res;
 
         // 1. Llenamos los datos
@@ -146,6 +163,7 @@
       });
     }
 
+    // --- GUARDAR GASTO FINAL ---
     function guardarGasto() {
       const btn = document.getElementById('btnGuardar');
       btn.innerText = "Guardando...";
@@ -165,6 +183,7 @@
         imagenBase64: imagenBase64 
       };
 
+      // ⚠️ SI YA PASÓ A PRODUCCIÓN, QUITA EL "-test" DE LA URL
       const WEBHOOK_GUARDAR_URL = 'https://n8n.srv1233440.hstgr.cloud/webhook-test/Ingreso_Gasto';
 
       fetch(WEBHOOK_GUARDAR_URL, {
@@ -185,6 +204,7 @@
       });
     }
 
+    // --- MOSTRAR U OBTENER OBRAS ---
     function actualizarObras() {
       const empresa = document.getElementById('empresa').value;
       const divObras = document.getElementById('divObras');
