@@ -1,27 +1,4 @@
-  <script>
-    Telegram.WebApp.ready();
-    Telegram.WebApp.expand();
-
-    let imagenBase64 = ""; 
-
-    function procesarImagen(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function() {
-        imagenBase64 = reader.result.split(',')[1]; 
-        
-        document.getElementById('pantalla1').classList.add('hidden');
-        document.getElementById('pantallaCarga').classList.remove('hidden');
-
-        enviarOcrAN8N();
-      };
-      reader.readAsDataURL(file);
-    }
-
     function enviarOcrAN8N() {
-      // ASEGÚRATE DE QUE ESTA URL SEA LA DE TU N8N EN MODO TEST
       const WEBHOOK_OCR_URL = 'https://n8n.srv1233440.hstgr.cloud/webhook-test/af6da9c5-01e4-44f5-9fe6-7854016aa065'; 
 
       const datos = {
@@ -35,32 +12,33 @@
         body: JSON.stringify(datos)
       })
       .then(response => {
+        // Si n8n devuelve un error 500 o 404, lo atrapamos aquí
         if (!response.ok) {
-          // SI N8N FALLA, QUE NOS DIGA EL CÓDIGO DE ERROR
-          throw new Error("Error " + response.status + " en n8n");
+          return response.text().then(text => { 
+            throw new Error("Error de n8n (Código " + response.status + "): " + text); 
+          });
         }
-        return response.text(); // Leemos como texto para ver si n8n devolvió basura o JSON
+        return response.text(); 
       })
       .then(texto => {
-        // MOSTRAMOS EN PANTALLA LO QUE DEVOLVIÓ N8N (Para que veas que sí llega)
-        Telegram.WebApp.showAlert("LO QUE LLEGÓ DE N8N: \n\n" + texto);
+        // 1. Mostramos el texto exacto que devolvió n8n
+        // Telegram.WebApp.showAlert("Respuesta de n8n: " + texto); 
         
         let res;
         try {
           const parsed = JSON.parse(texto);
           res = Array.isArray(parsed) ? parsed[0] : parsed;
         } catch (e) {
-          // SI FALLA EL PARSEO, NOS AVISA
-          Telegram.WebApp.showAlert("n8n no devolvió JSON. Revisa el Respond to Webhook.");
-          throw new Error("JSON inválido");
+          // Si n8n devolvió HTML o texto en lugar de JSON, saltará aquí
+          throw new Error("n8n no devolvió un JSON válido. Recibido: " + texto);
         }
 
-        // SI LLEGAMOS AQUÍ, LLENAMOS LOS DATOS
+        // 2. Llenamos los datos
         document.getElementById('tipoDoc').value = res.tipoDoc || 'Boleta';
         document.getElementById('monto').value = res.monto || 0;
         document.getElementById('fecha').value = res.fecha || new Date().toISOString().split('T')[0];
 
-        // LLENAMOS OBRAS
+        // 3. Llenamos las obras
         const selectObra = document.getElementById('obra');
         selectObra.innerHTML = ''; 
         
@@ -75,16 +53,16 @@
           selectObra.innerHTML = '<option value="N/A">No hay obras</option>';
         }
 
-        // CAMBIAMOS DE PANTALLA
+        // 4. Pasamos a la pantalla 2
         document.getElementById('pantallaCarga').classList.add('hidden');
         document.getElementById('pantalla2').classList.remove('hidden');
       })
       .catch(err => {
-        // SI HAY UN ERROR DE RED (PORQUE ESTÁS EN MODO TEST Y NO HICISTE CLIC EN LISTEN)
-        Telegram.WebApp.showAlert("ERROR DE CONEXIÓN: " + err.message);
+        // AQUÍ MOSTRAMOS EL ERROR REAL EN PANTALLA
+        console.error(err);
+        Telegram.WebApp.showAlert("⚠️ Fallo la comunicación:\n\n" + err.message);
+        
         document.getElementById('pantallaCarga').classList.add('hidden');
-        document.getElementById('pantalla1').classList.remove('hidden');
+        document.getElementById('pantalla2').classList.remove('hidden'); // Lo dejamos pasar a mano
       });
     }
-
-    // ... (deja el resto de funciones guardarGasto y actualizarObras igual) ...
