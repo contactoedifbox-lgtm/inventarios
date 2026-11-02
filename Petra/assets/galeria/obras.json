@@ -1,0 +1,20 @@
+{
+  "obra01": {
+    "titulo": "Revestimiento de canal de riego",
+    "categoria": "canales",
+    "ubicacion": "Región de Valparaíso",
+    "descripcion": "Revestimiento de canal con Concrete Blanket para control de erosión y conducción de agua."
+  },
+  "obra02": {
+    "titulo": "Protección de talud ferroviario",
+    "categoria": "taludes",
+    "ubicacion": "Región de Valparaíso",
+    "descripcion": "Estabilización y protección de talud junto a línea férrea."
+  },
+  "obra03": {
+    "titulo": "Protección de talud carretero",
+    "categoria": "taludes",
+    "ubicacion": "Región de Valparaíso",
+    "descripcion": "Protección de talud en borde de camino con Concrete Blanket."
+  }
+}
