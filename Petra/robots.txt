@@ -1,5 +1,0 @@
-User-agent: *
-Allow: /
-
-# Reemplaza el dominio cuando publiques el sitio
-Sitemap: https://www.petrasur.cl/sitemap.xml
