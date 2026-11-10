@@ -225,11 +225,35 @@
     <button onclick="guardarGasto()" id="btnGuardar" class="btn-primary">Guardar Gasto</button>
   </div>
 
+  <!-- Configuración externa (NO versionada en git). Ver config.example.js -->
+  <script src="config.js"></script>
   <script>
     Telegram.WebApp.ready();
     Telegram.WebApp.expand();
 
-    let imagenBase64 = ""; 
+    // Configuración de webhooks cargada desde config.js (fuera del control de versiones)
+    const APP_CONFIG = window.APP_CONFIG || {};
+    const WEBHOOK_OCR_URL = APP_CONFIG.WEBHOOK_OCR_URL || '';
+    const WEBHOOK_GUARDAR_URL = APP_CONFIG.WEBHOOK_GUARDAR_URL || '';
+    const WEBHOOK_AUTH_TOKEN = APP_CONFIG.WEBHOOK_AUTH_TOKEN || '';
+
+    // Cabeceras comunes; añade el token de autenticación si está configurado.
+    function webhookHeaders() {
+      const headers = { 'Content-Type': 'application/json' };
+      if (WEBHOOK_AUTH_TOKEN) headers['X-Webhook-Token'] = WEBHOOK_AUTH_TOKEN;
+      return headers;
+    }
+
+    // Valida que la URL esté configurada antes de usarla.
+    function requireWebhookUrl(url) {
+      if (!url) {
+        Telegram.WebApp.showAlert("Configuración incompleta: falta config.js con las URLs de los webhooks.");
+        throw new Error("Webhook URL no configurada (config.js ausente o incompleto).");
+      }
+      return url;
+    }
+
+    let imagenBase64 = "";
 
     function procesarImagen(event) {
       const file = event.target.files[0];
@@ -248,17 +272,17 @@
     }
 
     function enviarOcrAN8N() {
-      // ⚠️ RECUERDA CAMBIAR A LA URL DE PRODUCCIÓN (SIN -test) CUANDO YA ESTÉ EN USO
-      const WEBHOOK_OCR_URL = 'https://n8n.srv1233440.hstgr.cloud/webhook/af6da9c5-01e4-44f5-9fe6-7854016aa065'; 
+      // URL cargada desde config.js (no versionada en el repositorio)
+      const url = requireWebhookUrl(WEBHOOK_OCR_URL);
 
       const datos = {
         initData: Telegram.WebApp.initData,
         imagenBase64: imagenBase64
       };
 
-      fetch(WEBHOOK_OCR_URL, {
+      fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: webhookHeaders(),
         body: JSON.stringify(datos)
       })
       .then(response => {
@@ -316,11 +340,12 @@
         imagenBase64: imagenBase64 
       };
 
-      const WEBHOOK_GUARDAR_URL = 'https://n8n.srv1233440.hstgr.cloud/webhook/Ingreso_Gasto';
+      // URL cargada desde config.js (no versionada en el repositorio)
+      const url = requireWebhookUrl(WEBHOOK_GUARDAR_URL);
 
-      fetch(WEBHOOK_GUARDAR_URL, {
+      fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: webhookHeaders(),
         body: JSON.stringify(datos)
       })
       .then(response => response.text())
