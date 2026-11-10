@@ -162,19 +162,12 @@
   <!-- PANTALLA 1: FOTO -->
   <div id="pantalla1">
     <h2>Subir Documento</h2>
-    <!-- Input EXCLUSIVO para GALERÍA (selección general, sin capture) -->
-    <input type="file" id="galleryInput" accept="image/*" style="display: none;">
-    <!-- Input EXCLUSIVO para CÁMARA (captura directa) -->
-    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">
+    <!-- Selector nativo: el sistema ofrece "Cámara" o "Galería" en un toque (sin avisos de permiso) -->
+    <input type="file" id="photoInput" accept="image/*" style="display: none;">
 
-    <button type="button" class="btn-upload" id="btnGallery">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-      Subir desde galería
-    </button>
-
-    <button type="button" class="btn-upload" id="btnCamera" style="margin-top: 15px;">
+    <button type="button" class="btn-upload" id="btnPhoto">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-      Tomar fotografía
+      Subir o tomar foto
     </button>
     <p style="text-align:center; font-size: 13px; color: var(--text-muted); margin-top: 15px;">Asegúrate de que el documento se vea claro y completo.</p>
   </div>
@@ -265,19 +258,11 @@
       return url;
     }
 
-    // ===== Botón GALERÍA: dispara SOLO su input (sin capture) =====
-    document.getElementById('btnGallery').addEventListener('click', function () {
-      document.getElementById('galleryInput').click();
+    // ===== Botón FOTO: abre el selector nativo (Cámara o Galería) =====
+    document.getElementById('btnPhoto').addEventListener('click', function () {
+      document.getElementById('photoInput').click();
     });
-    document.getElementById('galleryInput').addEventListener('change', function (event) {
-      procesarImagen(event);
-    });
-
-    // ===== Botón CÁMARA: usa el input nativo con capture (sin diálogo de Telegram) =====
-    document.getElementById('btnCamera').addEventListener('click', function () {
-      document.getElementById('cameraInput').click();
-    });
-    document.getElementById('cameraInput').addEventListener('change', function (event) {
+    document.getElementById('photoInput').addEventListener('change', function (event) {
       procesarImagen(event);
     });
 
