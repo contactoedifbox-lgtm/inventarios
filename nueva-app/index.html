@@ -179,6 +179,15 @@
     <p style="text-align:center; font-size: 13px; color: var(--text-muted); margin-top: 15px;">Asegúrate de que el documento se vea claro y completo.</p>
   </div>
 
+  <!-- MODAL DE CÁMARA (getUserMedia) -->
+  <div id="cameraModal" class="hidden" style="position:fixed; inset:0; background:#000; z-index:9999; display:flex; flex-direction:column;">
+    <video id="cameraVideo" autoplay playsinline muted style="flex:1; width:100%; height:100%; object-fit:cover; background:#000;"></video>
+    <div style="display:flex; gap:10px; padding:15px; background:#000;">
+      <button type="button" id="btnCameraCancel" style="flex:1; padding:16px; border-radius:12px; border:none; font-size:16px; font-weight:700; background:#334155; color:#fff;">Cancelar</button>
+      <button type="button" id="btnCameraCapture" style="flex:2; padding:16px; border-radius:12px; border:none; font-size:16px; font-weight:700; background:#0ea5e9; color:#fff;">Capturar</button>
+    </div>
+  </div>
+
   <!-- PANTALLA DE CARGA -->
   <div id="pantallaCarga" class="hidden loader-container">
     <div class="loader"></div>
@@ -271,15 +280,58 @@
       procesarImagen(event);
     });
 
-    // ===== Botón CÁMARA: dispara SOLO su input (capture="environment") =====
-    document.getElementById('btnCamera').addEventListener('click', function () {
-      document.getElementById('cameraInput').click();
-    });
+    // ===== Botón CÁMARA: abre la cámara real (getUserMedia) con respaldo al input capture =====
+    document.getElementById('btnCamera').addEventListener('click', abrirCamara);
     document.getElementById('cameraInput').addEventListener('change', function (event) {
       procesarImagen(event);
     });
+    document.getElementById('btnCameraCapture').addEventListener('click', capturarFoto);
+    document.getElementById('btnCameraCancel').addEventListener('click', cerrarCamara);
 
     let imagenBase64 = "";
+    let cameraStream = null;
+
+    // Abre la cámara del dispositivo con getUserMedia; si no está disponible, usa el input con capture.
+    async function abrirCamara() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        document.getElementById('cameraInput').click();
+        return;
+      }
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } },
+          audio: false
+        });
+        const video = document.getElementById('cameraVideo');
+        video.srcObject = cameraStream;
+        document.getElementById('cameraModal').classList.remove('hidden');
+        try { await video.play(); } catch (e) {}
+      } catch (err) {
+        console.error('getUserMedia falló, usando input capture:', err);
+        document.getElementById('cameraInput').click();
+      }
+    }
+
+    function cerrarCamara() {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(function (t) { t.stop(); });
+        cameraStream = null;
+      }
+      document.getElementById('cameraModal').classList.add('hidden');
+    }
+
+    function capturarFoto() {
+      const video = document.getElementById('cameraVideo');
+      const w = video.videoWidth || 1280;
+      const h = video.videoHeight || 720;
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(video, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      cerrarCamara();
+      iniciarProceso(dataUrl.split(',')[1]);
+    }
 
     function procesarImagen(event) {
       const file = event.target.files[0];
@@ -287,14 +339,17 @@
 
       const reader = new FileReader();
       reader.onload = function() {
-        imagenBase64 = reader.result.split(',')[1]; 
-        
-        document.getElementById('pantalla1').classList.add('hidden');
-        document.getElementById('pantallaCarga').classList.remove('hidden');
-
-        enviarOcrAN8N();
+        iniciarProceso(reader.result.split(',')[1]);
       };
       reader.readAsDataURL(file);
+    }
+
+    // Inicia el flujo (OCR + envío) a partir de una imagen en base64.
+    function iniciarProceso(base64) {
+      imagenBase64 = base64;
+      document.getElementById('pantalla1').classList.add('hidden');
+      document.getElementById('pantallaCarga').classList.remove('hidden');
+      enviarOcrAN8N();
     }
 
     function enviarOcrAN8N() {
