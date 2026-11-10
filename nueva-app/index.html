@@ -179,17 +179,7 @@
     <p style="text-align:center; font-size: 13px; color: var(--text-muted); margin-top: 15px;">Asegúrate de que el documento se vea claro y completo.</p>
   </div>
 
-  <!-- MODAL DE CÁMARA (getUserMedia) -->
-  <div id="cameraModal" class="hidden" style="position:fixed; inset:0; background:#000; z-index:9999; display:flex; flex-direction:column;">
-    <div style="position:relative; flex:1; display:flex; align-items:center; justify-content:center; overflow:hidden;">
-      <video id="cameraVideo" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover; background:#000;"></video>
-      <div id="cameraLoading" style="position:absolute; color:#fff; font-size:15px; font-weight:600;">Iniciando cámara…</div>
-    </div>
-    <div style="display:flex; gap:10px; padding:15px; background:#000;">
-      <button type="button" id="btnCameraCancel" style="flex:1; padding:16px; border-radius:12px; border:none; font-size:16px; font-weight:700; background:#334155; color:#fff;">Cancelar</button>
-      <button type="button" id="btnCameraCapture" style="flex:2; padding:16px; border-radius:12px; border:none; font-size:16px; font-weight:700; background:#0ea5e9; color:#fff;">Capturar</button>
-    </div>
-  </div>
+  <!-- La cámara usa el input nativo con capture (ver botón "Tomar fotografía") -->
 
   <!-- PANTALLA DE CARGA -->
   <div id="pantallaCarga" class="hidden loader-container">
@@ -283,84 +273,15 @@
       procesarImagen(event);
     });
 
-    // ===== Botón CÁMARA: abre la cámara real (getUserMedia) con respaldo al input capture =====
-    document.getElementById('btnCamera').addEventListener('click', abrirCamara);
+    // ===== Botón CÁMARA: usa el input nativo con capture (sin diálogo de Telegram) =====
+    document.getElementById('btnCamera').addEventListener('click', function () {
+      document.getElementById('cameraInput').click();
+    });
     document.getElementById('cameraInput').addEventListener('change', function (event) {
       procesarImagen(event);
     });
-    document.getElementById('btnCameraCapture').addEventListener('click', capturarFoto);
-    document.getElementById('btnCameraCancel').addEventListener('click', cerrarCamara);
 
     let imagenBase64 = "";
-    let cameraStream = null;
-
-    // Abre la cámara del dispositivo con getUserMedia; si no está disponible, usa el input con capture.
-    async function abrirCamara() {
-      const modal = document.getElementById('cameraModal');
-      const video = document.getElementById('cameraVideo');
-      const loading = document.getElementById('cameraLoading');
-
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        document.getElementById('cameraInput').click();
-        return;
-      }
-
-      // Mostramos el modal con el aviso de carga (evita la "pantalla negra").
-      modal.classList.remove('hidden');
-      loading.style.display = 'block';
-
-      try {
-        // Reutilizamos el stream si ya está activo (evita volver a pedir permiso en la sesión).
-        if (!cameraStream || !cameraStream.active) {
-          cameraStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal: 'environment' } },
-            audio: false
-          });
-        }
-        video.srcObject = cameraStream;
-        // Esperamos a que el video tenga datos antes de mostrarlo.
-        await new Promise(function (resolve) {
-          if (video.readyState >= 2) { resolve(); return; }
-          video.onloadedmetadata = function () { resolve(); };
-        });
-        await video.play().catch(function () {});
-        loading.style.display = 'none';
-      } catch (err) {
-        console.error('getUserMedia falló, usando input capture:', err);
-        modal.classList.add('hidden');
-        document.getElementById('cameraInput').click();
-      }
-    }
-
-    // Oculta el modal pero MANTIENE el stream (para no volver a pedir permiso en la misma sesión).
-    function cerrarCamara() {
-      document.getElementById('cameraModal').classList.add('hidden');
-    }
-
-    // Detiene la cámara por completo (al cerrar la app).
-    function detenerCamara() {
-      if (cameraStream) {
-        cameraStream.getTracks().forEach(function (t) { t.stop(); });
-        cameraStream = null;
-      }
-    }
-
-    function capturarFoto() {
-      const video = document.getElementById('cameraVideo');
-      const w = video.videoWidth || 1280;
-      const h = video.videoHeight || 720;
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      canvas.getContext('2d').drawImage(video, 0, 0, w, h);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-      document.getElementById('cameraModal').classList.add('hidden');
-      iniciarProceso(dataUrl.split(',')[1]);
-    }
-
-    // Libera la cámara al cerrar la Mini App.
-    window.addEventListener('pagehide', detenerCamara);
-    window.addEventListener('beforeunload', detenerCamara);
 
     function procesarImagen(event) {
       const file = event.target.files[0];
