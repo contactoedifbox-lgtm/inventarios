@@ -1,0 +1,58 @@
+name: Deploy (GitHub Pages)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generar nueva-app/config.js desde los secretos
+        env:
+          N8N_WEBHOOK_OCR_URL: ${{ secrets.N8N_WEBHOOK_OCR_URL }}
+          N8N_WEBHOOK_GUARDAR_URL: ${{ secrets.N8N_WEBHOOK_GUARDAR_URL }}
+          N8N_WEBHOOK_AUTH_TOKEN: ${{ secrets.N8N_WEBHOOK_AUTH_TOKEN }}
+        run: |
+          if [ -z "$N8N_WEBHOOK_OCR_URL" ] || [ -z "$N8N_WEBHOOK_GUARDAR_URL" ]; then
+            echo "::warning::Faltan los secretos N8N_WEBHOOK_OCR_URL y/o N8N_WEBHOOK_GUARDAR_URL."
+          fi
+          {
+            echo "window.APP_CONFIG = {"
+            echo "  WEBHOOK_OCR_URL: \"${N8N_WEBHOOK_OCR_URL}\","
+            echo "  WEBHOOK_GUARDAR_URL: \"${N8N_WEBHOOK_GUARDAR_URL}\","
+            echo "  WEBHOOK_AUTH_TOKEN: \"${N8N_WEBHOOK_AUTH_TOKEN}\""
+            echo "};"
+          } > nueva-app/config.js
+
+      - name: Configurar Pages
+        uses: actions/configure-pages@v5
+
+      - name: Empaquetar el sitio
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicar en GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
