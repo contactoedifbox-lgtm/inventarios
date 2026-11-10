@@ -39,6 +39,8 @@ export class SnakeGame {
     this.won = false;
     this.paused = false;
     this.started = false;
+    // Cuando es true, la serpiente espera la primera pulsación de dirección.
+    this.awaitingStart = false;
     this.accumulator = 0;
     this.tickProgress = 0;
   }
@@ -69,9 +71,20 @@ export class SnakeGame {
     const d = DIRECTIONS[name];
     if (!d) return;
     const p = this.pendingDirection;
+    const isReverse = d.x === -p.x && d.z === -p.z;
+    const isSame = d.x === p.x && d.z === p.z;
+
+    // Antes de empezar, cualquier dirección válida (no reversa) arranca el juego.
+    if (this.awaitingStart) {
+      if (!isReverse) {
+        this.pendingDirection = { ...d };
+        this.awaitingStart = false;
+      }
+      return;
+    }
+
     // Ignora reversa (opuesto) y repetición.
-    if (d.x === -p.x && d.z === -p.z) return;
-    if (d.x === p.x && d.z === p.z) return;
+    if (isReverse || isSame) return;
     this.pendingDirection = { ...d };
   }
 
@@ -119,7 +132,7 @@ export class SnakeGame {
    * @returns {{type: string}|null}
    */
   update(dtMs) {
-    if (!this.started || this.paused || this.gameOver) return null;
+    if (!this.started || this.paused || this.gameOver || this.awaitingStart) return null;
 
     this.accumulator += dtMs;
     let event = null;

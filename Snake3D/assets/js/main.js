@@ -5,6 +5,9 @@
 import * as THREE from 'three';
 import { SnakeGame } from './game.js';
 
+// Marca de arranque correcto (usada por el detector de errores de index.html).
+window.__snakeBooted = true;
+
 const GRID = 20;
 const HALF = GRID / 2;
 const HS_KEY = 'snake3d.highscore';
@@ -20,10 +23,14 @@ const finalScoreEl = document.getElementById('final-score');
 const finalHighEl = document.getElementById('final-high');
 const btnPlay = document.getElementById('btn-play');
 const btnPause = document.getElementById('btn-pause');
+const startHint = document.getElementById('start-hint');
 
 // ---------- Estado del juego ----------
 const game = new SnakeGame({ gridSize: GRID, tickMs: 140 });
 let uiState = 'start'; // start | playing | paused | gameover
+
+// Hook de depuración (útil para pruebas automatizadas).
+window.__game = game;
 
 // ---------- Three.js ----------
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -202,6 +209,8 @@ function startGame() {
   game.reset();
   game.started = true;
   game.paused = false;
+  // La serpiente espera la primera dirección para empezar a moverse.
+  game.awaitingStart = true;
   uiState = 'playing';
   hideOverlay();
   updateHud();
@@ -336,6 +345,9 @@ function animate(now) {
 
   renderSnake();
   renderFood();
+
+  // Aviso "presiona una flecha para empezar".
+  startHint.hidden = !(uiState === 'playing' && game.awaitingStart);
 
   // Animación de la comida
   const t = now * 0.001;

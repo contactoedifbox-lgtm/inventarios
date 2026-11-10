@@ -1,3 +1,38 @@
+.start-hint {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--panel);
+  border: 1px solid rgba(124, 255, 178, 0.25);
+  color: var(--accent-2);
+  padding: 14px 22px;
+  border-radius: 12px;
+  font-size: 1rem;
+  z-index: 8;
+  pointer-events: none;
+  animation: hintPulse 1.6s ease-in-out infinite;
+}
+@keyframes hintPulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+.fatal {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  max-width: 90vw;
+  background: #3a0d16;
+  border: 1px solid var(--danger);
+  color: #ffd7de;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  z-index: 20;
+}
+
 :root {
   --bg: #0b1020;
   --panel: rgba(16, 22, 44, 0.92);
