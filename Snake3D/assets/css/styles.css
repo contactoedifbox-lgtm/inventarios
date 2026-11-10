@@ -1,0 +1,153 @@
+:root {
+  --bg: #0b1020;
+  --panel: rgba(16, 22, 44, 0.92);
+  --accent: #2ee6a6;
+  --accent-2: #7cffb2;
+  --text: #e8eeff;
+  --muted: #93a0c8;
+  --danger: #ff5d73;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app { position: fixed; inset: 0; }
+
+#scene { display: block; width: 100%; height: 100%; touch-action: none; }
+
+/* ---------- HUD ---------- */
+#hud {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  pointer-events: none;
+}
+.hud-item {
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid rgba(124, 255, 178, 0.18);
+  border-radius: 12px;
+  padding: 8px 16px;
+  min-width: 92px;
+  backdrop-filter: blur(6px);
+}
+.hud-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.hud-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent-2);
+  line-height: 1.1;
+}
+.hud-btn {
+  margin-left: auto;
+  pointer-events: auto;
+  width: 46px; height: 46px;
+  border-radius: 12px;
+  border: 1px solid rgba(124, 255, 178, 0.25);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: transform .15s ease, background .15s ease;
+}
+.hud-btn:hover { background: rgba(46, 230, 166, 0.18); transform: translateY(-1px); }
+
+/* ---------- Overlay ---------- */
+.overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 50% 40%, rgba(11,16,32,0.55), rgba(11,16,32,0.9));
+  backdrop-filter: blur(3px);
+  transition: opacity .25s ease;
+  z-index: 10;
+}
+.overlay.hidden { opacity: 0; pointer-events: none; }
+.panel {
+  width: min(92vw, 420px);
+  background: var(--panel);
+  border: 1px solid rgba(124, 255, 178, 0.2);
+  border-radius: 20px;
+  padding: 32px 28px;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+}
+.title { font-size: 2.4rem; letter-spacing: 0.08em; font-weight: 800; }
+.title span { color: var(--accent); }
+.text { margin: 14px 0 22px; color: var(--muted); line-height: 1.5; }
+.stats { display: flex; justify-content: center; gap: 28px; margin-bottom: 22px; }
+.stats.hidden { display: none; }
+.stats div { display: flex; flex-direction: column; }
+.stats span {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+.stats strong { font-size: 1.8rem; color: var(--accent-2); }
+.btn {
+  width: 100%;
+  padding: 14px 20px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--accent), #1fb98a);
+  color: #04140d;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.btn:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(46,230,166,0.35); }
+.hint { margin-top: 16px; font-size: 0.78rem; color: var(--muted); }
+
+/* ---------- D-pad (móvil) ---------- */
+.dpad {
+  position: absolute;
+  bottom: 22px; right: 22px;
+  display: grid;
+  grid-template-columns: repeat(3, 56px);
+  grid-template-rows: repeat(3, 56px);
+  gap: 6px;
+  z-index: 5;
+}
+.dpad-btn {
+  border: 1px solid rgba(124,255,178,0.25);
+  background: var(--panel);
+  color: var(--accent-2);
+  border-radius: 12px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  user-select: none;
+  touch-action: none;
+}
+.dpad-btn:active { background: rgba(46,230,166,0.25); }
+.dpad-btn.up { grid-area: 1 / 2; }
+.dpad-btn.left { grid-area: 2 / 1; }
+.dpad-btn.right { grid-area: 2 / 3; }
+.dpad-btn.down { grid-area: 3 / 2; }
+
+/* Ocultar el D-pad en dispositivos con puntero fino (escritorio) */
+@media (hover: hover) and (pointer: fine) {
+  .dpad { display: none; }
+}
+@media (max-width: 520px) {
+  .hud-value { font-size: 1.2rem; }
+  .title { font-size: 2rem; }
+}

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Snake 3D — Juego</title>
+  <meta name="description" content="Juego clásico Snake en 3D con Three.js. Controla la serpiente, come los orbes y crece sin chocar." />
+  <meta name="theme-color" content="#0b1020" />
+  <link rel="canonical" href="https://contactoedifbox-lgtm.github.io/inventarios/Snake3D/" />
+  <meta property="og:title" content="Snake 3D" />
+  <meta property="og:description" content="Juego clásico Snake en 3D con Three.js." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://contactoedifbox-lgtm.github.io/inventarios/Snake3D/" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%90%8D%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <canvas id="scene"></canvas>
+
+    <header id="hud">
+      <div class="hud-item">
+        <span class="hud-label">Puntos</span>
+        <span id="score" class="hud-value">0</span>
+      </div>
+      <div class="hud-item">
+        <span class="hud-label">Récord</span>
+        <span id="highscore" class="hud-value">0</span>
+      </div>
+      <button id="btn-pause" class="hud-btn" type="button" aria-label="Pausa">⏸</button>
+    </header>
+
+    <div id="overlay" class="overlay">
+      <div class="panel">
+        <h1 class="title">SNAKE <span>3D</span></h1>
+        <p id="overlay-text" class="text">Usa las flechas o WASD para moverte. Come los orbes para crecer.</p>
+        <div id="overlay-stats" class="stats hidden">
+          <div><span>Puntos</span><strong id="final-score">0</strong></div>
+          <div><span>Récord</span><strong id="final-high">0</strong></div>
+        </div>
+        <button id="btn-play" class="btn" type="button">Jugar</button>
+        <p class="hint">Espacio = pausa · Enter = reiniciar</p>
+      </div>
+    </div>
+
+    <div id="dpad" class="dpad" aria-hidden="true">
+      <button class="dpad-btn up" data-dir="up" type="button" aria-label="Arriba">▲</button>
+      <button class="dpad-btn left" data-dir="left" type="button" aria-label="Izquierda">◀</button>
+      <button class="dpad-btn right" data-dir="right" type="button" aria-label="Derecha">▶</button>
+      <button class="dpad-btn down" data-dir="down" type="button" aria-label="Abajo">▼</button>
+    </div>
+  </div>
+
+  <script type="module" src="assets/js/main.js"></script>
+</body>
+</html>
