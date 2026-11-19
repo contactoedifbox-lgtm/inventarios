@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply text-ink antialiased;
+    background:
+      radial-gradient(1100px 520px at 100% -10%, #e6f4f6 0%, rgba(230, 244, 246, 0) 60%),
+      linear-gradient(180deg, #f7fafb 0%, #f1f6f7 100%);
+    background-attachment: fixed;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+
+  /* Filas de tabla con realce sutil al pasar el mouse (solo CSS, sin costo en JS) */
+  tbody tr {
+    @apply transition-colors;
+  }
+
+  tbody tr:hover {
+    @apply bg-brand-50/40;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none;
+  }
+
+  .btn:not(:disabled):active {
+    @apply translate-y-px;
+  }
+
+  .btn-primary {
+    @apply btn bg-gradient-to-b from-brand-600 to-brand-700 text-white shadow-sm shadow-brand-700/25 hover:from-brand-700 hover:to-brand-800 hover:shadow-md;
+  }
+
+  .btn-secondary {
+    @apply btn border border-line bg-surface text-ink shadow-sm hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700;
+  }
+
+  .btn-accent {
+    @apply btn bg-gradient-to-b from-accent-600 to-accent-700 text-white shadow-sm shadow-accent-700/25 hover:shadow-md;
+  }
+
+  .btn-danger {
+    @apply btn bg-gradient-to-b from-danger-600 to-danger-700 text-white shadow-sm shadow-danger-700/25 hover:shadow-md;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink shadow-sm outline-none transition-colors placeholder:text-muted focus:border-brand-500 focus:ring-2 focus:ring-brand-100;
+  }
+
+  .label {
+    @apply mb-1 block text-sm font-medium text-muted;
+  }
+
+  .card {
+    @apply rounded-2xl border border-line bg-surface p-5 shadow-[0_1px_2px_rgba(18,38,42,0.04),0_10px_30px_-18px_rgba(18,38,42,0.25)];
+  }
+
+  .card-hover {
+    @apply transition-shadow hover:shadow-[0_2px_4px_rgba(18,38,42,0.06),0_18px_44px_-22px_rgba(18,38,42,0.35)];
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+
+  .badge-brand {
+    @apply badge bg-brand-50 text-brand-700;
+  }
+
+  .badge-success {
+    @apply badge bg-success-50 text-success-700;
+  }
+
+  .badge-warning {
+    @apply badge bg-warning-50 text-warning-700;
+  }
+
+  .badge-danger {
+    @apply badge bg-danger-50 text-danger-700;
+  }
+
+  .badge-neutral {
+    @apply badge bg-slate-100 text-muted;
+  }
+}
