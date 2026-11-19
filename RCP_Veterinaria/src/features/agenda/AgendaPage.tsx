@@ -55,6 +55,16 @@ function mismoInstante(a: string, b: string): boolean {
 const CLIENTE_VACIO = { nombres: '', apellidos: '', rut: '', telefono: '', email: '' };
 const MASCOTA_VACIA = { nombre: '', especie: 'perro' as Especie, raza: '', peso_kg: '' };
 
+const DIAS_NOMBRE: Record<number, string> = {
+  1: 'Lunes',
+  2: 'Martes',
+  3: 'Miercoles',
+  4: 'Jueves',
+  5: 'Viernes',
+  6: 'Sabado',
+  7: 'Domingo',
+};
+
 export function AgendaPage() {
   const { esCliente } = useAuth();
   const [fecha, setFecha] = useState(hoyISO());
@@ -401,6 +411,15 @@ export function AgendaPage() {
   const nombreProfesional = (id: string) =>
     profesionales.find((p) => p.id === id)?.nombre ?? id.slice(0, 8);
 
+  const diasTrabaja = (profesionalId: string) => {
+    const dias = [
+      ...new Set(
+        horarios.filter((h) => h.profesional_id === profesionalId).map((h) => h.dia_semana),
+      ),
+    ].sort((a, b) => a - b);
+    return dias.map((d) => DIAS_NOMBRE[d]).join(', ');
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -484,7 +503,12 @@ export function AgendaPage() {
                   </div>
 
                   {bloquesProfesional.length === 0 ? (
-                    <p className="text-sm text-slate-400">Sin bloques para esta fecha.</p>
+                    <p className="text-sm text-slate-400">
+                      Sin bloques para esta fecha.
+                      {diasTrabaja(profesional.id)
+                        ? ` Trabaja: ${diasTrabaja(profesional.id)}.`
+                        : ' Sin horario definido.'}
+                    </p>
                   ) : (
                     <ul className="space-y-1">
                       {bloquesProfesional.map((bloque) => (
