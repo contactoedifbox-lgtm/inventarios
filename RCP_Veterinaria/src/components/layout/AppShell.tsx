@@ -44,19 +44,21 @@ export function AppShell() {
 
   return (
     <div className="flex min-h-full flex-col">
-      <header className="sticky top-0 z-40 border-b border-line bg-surface/95 shadow-sm backdrop-blur-sm">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4">
-          <div className="flex items-center gap-3">
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-surface shadow-sm ring-1 ring-line">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-r from-brand-700/95 via-brand-600/95 to-accent-600/95 text-white shadow-lg shadow-brand-900/20 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
+          <div className="flex items-center gap-4">
+            <span className="flex h-24 w-24 items-center justify-center rounded-full bg-white/10 shadow-md ring-1 ring-white/25 backdrop-blur-sm">
               <img
                 src={LOGO}
                 alt="Lanka Pet Care"
-                className="h-10 w-10 rounded-full object-cover"
+                className="h-20 w-20 rounded-full object-cover"
               />
             </span>
             <div className="leading-tight">
-              <span className="block text-xl font-bold tracking-tight text-brand-700">Lanka</span>
-              <span className="block text-xs uppercase tracking-[0.18em] text-muted">
+              <span className="block text-2xl font-extrabold tracking-tight text-white drop-shadow-sm">
+                Lanka
+              </span>
+              <span className="block text-xs font-semibold uppercase tracking-[0.22em] text-white/80">
                 Pet Care
               </span>
             </div>
@@ -69,10 +71,10 @@ export function AppShell() {
                 to={enlace.to}
                 end={enlace.end}
                 className={({ isActive }) =>
-                  `rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all ${
+                  `rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all ${
                     isActive
-                      ? 'bg-brand-50 text-brand-700 shadow-sm ring-1 ring-brand-100'
-                      : 'text-muted hover:bg-brand-50 hover:text-brand-700'
+                      ? 'bg-white/20 text-white shadow-sm ring-1 ring-white/30'
+                      : 'text-white/80 hover:bg-white/10 hover:text-white'
                   }`
                 }
               >
@@ -83,28 +85,32 @@ export function AppShell() {
 
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <p className="text-sm font-semibold text-ink">
+              <p className="text-sm font-semibold text-white">
                 {perfil?.nombre_completo ?? 'Sin perfil'}
               </p>
-              <p className="text-xs uppercase tracking-wide text-muted">
+              <p className="text-xs uppercase tracking-wide text-white/70">
                 {perfil ? ETIQUETA_ROL[perfil.rol] : '-'}
               </p>
             </div>
-            <button type="button" className="btn-secondary" onClick={() => void cerrarSesion()}>
+            <button
+              type="button"
+              className="inline-flex items-center justify-center rounded-xl bg-white/10 px-3.5 py-2 text-sm font-semibold text-white ring-1 ring-white/25 transition hover:bg-white/20"
+              onClick={() => void cerrarSesion()}
+            >
               Salir
             </button>
           </div>
         </div>
 
-        <nav className="flex gap-1 overflow-x-auto border-t border-line px-4 py-2 md:hidden">
+        <nav className="flex gap-1 overflow-x-auto border-t border-white/10 px-4 py-2 md:hidden">
           {enlaces.map((enlace) => (
             <NavLink
               key={enlace.to}
               to={enlace.to}
               end={enlace.end}
               className={({ isActive }) =>
-                `whitespace-nowrap rounded-xl px-3 py-1.5 text-sm ${
-                  isActive ? 'bg-brand-50 text-brand-700' : 'text-muted'
+                `whitespace-nowrap rounded-xl px-3 py-1.5 text-sm font-semibold ${
+                  isActive ? 'bg-white/20 text-white' : 'text-white/80'
                 }`
               }
             >
@@ -113,7 +119,7 @@ export function AppShell() {
           ))}
         </nav>
 
-        <div className="h-0.5 w-full bg-gradient-to-r from-brand-600 via-brand-400 to-accent-600" />
+        <div className="h-1 w-full bg-gradient-to-r from-accent-600 via-brand-400 to-brand-600" />
       </header>
 
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
