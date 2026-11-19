@@ -29,6 +29,8 @@ export interface VentaResumen {
   medio_pago: MedioPago;
   total_neto: number;
   total_iva: number;
+  descuento: number;
+  descripcion_descuento: string | null;
   total: number;
   estado: 'completada' | 'anulada';
   created_at: string;

@@ -111,10 +111,14 @@ export async function obtenerIva(): Promise<number> {
 export async function registrarVenta(
   items: ItemVenta[],
   medioPago: MedioPago,
+  descuento = 0,
+  descripcionDescuento?: string | null,
 ): Promise<ResultadoVenta> {
   const { data, error } = await supabase.rpc('registrar_venta', {
     p_items: items,
     p_medio_pago: medioPago,
+    p_descuento: descuento,
+    p_descripcion_descuento: descripcionDescuento || null,
   });
   if (error) throw new Error(error.message);
   return data as ResultadoVenta;
@@ -147,7 +151,7 @@ export async function anularVenta(ventaId: string, motivo: string): Promise<void
 export async function listarVentas(desde: string, hasta: string): Promise<VentaResumen[]> {
   const { data, error } = await supabase
     .from('ventas')
-    .select('id, numero, tipo, medio_pago, total_neto, total_iva, total, estado, created_at, vendedor_id')
+    .select('id, numero, tipo, medio_pago, total_neto, total_iva, descuento, descripcion_descuento, total, estado, created_at, vendedor_id')
     .gte('created_at', desde)
     .lt('created_at', hasta)
     .order('created_at', { ascending: false })

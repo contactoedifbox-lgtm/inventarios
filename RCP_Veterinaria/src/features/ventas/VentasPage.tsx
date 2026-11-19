@@ -37,6 +37,8 @@ export function VentasPage() {
   const { data: productos = [] } = useInventario(busqueda);
   const [lineas, setLineas] = useState<Linea[]>([]);
   const [medioPago, setMedioPago] = useState<MedioPago>('efectivo');
+  const [descuento, setDescuento] = useState(0);
+  const [descripcionDescuento, setDescripcionDescuento] = useState('');
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -139,7 +141,8 @@ export function VentasPage() {
     );
   }
 
-  const total = lineas.reduce((acc, l) => acc + l.producto.precio_venta_total * l.cantidad, 0);
+  const subtotal = lineas.reduce((acc, l) => acc + l.producto.precio_venta_total * l.cantidad, 0);
+  const total = Math.max(0, subtotal - descuento);
 
   async function confirmar() {
     setError(null);
@@ -151,9 +154,16 @@ export function VentasPage() {
     }));
 
     try {
-      const resultado = await registrar.mutateAsync({ items, medioPago });
+      const resultado = await registrar.mutateAsync({
+        items,
+        medioPago,
+        descuento,
+        descripcionDescuento,
+      });
       setMensaje(`Venta #${resultado.numero} registrada por ${formatCLP(resultado.total)}`);
       setLineas([]);
+      setDescuento(0);
+      setDescripcionDescuento('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo registrar la venta');
     }
@@ -388,9 +398,43 @@ export function VentasPage() {
             </select>
           </div>
 
-          <div className="flex items-center justify-between border-t border-slate-200 pt-3">
-            <span className="text-sm text-slate-500">Total estimado</span>
-            <span className="text-lg font-semibold text-slate-800">{formatCLP(total)}</span>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Descuento</label>
+              <input
+                type="number"
+                min={0}
+                className="input"
+                value={descuento}
+                onChange={(e) => setDescuento(Math.max(0, Number(e.target.value)))}
+              />
+            </div>
+            <div>
+              <label className="label">Descripcion del descuento</label>
+              <input
+                className="input"
+                placeholder="Opcional"
+                value={descripcionDescuento}
+                onChange={(e) => setDescripcionDescuento(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1 border-t border-slate-200 pt-3">
+            <div className="flex items-center justify-between text-sm text-slate-500">
+              <span>Subtotal</span>
+              <span>{formatCLP(subtotal)}</span>
+            </div>
+            {descuento > 0 && (
+              <div className="flex items-center justify-between text-sm text-danger-600">
+                <span>Descuento</span>
+                <span>-{formatCLP(descuento)}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-500">Total</span>
+              <span className="text-lg font-semibold text-slate-800">{formatCLP(total)}</span>
+            </div>
           </div>
 
           {mensaje && <p className="text-sm text-success-600">{mensaje}</p>}

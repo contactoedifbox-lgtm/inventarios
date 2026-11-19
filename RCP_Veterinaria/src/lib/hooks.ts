@@ -62,8 +62,17 @@ export function useVentas(desde: string, hasta: string) {
 export function useRegistrarVenta() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ items, medioPago }: { items: ItemVenta[]; medioPago: MedioPago }) =>
-      api.registrarVenta(items, medioPago),
+    mutationFn: ({
+      items,
+      medioPago,
+      descuento,
+      descripcionDescuento,
+    }: {
+      items: ItemVenta[];
+      medioPago: MedioPago;
+      descuento?: number;
+      descripcionDescuento?: string | null;
+    }) => api.registrarVenta(items, medioPago, descuento, descripcionDescuento),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['ventas'] });
       qc.invalidateQueries({ queryKey: ['inventario'] });
