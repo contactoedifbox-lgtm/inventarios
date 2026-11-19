@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { BarcodeScanner } from '@/components/scanner/BarcodeScanner';
 import { Modal } from '@/components/ui/Modal';
 import { useAuth } from '@/features/auth/AuthProvider';
@@ -38,6 +38,44 @@ function estadoEfectivo(reserva: ReservaProducto): ReservaProducto['estado'] {
   return reserva.estado;
 }
 
+type OrdenCampo = 'nombre' | 'stock' | 'precio';
+
+/** Encabezado de columna ordenable con flechas arriba/abajo. */
+function ThOrden({
+  label,
+  campo,
+  actual,
+  dir,
+  onOrdenar,
+  align = 'left',
+}: {
+  label: string;
+  campo: OrdenCampo;
+  actual: OrdenCampo;
+  dir: 'asc' | 'desc';
+  onOrdenar: (campo: OrdenCampo) => void;
+  align?: 'left' | 'right';
+}) {
+  const activo = actual === campo;
+  return (
+    <th className={`py-2 ${align === 'right' ? 'text-right' : ''}`}>
+      <button
+        type="button"
+        className={`inline-flex items-center gap-1 transition-colors hover:text-brand-700 ${
+          activo ? 'text-brand-700' : ''
+        }`}
+        onClick={() => onOrdenar(campo)}
+      >
+        {label}
+        <span className="inline-flex flex-col text-[8px] leading-[8px]">
+          <span className={activo && dir === 'asc' ? 'text-brand-700' : 'text-slate-300'}>▲</span>
+          <span className={activo && dir === 'desc' ? 'text-brand-700' : 'text-slate-300'}>▼</span>
+        </span>
+      </button>
+    </th>
+  );
+}
+
 export function InventarioPage() {
   const { esMaestro, esCliente } = useAuth();
   const [busqueda, setBusqueda] = useState('');
@@ -47,6 +85,8 @@ export function InventarioPage() {
   const [editando, setEditando] = useState<ProductoInventario | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [exportando, setExportando] = useState(false);
+  const [ordenCampo, setOrdenCampo] = useState<OrdenCampo>('nombre');
+  const [ordenDir, setOrdenDir] = useState<'asc' | 'desc'>('asc');
 
   // Reserva de producto
   const [productoReservar, setProductoReservar] = useState<ProductoInventario | null>(null);
@@ -71,6 +111,27 @@ export function InventarioPage() {
   const crearReserva = useCrearReservaProducto();
   const cancelarReserva = useCancelarReservaProducto();
   const marcarRetirada = useMarcarReservaRetirada();
+
+  const productosOrdenados = useMemo(() => {
+    const copia = [...productos];
+    copia.sort((a, b) => {
+      let cmp = 0;
+      if (ordenCampo === 'nombre') cmp = a.nombre.localeCompare(b.nombre, 'es');
+      else if (ordenCampo === 'stock') cmp = a.stock - b.stock;
+      else cmp = a.precio_venta_total - b.precio_venta_total;
+      return ordenDir === 'asc' ? cmp : -cmp;
+    });
+    return copia;
+  }, [productos, ordenCampo, ordenDir]);
+
+  function ordenarPor(campo: OrdenCampo) {
+    if (ordenCampo === campo) {
+      setOrdenDir((dir) => (dir === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setOrdenCampo(campo);
+      setOrdenDir('asc');
+    }
+  }
 
   async function exportar() {
     setExportando(true);
@@ -278,16 +339,36 @@ export function InventarioPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-400">
-                <th className="py-2">Producto</th>
+                <ThOrden
+                  label="Producto"
+                  campo="nombre"
+                  actual={ordenCampo}
+                  dir={ordenDir}
+                  onOrdenar={ordenarPor}
+                />
                 <th className="py-2">Descripcion</th>
-                <th className="py-2 text-right">Stock</th>
-                <th className="py-2 text-right">Precio</th>
+                <ThOrden
+                  label="Stock"
+                  campo="stock"
+                  actual={ordenCampo}
+                  dir={ordenDir}
+                  onOrdenar={ordenarPor}
+                  align="right"
+                />
+                <ThOrden
+                  label="Precio"
+                  campo="precio"
+                  actual={ordenCampo}
+                  dir={ordenDir}
+                  onOrdenar={ordenarPor}
+                  align="right"
+                />
                 {esMaestro && <th className="py-2 text-right">Costo</th>}
                 <th className="py-2" />
               </tr>
             </thead>
             <tbody>
-              {productos.map((producto) => (
+              {productosOrdenados.map((producto) => (
                 <tr key={producto.id} className="border-b border-slate-100">
                   <td className="py-2">
                     <span className="font-medium text-slate-700">{producto.nombre}</span>

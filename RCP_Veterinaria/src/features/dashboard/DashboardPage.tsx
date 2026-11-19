@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { RangoFiltro } from '@/components/ui/RangoFiltro';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { useDashboard, useInventario, useRanking, useReservasResumen } from '@/lib/hooks';
+import { useDashboard, useRanking, useReservasResumen } from '@/lib/hooks';
 import { formatCLP, formatFecha } from '@/lib/format';
 import { hoyISO, rangoDe, type RangoTipo } from '@/lib/dateRanges';
 
@@ -49,10 +48,7 @@ export function DashboardPage() {
 
   const { data: resumen, isLoading } = useDashboard(rango.desde, rango.hasta);
   const { data: reservas } = useReservasResumen();
-  const { data: productos = [] } = useInventario('');
   const { data: ranking = [] } = useRanking(rangoRanking.desde, rangoRanking.hasta);
-
-  const alertas = productos.filter((producto) => producto.stock <= STOCK_ALERTA);
 
   const masVendidos = [...ranking].sort((a, b) => b.unidades - a.unidades).slice(0, 10);
   const menosVendidos = [...ranking]
@@ -87,32 +83,6 @@ export function DashboardPage() {
           />
           <Kpi titulo="Agotados" valor={String(inventario?.agotados ?? 0)} tono="red" />
         </div>
-
-        {alertas.length > 0 && (
-          <details className="card border-warning-100 bg-warning-50" open>
-            <summary className="cursor-pointer text-sm font-semibold text-warning-700">
-              ⚠ {alertas.length} producto(s) con stock de {STOCK_ALERTA} o menos
-            </summary>
-            <ul className="mt-3 divide-y divide-warning-100">
-              {alertas.map((producto) => (
-                <li key={producto.id} className="flex items-center justify-between py-2 text-sm">
-                  <span className="text-warning-700">
-                    {producto.nombre}
-                    {producto.codigo_barras && (
-                      <span className="ml-2 text-xs text-warning-600">{producto.codigo_barras}</span>
-                    )}
-                  </span>
-                  <span className="font-semibold text-warning-700">
-                    {producto.stock} u. (min {producto.stock_minimo})
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <Link to="/inventario" className="mt-3 inline-block text-sm text-warning-700 underline">
-              Ir a inventario
-            </Link>
-          </details>
-        )}
       </section>
 
       {/* Ventas */}
