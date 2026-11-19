@@ -21,6 +21,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: RCP_Veterinaria/package-lock.json
+
+      - name: Instalar dependencias de RCP_Veterinaria
+        working-directory: RCP_Veterinaria
+        run: npm ci
+
+      - name: Build de RCP_Veterinaria
+        working-directory: RCP_Veterinaria
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
+          VITE_BASE_PATH: /inventarios/RCP_Veterinaria/
+        run: npm run build
+
       - name: Generar nueva-app/config.js desde los secretos
         env:
           N8N_WEBHOOK_OCR_URL: ${{ secrets.N8N_WEBHOOK_OCR_URL }}
@@ -38,13 +58,29 @@ jobs:
             echo "};"
           } > nueva-app/config.js
 
+      - name: Ensamblar sitio para Pages
+        run: |
+          mkdir -p staging
+          rsync -a \
+            --exclude '.git' \
+            --exclude 'node_modules' \
+            --exclude 'RCP_Veterinaria/node_modules' \
+            --exclude 'RCP_Veterinaria/src' \
+            --exclude 'RCP_Veterinaria/supabase' \
+            --exclude 'RCP_Veterinaria/tests' \
+            --exclude 'RCP_Veterinaria/plans' \
+            --exclude 'RCP_Veterinaria/dist' \
+            ./ staging/
+          mkdir -p staging/RCP_Veterinaria
+          cp -r RCP_Veterinaria/dist/. staging/RCP_Veterinaria/
+
       - name: Configurar Pages
         uses: actions/configure-pages@v5
 
       - name: Empaquetar el sitio
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: staging
 
   deploy:
     needs: build
