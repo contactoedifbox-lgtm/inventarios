@@ -53,18 +53,23 @@ export interface ProductoInput {
   nombre: string;
   descripcion?: string | null;
   stock_minimo: number;
-  precio_venta_neto: number;
+  precio_venta_total: number;
 }
 
-export async function crearProducto(input: ProductoInput): Promise<void> {
-  const { error } = await supabase.from('productos').insert({
-    codigo_barras: input.codigo_barras || null,
-    nombre: input.nombre,
-    descripcion: input.descripcion || null,
-    stock_minimo: input.stock_minimo,
-    precio_venta_neto: input.precio_venta_neto,
-  });
+export async function crearProducto(input: ProductoInput): Promise<string> {
+  const { data, error } = await supabase
+    .from('productos')
+    .insert({
+      codigo_barras: input.codigo_barras || null,
+      nombre: input.nombre,
+      descripcion: input.descripcion || null,
+      stock_minimo: input.stock_minimo,
+      precio_venta_total: input.precio_venta_total,
+    })
+    .select('id')
+    .single();
   if (error) throw new Error(error.message);
+  return data.id as string;
 }
 
 export async function actualizarProducto(id: string, input: ProductoInput): Promise<void> {
@@ -75,10 +80,29 @@ export async function actualizarProducto(id: string, input: ProductoInput): Prom
       nombre: input.nombre,
       descripcion: input.descripcion || null,
       stock_minimo: input.stock_minimo,
-      precio_venta_neto: input.precio_venta_neto,
+      precio_venta_total: input.precio_venta_total,
     })
     .eq('id', id);
   if (error) throw new Error(error.message);
+}
+
+/** Carga stock inicial (o repone) mediante la RPC registrar_ingreso. */
+export async function registrarIngreso(
+  items: { producto_id: string; cantidad: number }[],
+): Promise<void> {
+  const { error } = await supabase.rpc('registrar_ingreso', { p_items: items });
+  if (error) throw new Error(error.message);
+}
+
+/** Porcentaje de IVA configurado (por defecto 19). */
+export async function obtenerIva(): Promise<number> {
+  const { data, error } = await supabase
+    .from('configuracion')
+    .select('iva_porcentaje')
+    .eq('id', true)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return Number(data?.iva_porcentaje ?? 19);
 }
 
 // ---------------------------------------------------------------------------

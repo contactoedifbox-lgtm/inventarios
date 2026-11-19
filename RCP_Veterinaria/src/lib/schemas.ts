@@ -31,7 +31,8 @@ export const productoSchema = z.object({
   nombre: z.string().trim().min(1, 'El nombre es obligatorio').max(200),
   descripcion: z.string().trim().max(500).optional().or(z.literal('')),
   stock_minimo: z.coerce.number().int().min(0).default(0),
-  precio_venta_neto: z.coerce.number().int().min(0, 'El precio no puede ser negativo'),
+  precio_venta_total: z.coerce.number().int().min(0, 'El precio no puede ser negativo'),
+  stock_inicial: z.coerce.number().int().min(0).default(0),
 });
 
 export const ventaItemSchema = z.object({

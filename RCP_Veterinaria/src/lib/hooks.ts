@@ -31,6 +31,23 @@ export function useActualizarProducto() {
   });
 }
 
+export function useRegistrarIngreso() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (items: { producto_id: string; cantidad: number }[]) =>
+      api.registrarIngreso(items),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['inventario'] }),
+  });
+}
+
+export function useIva() {
+  return useQuery({
+    queryKey: ['iva'],
+    queryFn: api.obtenerIva,
+    staleTime: STALE_TIME.clientes,
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Ventas
 // ---------------------------------------------------------------------------

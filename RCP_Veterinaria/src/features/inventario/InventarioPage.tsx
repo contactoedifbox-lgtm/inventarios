@@ -9,7 +9,9 @@ import {
   useCrearProducto,
   useCrearReservaProducto,
   useInventario,
+  useIva,
   useMarcarReservaRetirada,
+  useRegistrarIngreso,
   useReservasProducto,
 } from '@/lib/hooks';
 import { formatCLP, formatFechaHora } from '@/lib/format';
@@ -21,7 +23,8 @@ const FORM_VACIO = {
   nombre: '',
   descripcion: '',
   stock_minimo: 0,
-  precio_venta_neto: 0,
+  precio_venta_total: 0,
+  stock_inicial: 0,
 };
 
 function estadoEfectivo(reserva: ReservaProducto): ReservaProducto['estado'] {
@@ -56,6 +59,8 @@ export function InventarioPage() {
   const { data: productos = [], isLoading } = useInventario(debounced);
   const crear = useCrearProducto();
   const actualizar = useActualizarProducto();
+  const registrarIngreso = useRegistrarIngreso();
+  const { data: iva = 19 } = useIva();
   const { data: reservas = [] } = useReservasProducto();
   const crearReserva = useCrearReservaProducto();
   const cancelarReserva = useCancelarReservaProducto();
@@ -119,7 +124,8 @@ export function InventarioPage() {
       nombre: producto.nombre,
       descripcion: producto.descripcion ?? '',
       stock_minimo: producto.stock_minimo,
-      precio_venta_neto: producto.precio_venta_neto,
+      precio_venta_total: producto.precio_venta_total,
+      stock_inicial: 0,
     });
     setError(null);
     setModalAbierto(true);
@@ -145,7 +151,12 @@ export function InventarioPage() {
       if (editando) {
         await actualizar.mutateAsync({ id: editando.id, input: parsed.data });
       } else {
-        await crear.mutateAsync(parsed.data);
+        const productoId = await crear.mutateAsync(parsed.data);
+        if (parsed.data.stock_inicial > 0) {
+          await registrarIngreso.mutateAsync([
+            { producto_id: productoId, cantidad: parsed.data.stock_inicial },
+          ]);
+        }
       }
       cerrarModal();
     } catch (err) {
@@ -183,6 +194,9 @@ export function InventarioPage() {
   // El personal ve todas las reservas; el cliente solo las suyas (lo limita el RLS),
   // incluyendo el historial, y puede cancelar las que estan pendientes.
   const reservasVisibles = reservas;
+
+  const netoCalculado = Math.round(form.precio_venta_total / (1 + iva / 100));
+  const ivaCalculado = form.precio_venta_total - netoCalculado;
 
   return (
     <div className="space-y-6">
@@ -401,13 +415,13 @@ export function InventarioPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label">Precio neto</label>
+              <label className="label">Precio total (con IVA)</label>
               <input
                 type="number"
                 min={0}
                 className="input"
-                value={form.precio_venta_neto}
-                onChange={(e) => setForm({ ...form, precio_venta_neto: Number(e.target.value) })}
+                value={form.precio_venta_total}
+                onChange={(e) => setForm({ ...form, precio_venta_total: Number(e.target.value) })}
               />
             </div>
             <div>
@@ -422,10 +436,29 @@ export function InventarioPage() {
             </div>
           </div>
 
+          <div className="rounded-lg bg-canvas p-3 text-xs text-muted">
+            Neto: <strong>{formatCLP(netoCalculado)}</strong> · IVA ({iva}%):{' '}
+            <strong>{formatCLP(ivaCalculado)}</strong> · Total:{' '}
+            <strong>{formatCLP(form.precio_venta_total)}</strong>
+          </div>
+
+          {!editando && (
+            <div>
+              <label className="label">Cantidad inicial (stock)</label>
+              <input
+                type="number"
+                min={0}
+                className="input"
+                value={form.stock_inicial}
+                onChange={(e) => setForm({ ...form, stock_inicial: Number(e.target.value) })}
+              />
+            </div>
+          )}
+
           {error && <p className="text-sm text-danger-600">{error}</p>}
 
           <p className="text-xs text-slate-400">
-            El IVA y el precio total se calculan en el servidor. El stock no se edita aqui.
+            El neto y el IVA se calculan a partir del precio total. El stock se carga como ingreso.
           </p>
 
           <div className="flex gap-2">
