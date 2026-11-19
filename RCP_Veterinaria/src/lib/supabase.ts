@@ -10,6 +10,22 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? '';
  */
 export const isSupabaseConfigured = Boolean(url && anonKey);
 
+/**
+ * Indica si la URL actual trae un enlace de recuperacion o invitacion de
+ * Supabase. Se lee al cargar el modulo, antes de que supabase-js limpie la URL.
+ */
+export const esEnlaceAuth = (() => {
+  if (typeof window === 'undefined') return false;
+  const hash = window.location.hash;
+  const search = window.location.search;
+  return (
+    hash.includes('type=recovery') ||
+    hash.includes('type=invite') ||
+    search.includes('type=recovery') ||
+    search.includes('type=invite')
+  );
+})();
+
 export const supabase = createClient(
   isSupabaseConfigured ? url : 'https://placeholder.supabase.co',
   isSupabaseConfigured ? anonKey : 'placeholder-anon-key',
@@ -17,10 +33,10 @@ export const supabase = createClient(
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      // Necesario para el retorno de OAuth (Google) y la confirmacion por correo.
-      // Con HashRouter se usa PKCE: el codigo llega como ?code=... en la query,
-      // que no colisiona con el fragmento (#/ruta) del router.
-      detectSessionInUrl: true,
+      // El retorno de OAuth y los enlaces de recuperacion/invitacion se procesan
+      // manualmente en AuthProvider para garantizar que la sesion sea la del
+      // usuario del enlace (y no la del usuario que ya estaba conectado).
+      detectSessionInUrl: false,
       flowType: 'pkce',
     },
   },

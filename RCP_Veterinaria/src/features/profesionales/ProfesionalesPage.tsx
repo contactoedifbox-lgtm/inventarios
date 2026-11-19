@@ -147,7 +147,7 @@ export function ProfesionalesPage() {
           email: form.email.trim(),
           nombre_completo: form.nombre.trim(),
           rol: 'vendedor',
-          redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}#/establecer-clave`,
+          redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}`,
         });
         await vincular.mutateAsync({ profesionalId, perfilId: resultado.id });
 

@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { useEffect } from 'react';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth, type Rol } from '@/features/auth/AuthProvider';
 
 interface Enlace {
@@ -28,7 +29,16 @@ const ETIQUETA_ROL: Record<Rol, string> = {
 const LOGO = `${import.meta.env.BASE_URL}logo-lanka.jpeg`;
 
 export function AppShell() {
-  const { perfil, cerrarSesion } = useAuth();
+  const { perfil, cerrarSesion, modoRecuperacion } = useAuth();
+  const navigate = useNavigate();
+
+  // Si el usuario llego por un enlace de recuperacion/invitacion, lo llevamos a
+  // definir su contrasena.
+  useEffect(() => {
+    if (modoRecuperacion) {
+      navigate('/establecer-clave', { replace: true });
+    }
+  }, [modoRecuperacion, navigate]);
 
   const enlaces = ENLACES.filter((enlace) => perfil && enlace.roles.includes(perfil.rol));
 

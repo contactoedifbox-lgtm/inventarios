@@ -5,7 +5,7 @@ import { useAuth } from './AuthProvider';
 const LOGO = `${import.meta.env.BASE_URL}logo-lanka.jpeg`;
 
 export function EstablecerClavePage() {
-  const { actualizarClave, session } = useAuth();
+  const { actualizarClave, session, modoRecuperacion } = useAuth();
   const navigate = useNavigate();
   const [password, setPassword] = useState('');
   const [password2, setPassword2] = useState('');
@@ -48,10 +48,14 @@ export function EstablecerClavePage() {
             />
           </span>
           <h1 className="mt-3 text-2xl font-bold text-brand-700">Establece tu contrasena</h1>
-          <p className="mt-1 text-sm text-muted">Crea la contrasena con la que ingresaras</p>
+          <p className="mt-1 text-sm text-muted">
+            {session?.user?.email
+              ? `Cuenta: ${session.user.email}`
+              : 'Crea la contrasena con la que ingresaras'}
+          </p>
         </div>
 
-        {!session ? (
+        {!session || !modoRecuperacion ? (
           <div className="card space-y-3 text-center">
             <p className="text-sm text-warning-700">
               El enlace no es valido o ya expiro. Solicita uno nuevo desde la pantalla de ingreso.
@@ -62,6 +66,10 @@ export function EstablecerClavePage() {
           </div>
         ) : (
           <form className="card space-y-4" onSubmit={handleSubmit}>
+            <p className="rounded-lg bg-brand-50 p-3 text-xs text-brand-700">
+              Vas a crear la contrasena de <strong>{session.user.email}</strong>. Si no es tu
+              cuenta, cierra esta pagina.
+            </p>
             <div>
               <label className="label" htmlFor="password">
                 Nueva contrasena

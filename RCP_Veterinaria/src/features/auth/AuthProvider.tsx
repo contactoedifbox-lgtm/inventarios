@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { esEnlaceAuth, isSupabaseConfigured, supabase } from '@/lib/supabase';
 
 export type Rol = 'maestro' | 'vendedor' | 'cliente';
 
@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [cargando, setCargando] = useState(true);
-  const [modoRecuperacion, setModoRecuperacion] = useState(false);
+  const [modoRecuperacion, setModoRecuperacion] = useState(esEnlaceAuth);
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -65,7 +65,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    void supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    let activo = true;
+
+    async function inicializar() {
+      const hash = window.location.hash;
+      const search = window.location.search;
+      const paramsHash = new URLSearchParams(hash.replace(/^#/, ''));
+      const tipo = paramsHash.get('type');
+      const accessToken = paramsHash.get('access_token');
+      const refreshToken = paramsHash.get('refresh_token');
+      const code = new URLSearchParams(search).get('code');
+
+      // Enlaces de recuperacion/invitacion: cerramos la sesion actual para
+      // garantizar que la contrasena se cambie al usuario del enlace y no al
+      // usuario que ya estaba conectado (p.ej. el Maestro).
+      if ((tipo === 'recovery' || tipo === 'invite') && accessToken && refreshToken) {
+        await supabase.auth.signOut();
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (!error && activo) setModoRecuperacion(true);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (code) {
+        // Retorno de OAuth (Google) con PKCE.
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      }
+
+      const { data } = await supabase.auth.getSession();
+      if (activo) setSession(data.session);
+    }
+
+    void inicializar();
 
     const { data: sub } = supabase.auth.onAuthStateChange((evento, nuevaSesion) => {
       setSession(nuevaSesion);
@@ -74,7 +108,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      activo = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
