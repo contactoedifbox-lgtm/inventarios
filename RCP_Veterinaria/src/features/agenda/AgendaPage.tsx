@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { RangoFiltro } from '@/components/ui/RangoFiltro';
+import { CampoRut } from '@/components/ui/CampoRut';
+import { CampoTelefono } from '@/components/ui/CampoTelefono';
 import { useAuth } from '@/features/auth/AuthProvider';
 import {
   useAgendaOcupacion,
@@ -20,7 +22,7 @@ import {
   useProfesionales,
   useReservasDia,
 } from '@/lib/hooks';
-import { formatFecha, formatFechaHora, formatHora } from '@/lib/format';
+import { formatFecha, formatFechaHora, formatHora, normalizarTelefono } from '@/lib/format';
 import {
   chileAUtc,
   diaSemanaISO,
@@ -30,7 +32,7 @@ import {
   type RangoTipo,
 } from '@/lib/dateRanges';
 import { clienteSchema, mascotaSchema } from '@/lib/schemas';
-import { formatearRut, validarRut } from '@/lib/rut';
+import { normalizarRut } from '@/lib/rut';
 import type { Especie, Profesional, ReservaDetalle } from '@/lib/types';
 
 type EstadoBloque = 'libre' | 'reservado' | 'fuera_horario' | 'cerrado';
@@ -270,8 +272,8 @@ export function AgendaPage() {
       const id = await crearCliente.mutateAsync({
         nombres: clienteParsed.data.nombres,
         apellidos: clienteParsed.data.apellidos,
-        rut: clienteParsed.data.rut,
-        telefono: clienteParsed.data.telefono,
+        rut: normalizarRut(clienteParsed.data.rut),
+        telefono: normalizarTelefono(clienteParsed.data.telefono),
         email: clienteParsed.data.email || null,
       });
       await crearMascota.mutateAsync({
@@ -955,26 +957,17 @@ export function AgendaPage() {
                       }
                     />
                     <div>
-                      <input
-                        className="input"
-                        placeholder="RUT 12.345.678-5"
+                      <CampoRut
                         value={nuevoCliente.rut}
-                        onChange={(e) =>
-                          setNuevoCliente({ ...nuevoCliente, rut: formatearRut(e.target.value) })
-                        }
+                        onChange={(valor) => setNuevoCliente({ ...nuevoCliente, rut: valor })}
                       />
-                      {nuevoCliente.rut.length > 3 && !validarRut(nuevoCliente.rut) && (
-                        <p className="mt-1 text-xs text-danger-600">RUT invalido</p>
-                      )}
                     </div>
-                    <input
-                      className="input"
-                      placeholder="Telefono"
-                      value={nuevoCliente.telefono}
-                      onChange={(e) =>
-                        setNuevoCliente({ ...nuevoCliente, telefono: e.target.value })
-                      }
-                    />
+                    <div>
+                      <CampoTelefono
+                        value={nuevoCliente.telefono}
+                        onChange={(valor) => setNuevoCliente({ ...nuevoCliente, telefono: valor })}
+                      />
+                    </div>
                     <input
                       className="input sm:col-span-2"
                       placeholder="Email (opcional)"

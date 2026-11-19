@@ -1,5 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { CampoRut } from '@/components/ui/CampoRut';
+import { CampoTelefono } from '@/components/ui/CampoTelefono';
 import { useActualizarMisDatos, useMisDatos } from '@/lib/hooks';
+import { normalizarRut } from '@/lib/rut';
+import { normalizarTelefono } from '@/lib/format';
 
 export function MisDatosPage() {
   const { data, isLoading } = useMisDatos();
@@ -52,8 +56,8 @@ export function MisDatosPage() {
       await actualizar.mutateAsync({
         nombres: form.nombres,
         apellidos: form.apellidos,
-        rut: form.rut,
-        telefono: form.telefono,
+        rut: normalizarRut(form.rut),
+        telefono: normalizarTelefono(form.telefono),
       });
       setOk(true);
     } catch (err) {
@@ -100,23 +104,20 @@ export function MisDatosPage() {
             <label className="label" htmlFor="rut">
               RUT
             </label>
-            <input
+            <CampoRut
               id="rut"
-              className="input"
-              placeholder="11111111-1"
               value={form.rut}
-              onChange={(e) => setForm({ ...form, rut: e.target.value })}
+              onChange={(valor) => setForm({ ...form, rut: valor })}
             />
           </div>
           <div>
             <label className="label" htmlFor="telefono">
               Telefono
             </label>
-            <input
+            <CampoTelefono
               id="telefono"
-              className="input"
               value={form.telefono}
-              onChange={(e) => setForm({ ...form, telefono: e.target.value })}
+              onChange={(valor) => setForm({ ...form, telefono: valor })}
             />
           </div>
         </div>

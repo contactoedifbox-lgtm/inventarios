@@ -17,5 +17,7 @@ describe('formato y calculos', () => {
     expect(normalizarTelefono('9 1234 5678')).toBe('+56912345678');
     expect(normalizarTelefono('+56 9 1234 5678')).toBe('+56912345678');
     expect(normalizarTelefono('56912345678')).toBe('+56912345678');
+    expect(normalizarTelefono('+56912345678')).toBe('+56912345678');
+    expect(normalizarTelefono('12345678')).toBe('+56912345678');
   });
 });

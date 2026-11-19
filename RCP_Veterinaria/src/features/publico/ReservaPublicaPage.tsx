@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { CampoRut } from '@/components/ui/CampoRut';
+import { CampoTelefono } from '@/components/ui/CampoTelefono';
 import {
   useConfigPublica,
   useCrearReservaPublica,
@@ -6,8 +8,8 @@ import {
   useProfesionalesPublicos,
 } from '@/lib/hooks';
 import { reservaPublicaSchema } from '@/lib/schemas';
-import { formatearRut, validarRut } from '@/lib/rut';
-import { formatFechaHora } from '@/lib/format';
+import { normalizarRut } from '@/lib/rut';
+import { formatFechaHora, normalizarTelefono } from '@/lib/format';
 import type { Especie } from '@/lib/types';
 
 declare global {
@@ -117,8 +119,8 @@ export function ReservaPublicaPage() {
         cliente: {
           nombres: cliente.nombres,
           apellidos: cliente.apellidos,
-          rut: cliente.rut,
-          telefono: cliente.telefono,
+          rut: normalizarRut(cliente.rut),
+          telefono: normalizarTelefono(cliente.telefono),
           email: cliente.email || undefined,
         },
         mascota: {
@@ -232,22 +234,17 @@ export function ReservaPublicaPage() {
               onChange={(e) => setCliente({ ...cliente, apellidos: e.target.value })}
             />
             <div>
-              <input
-                className="input"
-                placeholder="RUT 12.345.678-5"
+              <CampoRut
                 value={cliente.rut}
-                onChange={(e) => setCliente({ ...cliente, rut: formatearRut(e.target.value) })}
+                onChange={(valor) => setCliente({ ...cliente, rut: valor })}
               />
-              {cliente.rut.length > 3 && !validarRut(cliente.rut) && (
-                <p className="mt-1 text-xs text-danger-600">RUT invalido</p>
-              )}
             </div>
-            <input
-              className="input"
-              placeholder="Telefono"
-              value={cliente.telefono}
-              onChange={(e) => setCliente({ ...cliente, telefono: e.target.value })}
-            />
+            <div>
+              <CampoTelefono
+                value={cliente.telefono}
+                onChange={(valor) => setCliente({ ...cliente, telefono: valor })}
+              />
+            </div>
             <input
               className="input sm:col-span-2"
               placeholder="Email (opcional)"

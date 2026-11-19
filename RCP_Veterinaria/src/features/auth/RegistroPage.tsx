@@ -1,7 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { CampoRut } from '@/components/ui/CampoRut';
+import { CampoTelefono } from '@/components/ui/CampoTelefono';
 import { useAuth } from './AuthProvider';
 import { registroClienteSchema } from '@/lib/schemas';
+import { normalizarRut } from '@/lib/rut';
+import { normalizarTelefono } from '@/lib/format';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 const LOGO = `${import.meta.env.BASE_URL}logo-lanka.jpeg`;
@@ -45,8 +49,8 @@ export function RegistroPage() {
       const { requiereConfirmacion } = await registrarse({
         nombres: resultado.data.nombres,
         apellidos: resultado.data.apellidos,
-        rut: resultado.data.rut,
-        telefono: resultado.data.telefono,
+        rut: normalizarRut(resultado.data.rut),
+        telefono: normalizarTelefono(resultado.data.telefono),
         email: resultado.data.email,
         password: resultado.data.password,
       });
@@ -143,25 +147,21 @@ export function RegistroPage() {
               <label className="label" htmlFor="rut">
                 RUT
               </label>
-              <input
+              <CampoRut
                 id="rut"
-                className="input"
-                placeholder="11111111-1"
                 value={form.rut}
-                onChange={(e) => setForm({ ...form, rut: e.target.value })}
+                onChange={(valor) => setForm({ ...form, rut: valor })}
               />
             </div>
             <div>
               <label className="label" htmlFor="telefono">
                 Telefono
               </label>
-              <input
+              <CampoTelefono
                 id="telefono"
-                className="input"
                 autoComplete="tel"
-                placeholder="+56 9 1234 5678"
                 value={form.telefono}
-                onChange={(e) => setForm({ ...form, telefono: e.target.value })}
+                onChange={(valor) => setForm({ ...form, telefono: valor })}
               />
             </div>
           </div>

@@ -43,12 +43,15 @@ export function formatFechaHora(iso: string | Date): string {
   }).format(fecha);
 }
 
-/** Normaliza un telefono chileno a +569XXXXXXXX. */
+/**
+ * Normaliza un telefono chileno a +569XXXXXXXX.
+ * Acepta +569XXXXXXXX, 569XXXXXXXX, 9XXXXXXXX, XXXXXXXX (8 digitos) y variantes
+ * con espacios, puntos o guiones.
+ */
 export function normalizarTelefono(telefono: string): string {
-  const digitos = telefono.replace(/\D/g, '');
-  if (digitos.startsWith('569')) return `+${digitos}`;
-  if (digitos.startsWith('56')) return `+${digitos}`;
-  if (digitos.startsWith('9')) return `+56${digitos}`;
+  let digitos = telefono.replace(/\D/g, '');
+  if (digitos.startsWith('56')) digitos = digitos.slice(2);
+  if (digitos.length === 8) digitos = `9${digitos}`;
   return `+56${digitos}`;
 }
 

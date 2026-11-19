@@ -1,5 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Modal } from '@/components/ui/Modal';
+import { CampoRut } from '@/components/ui/CampoRut';
+import { CampoTelefono } from '@/components/ui/CampoTelefono';
 import { useAuth } from '@/features/auth/AuthProvider';
 import {
   useCrearCliente,
@@ -8,7 +10,8 @@ import {
   useEliminarCliente,
 } from '@/lib/hooks';
 import { clienteSchema, mascotaSchema } from '@/lib/schemas';
-import { formatearRut, validarRut } from '@/lib/rut';
+import { normalizarRut } from '@/lib/rut';
+import { normalizarTelefono } from '@/lib/format';
 import type { Especie } from '@/lib/types';
 
 const CLIENTE_VACIO = { nombres: '', apellidos: '', rut: '', telefono: '', email: '' };
@@ -83,8 +86,8 @@ export function ClientesPage() {
       const clienteId = await crearCliente.mutateAsync({
         nombres: clienteParsed.data.nombres,
         apellidos: clienteParsed.data.apellidos,
-        rut: clienteParsed.data.rut,
-        telefono: clienteParsed.data.telefono,
+        rut: normalizarRut(clienteParsed.data.rut),
+        telefono: normalizarTelefono(clienteParsed.data.telefono),
         email: clienteParsed.data.email || null,
       });
 
@@ -199,22 +202,16 @@ export function ClientesPage() {
               </div>
               <div>
                 <label className="label">RUT</label>
-                <input
-                  className="input"
-                  placeholder="12.345.678-5"
+                <CampoRut
                   value={cliente.rut}
-                  onChange={(e) => setCliente({ ...cliente, rut: formatearRut(e.target.value) })}
+                  onChange={(valor) => setCliente({ ...cliente, rut: valor })}
                 />
-                {cliente.rut.length > 3 && !validarRut(cliente.rut) && (
-                  <p className="mt-1 text-xs text-danger-600">RUT invalido</p>
-                )}
               </div>
               <div>
                 <label className="label">Telefono</label>
-                <input
-                  className="input"
+                <CampoTelefono
                   value={cliente.telefono}
-                  onChange={(e) => setCliente({ ...cliente, telefono: e.target.value })}
+                  onChange={(valor) => setCliente({ ...cliente, telefono: valor })}
                 />
               </div>
               <div className="sm:col-span-2">
