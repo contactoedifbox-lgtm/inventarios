@@ -1,6 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Modal } from '@/components/ui/Modal';
-import { useCrearCliente, useCrearMascota, useClientesConMascotas } from '@/lib/hooks';
+import { useAuth } from '@/features/auth/AuthProvider';
+import {
+  useCrearCliente,
+  useCrearMascota,
+  useClientesConMascotas,
+  useEliminarCliente,
+} from '@/lib/hooks';
 import { clienteSchema, mascotaSchema } from '@/lib/schemas';
 import { formatearRut, validarRut } from '@/lib/rut';
 import type { Especie } from '@/lib/types';
@@ -24,6 +30,21 @@ export function ClientesPage() {
   const { data: clientes = [], isLoading } = useClientesConMascotas(debounced);
   const crearCliente = useCrearCliente();
   const crearMascota = useCrearMascota();
+  const eliminarCliente = useEliminarCliente();
+  const { esMaestro } = useAuth();
+  const [porEliminar, setPorEliminar] = useState<{ id: string; nombre: string } | null>(null);
+  const [errorEliminar, setErrorEliminar] = useState<string | null>(null);
+
+  async function confirmarEliminar() {
+    if (!porEliminar) return;
+    setErrorEliminar(null);
+    try {
+      await eliminarCliente.mutateAsync(porEliminar.id);
+      setPorEliminar(null);
+    } catch (err) {
+      setErrorEliminar(err instanceof Error ? err.message : 'No se pudo eliminar');
+    }
+  }
 
   function abrirModal() {
     setCliente(CLIENTE_VACIO);
@@ -113,6 +134,7 @@ export function ClientesPage() {
                 <th className="py-2">Telefono</th>
                 <th className="py-2">Email</th>
                 <th className="py-2">Mascotas</th>
+                {esMaestro && <th className="py-2 text-right">Acciones</th>}
               </tr>
             </thead>
             <tbody>
@@ -131,6 +153,22 @@ export function ClientesPage() {
                           .map((m) => `${m.nombre} (${m.especie})`)
                           .join(', ')}
                   </td>
+                  {esMaestro && (
+                    <td className="py-2 text-right">
+                      <button
+                        type="button"
+                        className="text-danger-600 hover:underline"
+                        onClick={() =>
+                          setPorEliminar({
+                            id: registro.id,
+                            nombre: `${registro.nombres} ${registro.apellidos}`,
+                          })
+                        }
+                      >
+                        Eliminar
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -249,6 +287,33 @@ export function ClientesPage() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        open={Boolean(porEliminar)}
+        onClose={() => setPorEliminar(null)}
+        title="Eliminar cliente"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted">
+            Vas a eliminar a <strong>{porEliminar?.nombre}</strong>, junto con sus mascotas y sus
+            reservas. Esta accion no se puede deshacer.
+          </p>
+          {errorEliminar && <p className="text-sm text-danger-600">{errorEliminar}</p>}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="btn-danger flex-1"
+              disabled={eliminarCliente.isPending}
+              onClick={() => void confirmarEliminar()}
+            >
+              {eliminarCliente.isPending ? 'Eliminando...' : 'Eliminar'}
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => setPorEliminar(null)}>
+              Cancelar
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

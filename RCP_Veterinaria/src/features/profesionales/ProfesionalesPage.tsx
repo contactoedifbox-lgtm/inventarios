@@ -5,8 +5,11 @@ import {
   useCrearHorario,
   useCrearProfesional,
   useEliminarHorario,
+  useEliminarProfesional,
   useHorariosSemanales,
+  useInvitarUsuario,
   useProfesionalesTodos,
+  useVincularPerfilProfesional,
 } from '@/lib/hooks';
 import type { AreaAgenda, HorarioSemanal, Profesional } from '@/lib/types';
 
@@ -18,6 +21,7 @@ const FORM_VACIO = {
   color: '',
   orden: 0,
   activo: true,
+  email: '',
 };
 
 const DIAS = [
@@ -69,11 +73,17 @@ export function ProfesionalesPage() {
   const actualizar = useActualizarProfesional();
   const crearHorario = useCrearHorario();
   const eliminarHorario = useEliminarHorario();
+  const eliminarProfesional = useEliminarProfesional();
+  const invitar = useInvitarUsuario();
+  const vincular = useVincularPerfilProfesional();
 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [editando, setEditando] = useState<Profesional | null>(null);
   const [form, setForm] = useState(FORM_VACIO);
   const [error, setError] = useState<string | null>(null);
+  const [porEliminar, setPorEliminar] = useState<Profesional | null>(null);
+  const [errorEliminar, setErrorEliminar] = useState<string | null>(null);
+  const [enlaceInvitacion, setEnlaceInvitacion] = useState<string | null>(null);
 
   const [horarioProfesional, setHorarioProfesional] = useState<Profesional | null>(null);
   const [rangos, setRangos] = useState<Record<number, { inicio: string; fin: string }>>({});
@@ -96,6 +106,7 @@ export function ProfesionalesPage() {
       color: profesional.color ?? '',
       orden: profesional.orden,
       activo: profesional.activo,
+      email: profesional.email ?? '',
     });
     setError(null);
     setModalAbierto(true);
@@ -123,12 +134,41 @@ export function ProfesionalesPage() {
     try {
       if (editando) {
         await actualizar.mutateAsync({ id: editando.id, input: form });
-      } else {
-        await crear.mutateAsync(form);
+        cerrarModal();
+        return;
       }
+
+      const profesionalId = await crear.mutateAsync(form);
+
+      // Si se indico un correo, se crea la cuenta de acceso y se genera el
+      // enlace para que el profesional defina su propia contrasena.
+      if (form.email.trim()) {
+        const resultado = await invitar.mutateAsync({
+          email: form.email.trim(),
+          nombre_completo: form.nombre.trim(),
+          rol: 'vendedor',
+          redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}#/establecer-clave`,
+        });
+        await vincular.mutateAsync({ profesionalId, perfilId: resultado.id });
+        if (resultado.enlace) {
+          setEnlaceInvitacion(resultado.enlace);
+        }
+      }
+
       cerrarModal();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar');
+    }
+  }
+
+  async function confirmarEliminar() {
+    if (!porEliminar) return;
+    setErrorEliminar(null);
+    try {
+      await eliminarProfesional.mutateAsync(porEliminar.id);
+      setPorEliminar(null);
+    } catch (err) {
+      setErrorEliminar(err instanceof Error ? err.message : 'No se pudo eliminar');
     }
   }
 
@@ -143,6 +183,7 @@ export function ProfesionalesPage() {
         color: profesional.color,
         orden: profesional.orden,
         activo: !profesional.activo,
+        email: profesional.email,
       },
     });
   }
@@ -258,6 +299,10 @@ export function ProfesionalesPage() {
                   <span className="badge-brand">{AREA_LABEL[profesional.area]}</span>
                   <span className="badge-neutral">Slot {profesional.duracion_slot_min} min</span>
                   <span className="badge-neutral">Orden {profesional.orden}</span>
+                  {profesional.email && (
+                    <span className="badge-neutral">{profesional.email}</span>
+                  )}
+                  {profesional.perfil_id && <span className="badge-success">Con acceso</span>}
                 </div>
 
                 <div className="rounded-xl border border-line bg-canvas/50 p-3">
@@ -308,6 +353,13 @@ export function ProfesionalesPage() {
                       onClick={() => void alternarActivo(profesional)}
                     >
                       {profesional.activo ? 'Desactivar' : 'Activar'}
+                    </button>
+                    <button
+                      type="button"
+                      className="text-sm font-medium text-danger-600 transition-colors hover:underline"
+                      onClick={() => setPorEliminar(profesional)}
+                    >
+                      Eliminar
                     </button>
                   </div>
                 </footer>
@@ -366,6 +418,21 @@ export function ProfesionalesPage() {
               value={form.especialidad}
               onChange={(e) => setForm({ ...form, especialidad: e.target.value })}
             />
+          </div>
+
+          <div>
+            <label className="label">Correo de acceso (opcional)</label>
+            <input
+              type="email"
+              className="input"
+              placeholder="profesional@correo.cl"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+            />
+            <p className="mt-1 text-xs text-muted">
+              Si indicas un correo, se crea una cuenta y el profesional define su propia contrasena
+              con el enlace que se genera.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -528,6 +595,72 @@ export function ProfesionalesPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Modal enlace de invitacion */}
+      <Modal
+        open={Boolean(enlaceInvitacion)}
+        onClose={() => setEnlaceInvitacion(null)}
+        title="Cuenta creada"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted">
+            Comparte este enlace con el profesional para que defina su propia contrasena. El enlace
+            es de un solo uso.
+          </p>
+          <textarea
+            readOnly
+            className="input h-24 font-mono text-xs"
+            value={enlaceInvitacion ?? ''}
+            onFocus={(e) => e.currentTarget.select()}
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="btn-primary flex-1"
+              onClick={() => {
+                if (enlaceInvitacion) void navigator.clipboard.writeText(enlaceInvitacion);
+              }}
+            >
+              Copiar enlace
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setEnlaceInvitacion(null)}
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal eliminar profesional */}
+      <Modal
+        open={Boolean(porEliminar)}
+        onClose={() => setPorEliminar(null)}
+        title="Eliminar profesional"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted">
+            Vas a eliminar a <strong>{porEliminar?.nombre}</strong>, junto con sus reservas y su
+            cuenta de acceso. Esta accion no se puede deshacer.
+          </p>
+          {errorEliminar && <p className="text-sm text-danger-600">{errorEliminar}</p>}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="btn-danger flex-1"
+              disabled={eliminarProfesional.isPending}
+              onClick={() => void confirmarEliminar()}
+            >
+              {eliminarProfesional.isPending ? 'Eliminando...' : 'Eliminar'}
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => setPorEliminar(null)}>
+              Cancelar
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

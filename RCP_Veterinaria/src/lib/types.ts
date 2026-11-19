@@ -63,6 +63,8 @@ export interface Profesional {
   color: string | null;
   orden: number;
   activo: boolean;
+  email: string | null;
+  perfil_id: string | null;
 }
 
 export interface Reserva {

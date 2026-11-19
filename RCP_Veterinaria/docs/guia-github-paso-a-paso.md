@@ -215,3 +215,38 @@ En **Supabase → Authentication → Sign In / Providers → Email**:
   autenticado.
 - Verifica en **Table Editor** que aparezcan la fila en `perfiles` (rol `cliente`)
   y la ficha en `clientes`.
+
+---
+
+## 13. Eliminar clientes y profesionales / acceso de profesionales
+
+### 13.1 Eliminar clientes
+
+El Maestro puede eliminar un cliente desde la pestaña **Clientes** (botón
+*Eliminar*). La RPC `eliminar_cliente` borra en cascada sus mascotas y reservas,
+la ficha y su cuenta de usuario. Las FKs `mascotas.cliente_id` y
+`reservas.cliente_id` quedaron en `on delete cascade`, por lo que también se
+puede borrar desde el **Table Editor** de Supabase.
+
+### 13.2 Profesionales con su propia contraseña
+
+Al crear un profesional, el Maestro puede indicar un **correo de acceso**. En ese
+caso:
+
+1. Se crea la cuenta (rol `vendedor`) con una contraseña temporal aleatoria.
+2. Se genera un **enlace de un solo uso** que la app muestra al Maestro para
+   compartirlo con el profesional (WhatsApp, correo, etc.).
+3. El profesional abre el enlace, llega a `#/establecer-clave` y define su
+   propia contraseña.
+
+> El enlace se genera con `generateLink` (no depende de SMTP). Si más adelante
+> configuras un servidor de correo en Supabase, también se enviará por email.
+
+El Maestro puede eliminar un profesional desde su tarjeta (botón *Eliminar*); la
+RPC `eliminar_profesional` borra sus reservas y su cuenta de acceso.
+
+### 13.3 Recuperar contraseña
+
+En la pantalla de ingreso, **Olvidé mi contraseña** envía un enlace de
+recuperación (requiere SMTP configurado). El usuario llega a
+`#/establecer-clave` y define una nueva contraseña.

@@ -485,3 +485,50 @@ export function useCancelarMiReserva() {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Eliminar clientes y profesionales / invitar usuarios
+// ---------------------------------------------------------------------------
+export function useEliminarCliente() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.eliminarCliente(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['clientes'] });
+      qc.invalidateQueries({ queryKey: ['clientes-mascotas'] });
+      qc.invalidateQueries({ queryKey: ['reservas-dia'] });
+      qc.invalidateQueries({ queryKey: ['reservas-resumen'] });
+    },
+  });
+}
+
+export function useEliminarProfesional() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.eliminarProfesional(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['profesionales'] });
+      qc.invalidateQueries({ queryKey: ['profesionales-todos'] });
+      qc.invalidateQueries({ queryKey: ['horarios-semanales'] });
+      qc.invalidateQueries({ queryKey: ['reservas-dia'] });
+    },
+  });
+}
+
+export function useInvitarUsuario() {
+  return useMutation({
+    mutationFn: (input: api.InvitarUsuarioInput) => api.invitarUsuario(input),
+  });
+}
+
+export function useVincularPerfilProfesional() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ profesionalId, perfilId }: { profesionalId: string; perfilId: string }) =>
+      api.vincularPerfilProfesional(profesionalId, perfilId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['profesionales'] });
+      qc.invalidateQueries({ queryKey: ['profesionales-todos'] });
+    },
+  });
+}

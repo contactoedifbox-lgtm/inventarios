@@ -181,13 +181,18 @@ export async function crearCliente(input: ClienteInput): Promise<string> {
   return data.id as string;
 }
 
+export async function eliminarCliente(id: string): Promise<void> {
+  const { error } = await supabase.rpc('eliminar_cliente', { p_cliente_id: id });
+  if (error) throw new Error(error.message);
+}
+
 // ---------------------------------------------------------------------------
 // Agenda
 // ---------------------------------------------------------------------------
 export async function listarProfesionales(): Promise<Profesional[]> {
   const { data, error } = await supabase
     .from('profesionales')
-    .select('id, nombre, area, especialidad, duracion_slot_min, color, orden, activo')
+    .select('id, nombre, area, especialidad, duracion_slot_min, color, orden, activo, email, perfil_id')
     .eq('activo', true)
     .order('orden', { ascending: true });
 
@@ -198,7 +203,7 @@ export async function listarProfesionales(): Promise<Profesional[]> {
 export async function listarProfesionalesTodos(): Promise<Profesional[]> {
   const { data, error } = await supabase
     .from('profesionales')
-    .select('id, nombre, area, especialidad, duracion_slot_min, color, orden, activo')
+    .select('id, nombre, area, especialidad, duracion_slot_min, color, orden, activo, email, perfil_id')
     .order('orden', { ascending: true });
 
   if (error) throw new Error(error.message);
@@ -213,19 +218,26 @@ export interface ProfesionalInput {
   color?: string | null;
   orden: number;
   activo: boolean;
+  email?: string | null;
 }
 
-export async function crearProfesional(input: ProfesionalInput): Promise<void> {
-  const { error } = await supabase.from('profesionales').insert({
-    nombre: input.nombre,
-    area: input.area,
-    especialidad: input.especialidad || null,
-    duracion_slot_min: input.duracion_slot_min,
-    color: input.color || null,
-    orden: input.orden,
-    activo: input.activo,
-  });
+export async function crearProfesional(input: ProfesionalInput): Promise<string> {
+  const { data, error } = await supabase
+    .from('profesionales')
+    .insert({
+      nombre: input.nombre,
+      area: input.area,
+      especialidad: input.especialidad || null,
+      duracion_slot_min: input.duracion_slot_min,
+      color: input.color || null,
+      orden: input.orden,
+      activo: input.activo,
+      email: input.email || null,
+    })
+    .select('id')
+    .single();
   if (error) throw new Error(error.message);
+  return data.id as string;
 }
 
 export async function actualizarProfesional(id: string, input: ProfesionalInput): Promise<void> {
@@ -239,9 +251,50 @@ export async function actualizarProfesional(id: string, input: ProfesionalInput)
       color: input.color || null,
       orden: input.orden,
       activo: input.activo,
+      email: input.email || null,
     })
     .eq('id', id);
   if (error) throw new Error(error.message);
+}
+
+export async function vincularPerfilProfesional(
+  profesionalId: string,
+  perfilId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('profesionales')
+    .update({ perfil_id: perfilId })
+    .eq('id', profesionalId);
+  if (error) throw new Error(error.message);
+}
+
+export async function eliminarProfesional(id: string): Promise<void> {
+  const { error } = await supabase.rpc('eliminar_profesional', { p_profesional_id: id });
+  if (error) throw new Error(error.message);
+}
+
+export interface InvitarUsuarioInput {
+  email: string;
+  nombre_completo: string;
+  rol: 'maestro' | 'vendedor' | 'cliente';
+  redirectTo?: string;
+}
+
+export interface InvitarUsuarioResultado {
+  id: string;
+  correo_enviado: boolean;
+  enlace: string | null;
+}
+
+export async function invitarUsuario(
+  input: InvitarUsuarioInput,
+): Promise<InvitarUsuarioResultado> {
+  const { data, error } = await supabase.functions.invoke('admin-usuarios', {
+    body: { accion: 'invitar_usuario', ...input },
+  });
+  if (error) throw new Error(error.message);
+  if (data?.error) throw new Error(data.error);
+  return data as InvitarUsuarioResultado;
 }
 
 export async function listarReservas(desde: string, hasta: string): Promise<Reserva[]> {

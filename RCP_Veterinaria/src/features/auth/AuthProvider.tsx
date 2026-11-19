@@ -34,9 +34,12 @@ interface AuthContextValue {
   esMaestro: boolean;
   esPersonal: boolean;
   esCliente: boolean;
+  modoRecuperacion: boolean;
   iniciarSesion: (email: string, password: string) => Promise<void>;
   registrarse: (datos: RegistroDatos) => Promise<{ requiereConfirmacion: boolean }>;
   iniciarConGoogle: () => Promise<void>;
+  recuperarClave: (email: string) => Promise<void>;
+  actualizarClave: (password: string) => Promise<void>;
   cerrarSesion: () => Promise<void>;
 }
 
@@ -54,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [cargando, setCargando] = useState(true);
+  const [modoRecuperacion, setModoRecuperacion] = useState(false);
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -63,8 +67,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     void supabase.auth.getSession().then(({ data }) => setSession(data.session));
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_evento, nuevaSesion) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((evento, nuevaSesion) => {
       setSession(nuevaSesion);
+      if (evento === 'PASSWORD_RECOVERY') {
+        setModoRecuperacion(true);
+      }
     });
 
     return () => sub.subscription.unsubscribe();
@@ -107,6 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       esMaestro: perfil?.rol === 'maestro',
       esPersonal: perfil?.rol === 'maestro' || perfil?.rol === 'vendedor',
       esCliente: perfil?.rol === 'cliente',
+      modoRecuperacion,
       iniciarSesion: async (email, password) => {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw new Error(error.message);
@@ -137,11 +145,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         if (error) throw new Error(error.message);
       },
+      recuperarClave: async (email) => {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${urlRedireccion()}#/establecer-clave`,
+        });
+        if (error) throw new Error(error.message);
+      },
+      actualizarClave: async (password) => {
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw new Error(error.message);
+        setModoRecuperacion(false);
+      },
       cerrarSesion: async () => {
         await supabase.auth.signOut();
       },
     }),
-    [session, perfil, cargando],
+    [session, perfil, cargando, modoRecuperacion],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

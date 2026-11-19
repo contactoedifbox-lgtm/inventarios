@@ -164,5 +164,77 @@ Deno.serve(async (req) => {
     return json({ ok: true });
   }
 
+  // Crea la cuenta de un profesional con una contrasena temporal y le envia un
+  // correo para que fije su propia contrasena.
+  if (accion === 'invitar_usuario') {
+    const { email, nombre_completo, rol, redirectTo } = body;
+
+    if (!email || !nombre_completo) {
+      return json({ error: 'Faltan datos del usuario' }, 400);
+    }
+
+    const rolFinal = rol === 'maestro' ? 'maestro' : rol === 'cliente' ? 'cliente' : 'vendedor';
+
+    const { data: fichaPrevia } = await supabase
+      .from('clientes')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
+    const passwordTemporal = `${crypto.randomUUID()}Aa1!`;
+
+    const { data: creado, error: errorCrear } = await supabase.auth.admin.createUser({
+      email,
+      password: passwordTemporal,
+      email_confirm: true,
+    });
+
+    if (errorCrear || !creado?.user) {
+      return json({ error: errorCrear?.message ?? 'No se pudo crear el usuario' }, 400);
+    }
+
+    if (rolFinal !== 'cliente') {
+      await supabase.from('perfiles').delete().eq('id', creado.user.id);
+
+      const { error: errorPerfil } = await supabase.from('perfiles').insert({
+        id: creado.user.id,
+        nombre_completo,
+        rol: rolFinal,
+        activo: true,
+      });
+
+      if (errorPerfil) {
+        return json({ error: errorPerfil.message }, 400);
+      }
+
+      if (!fichaPrevia) {
+        await supabase.from('clientes').delete().eq('email', email);
+      }
+    }
+
+    // Enlace para que el usuario fije su propia contrasena (se puede compartir
+    // manualmente si el correo no esta configurado).
+    const { data: linkData, error: errorLink } = await supabase.auth.admin.generateLink({
+      type: 'recovery',
+      email,
+      options: { redirectTo: redirectTo || undefined },
+    });
+
+    // Intenta ademas enviar el correo (si hay SMTP configurado).
+    const { error: errorReset } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectTo || undefined,
+    });
+
+    return json(
+      {
+        id: creado.user.id,
+        correo_enviado: !errorReset,
+        enlace: linkData?.properties?.action_link ?? null,
+        error_enlace: errorLink?.message ?? null,
+      },
+      201,
+    );
+  }
+
   return json({ error: 'Accion no soportada' }, 400);
 });
