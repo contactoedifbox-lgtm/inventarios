@@ -96,6 +96,19 @@ git commit -m "LankaPets v2.0: app, migraciones y workflow de Pages"
 git push origin main
 ```
 
+> **Importante — scope `workflow`:** si el commit modifica algo dentro de
+> `.github/workflows/`, GitHub rechaza el push con
+> `refusing to allow a Personal Access Token to create or update workflow`
+> a menos que el token tenga el scope **`workflow`**.
+>
+> - **Token clásico:** en GitHub → Settings → Developer settings → Tokens,
+>   marca la casilla `workflow` y regenera el token.
+> - **Alternativa sin cambiar el token:** edita el archivo directamente en
+>   GitHub (web) y pega el contenido de
+>   `.github/workflows/deploy-nueva-app.yml`.
+> - El código de la app sí se sube sin problema; solo los archivos de
+>   workflow requieren ese scope.
+
 Luego revisa **Actions → Deploy (GitHub Pages)**. Cuando termine en verde:
 
 - App interna: `https://<usuario>.github.io/inventarios/RCP_Veterinaria/`
