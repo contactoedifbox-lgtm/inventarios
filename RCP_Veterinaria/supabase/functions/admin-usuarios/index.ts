@@ -212,15 +212,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Enlace para que el usuario fije su propia contrasena (se puede compartir
-    // manualmente si el correo no esta configurado).
-    const { data: linkData, error: errorLink } = await supabase.auth.admin.generateLink({
-      type: 'recovery',
-      email,
-      options: { redirectTo: redirectTo || undefined },
-    });
-
-    // Intenta ademas enviar el correo (si hay SMTP configurado).
+    // Envia el correo para que el usuario fije su propia contrasena.
     const { error: errorReset } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: redirectTo || undefined,
     });
@@ -229,8 +221,7 @@ Deno.serve(async (req) => {
       {
         id: creado.user.id,
         correo_enviado: !errorReset,
-        enlace: linkData?.properties?.action_link ?? null,
-        error_enlace: errorLink?.message ?? null,
+        error_correo: errorReset?.message ?? null,
       },
       201,
     );

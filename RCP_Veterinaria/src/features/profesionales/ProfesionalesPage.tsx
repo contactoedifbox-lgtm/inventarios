@@ -83,7 +83,7 @@ export function ProfesionalesPage() {
   const [error, setError] = useState<string | null>(null);
   const [porEliminar, setPorEliminar] = useState<Profesional | null>(null);
   const [errorEliminar, setErrorEliminar] = useState<string | null>(null);
-  const [enlaceInvitacion, setEnlaceInvitacion] = useState<string | null>(null);
+  const [mensaje, setMensaje] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
 
   const [horarioProfesional, setHorarioProfesional] = useState<Profesional | null>(null);
   const [rangos, setRangos] = useState<Record<number, { inicio: string; fin: string }>>({});
@@ -140,8 +140,8 @@ export function ProfesionalesPage() {
 
       const profesionalId = await crear.mutateAsync(form);
 
-      // Si se indico un correo, se crea la cuenta de acceso y se genera el
-      // enlace para que el profesional defina su propia contrasena.
+      // Si se indico un correo, se crea la cuenta de acceso y se envia el correo
+      // para que el profesional defina su propia contrasena.
       if (form.email.trim()) {
         const resultado = await invitar.mutateAsync({
           email: form.email.trim(),
@@ -150,8 +150,19 @@ export function ProfesionalesPage() {
           redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}#/establecer-clave`,
         });
         await vincular.mutateAsync({ profesionalId, perfilId: resultado.id });
-        if (resultado.enlace) {
-          setEnlaceInvitacion(resultado.enlace);
+
+        if (resultado.correo_enviado) {
+          setMensaje({
+            tipo: 'ok',
+            texto: `Se envio un correo a ${form.email.trim()} para que cree su contrasena.`,
+          });
+        } else {
+          setMensaje({
+            tipo: 'error',
+            texto: `El profesional se creo, pero no se pudo enviar el correo: ${
+              resultado.error_correo ?? 'error desconocido'
+            }`,
+          });
         }
       }
 
@@ -251,6 +262,24 @@ export function ProfesionalesPage() {
           Nuevo profesional
         </button>
       </div>
+
+      {mensaje && (
+        <div
+          className={`card flex items-start justify-between gap-3 text-sm ${
+            mensaje.tipo === 'ok' ? 'text-success-700' : 'text-danger-600'
+          }`}
+        >
+          <span>{mensaje.texto}</span>
+          <button
+            type="button"
+            className="text-muted hover:text-ink"
+            onClick={() => setMensaje(null)}
+            aria-label="Cerrar"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="card">
@@ -595,44 +624,6 @@ export function ProfesionalesPage() {
             </div>
           </div>
         )}
-      </Modal>
-
-      {/* Modal enlace de invitacion */}
-      <Modal
-        open={Boolean(enlaceInvitacion)}
-        onClose={() => setEnlaceInvitacion(null)}
-        title="Cuenta creada"
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-muted">
-            Comparte este enlace con el profesional para que defina su propia contrasena. El enlace
-            es de un solo uso.
-          </p>
-          <textarea
-            readOnly
-            className="input h-24 font-mono text-xs"
-            value={enlaceInvitacion ?? ''}
-            onFocus={(e) => e.currentTarget.select()}
-          />
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="btn-primary flex-1"
-              onClick={() => {
-                if (enlaceInvitacion) void navigator.clipboard.writeText(enlaceInvitacion);
-              }}
-            >
-              Copiar enlace
-            </button>
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => setEnlaceInvitacion(null)}
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
       </Modal>
 
       {/* Modal eliminar profesional */}

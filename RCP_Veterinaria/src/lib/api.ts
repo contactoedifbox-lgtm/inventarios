@@ -283,7 +283,7 @@ export interface InvitarUsuarioInput {
 export interface InvitarUsuarioResultado {
   id: string;
   correo_enviado: boolean;
-  enlace: string | null;
+  error_correo: string | null;
 }
 
 export async function invitarUsuario(
