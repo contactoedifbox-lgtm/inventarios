@@ -1,6 +1,8 @@
 export type Rol = 'maestro' | 'vendedor';
 export type MedioPago = 'efectivo' | 'debito' | 'credito' | 'transferencia';
 export type AreaAgenda = 'veterinaria' | 'peluqueria';
+export type TipoPersonal = 'vendedor' | 'veterinario' | 'peluquero';
+export type GeneroPersonal = 'masculino' | 'femenino';
 export type Especie = 'perro' | 'gato' | 'otro';
 export type EstadoReserva = 'confirmada' | 'completada' | 'cancelada' | 'no_asistio';
 
@@ -60,6 +62,8 @@ export interface Profesional {
   id: string;
   nombre: string;
   area: AreaAgenda;
+  tipo: TipoPersonal;
+  genero: GeneroPersonal;
   especialidad: string | null;
   duracion_slot_min: number;
   color: string | null;

@@ -16,7 +16,7 @@ const ENLACES: Enlace[] = [
   { to: '/clientes', label: 'Clientes', roles: ['maestro', 'vendedor'] },
   { to: '/agenda', label: 'Agenda', roles: ['maestro', 'vendedor', 'cliente'] },
   { to: '/reportes', label: 'Reportes', roles: ['maestro', 'vendedor'] },
-  { to: '/profesionales', label: 'Profesionales', roles: ['maestro'] },
+  { to: '/personal', label: 'Personal', roles: ['maestro'] },
   { to: '/mis-datos', label: 'Mis datos', roles: ['cliente'] },
 ];
 

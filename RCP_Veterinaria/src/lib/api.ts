@@ -220,8 +220,9 @@ export async function eliminarCliente(id: string): Promise<void> {
 export async function listarProfesionales(): Promise<Profesional[]> {
   const { data, error } = await supabase
     .from('profesionales')
-    .select('id, nombre, area, especialidad, duracion_slot_min, color, orden, activo, email, perfil_id')
+    .select('id, nombre, area, tipo, genero, especialidad, duracion_slot_min, color, orden, activo, email, perfil_id')
     .eq('activo', true)
+    .neq('tipo', 'vendedor')
     .order('orden', { ascending: true });
 
   if (error) throw new Error(error.message);
@@ -231,7 +232,7 @@ export async function listarProfesionales(): Promise<Profesional[]> {
 export async function listarProfesionalesTodos(): Promise<Profesional[]> {
   const { data, error } = await supabase
     .from('profesionales')
-    .select('id, nombre, area, especialidad, duracion_slot_min, color, orden, activo, email, perfil_id')
+    .select('id, nombre, area, tipo, genero, especialidad, duracion_slot_min, color, orden, activo, email, perfil_id')
     .order('orden', { ascending: true });
 
   if (error) throw new Error(error.message);
@@ -240,7 +241,8 @@ export async function listarProfesionalesTodos(): Promise<Profesional[]> {
 
 export interface ProfesionalInput {
   nombre: string;
-  area: string;
+  tipo: string;
+  genero: string;
   especialidad?: string | null;
   duracion_slot_min: number;
   color?: string | null;
@@ -254,7 +256,8 @@ export async function crearProfesional(input: ProfesionalInput): Promise<string>
     .from('profesionales')
     .insert({
       nombre: input.nombre,
-      area: input.area,
+      tipo: input.tipo,
+      genero: input.genero,
       especialidad: input.especialidad || null,
       duracion_slot_min: input.duracion_slot_min,
       color: input.color || null,
@@ -273,7 +276,8 @@ export async function actualizarProfesional(id: string, input: ProfesionalInput)
     .from('profesionales')
     .update({
       nombre: input.nombre,
-      area: input.area,
+      tipo: input.tipo,
+      genero: input.genero,
       especialidad: input.especialidad || null,
       duracion_slot_min: input.duracion_slot_min,
       color: input.color || null,

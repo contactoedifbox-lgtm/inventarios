@@ -10,7 +10,7 @@ import { VentasPage } from '@/features/ventas/VentasPage';
 import { ClientesPage } from '@/features/clientes/ClientesPage';
 import { AgendaPage } from '@/features/agenda/AgendaPage';
 import { ReportesPage } from '@/features/reportes/ReportesPage';
-import { ProfesionalesPage } from '@/features/profesionales/ProfesionalesPage';
+import { PersonalPage } from '@/features/personal/PersonalPage';
 import { MisDatosPage } from '@/features/clientes/MisDatosPage';
 import { ReservaPublicaPage } from '@/features/publico/ReservaPublicaPage';
 
@@ -64,10 +64,10 @@ export const router = createHashRouter([
         ),
       },
       {
-        path: 'profesionales',
+        path: 'personal',
         element: (
           <RequireAuth roles={['maestro']}>
-            <ProfesionalesPage />
+            <PersonalPage />
           </RequireAuth>
         ),
       },

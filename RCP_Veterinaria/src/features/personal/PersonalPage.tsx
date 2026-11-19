@@ -11,11 +11,17 @@ import {
   useProfesionalesTodos,
   useVincularPerfilProfesional,
 } from '@/lib/hooks';
-import type { AreaAgenda, HorarioSemanal, Profesional } from '@/lib/types';
+import type {
+  GeneroPersonal,
+  HorarioSemanal,
+  Profesional,
+  TipoPersonal,
+} from '@/lib/types';
 
 const FORM_VACIO = {
   nombre: '',
-  area: 'veterinaria' as AreaAgenda,
+  tipo: 'veterinario' as TipoPersonal,
+  genero: 'masculino' as GeneroPersonal,
   especialidad: '',
   duracion_slot_min: 30,
   color: '',
@@ -34,9 +40,10 @@ const DIAS = [
   { valor: 7, label: 'Domingo' },
 ];
 
-const AREA_LABEL: Record<AreaAgenda, string> = {
-  veterinaria: 'Veterinaria',
-  peluqueria: 'Peluqueria',
+const TIPO_LABEL: Record<TipoPersonal, Record<GeneroPersonal, string>> = {
+  vendedor: { masculino: 'Vendedor', femenino: 'Vendedora' },
+  veterinario: { masculino: 'Veterinario', femenino: 'Veterinaria' },
+  peluquero: { masculino: 'Peluquero', femenino: 'Peluquera canina' },
 };
 
 function hhmm(hora: string): string {
@@ -82,7 +89,7 @@ function agruparPorDia(horarios: HorarioSemanal[], profesionalId: string): Tramo
   })).filter((d) => d.tramos.length > 0);
 }
 
-export function ProfesionalesPage() {
+export function PersonalPage() {
   const { data: profesionales = [], isLoading } = useProfesionalesTodos();
   const { data: horarios = [] } = useHorariosSemanales();
   const crear = useCrearProfesional();
@@ -116,7 +123,8 @@ export function ProfesionalesPage() {
     setEditando(profesional);
     setForm({
       nombre: profesional.nombre,
-      area: profesional.area,
+      tipo: profesional.tipo,
+      genero: profesional.genero,
       especialidad: profesional.especialidad ?? '',
       duracion_slot_min: profesional.duracion_slot_min,
       color: profesional.color ?? '',
@@ -157,7 +165,7 @@ export function ProfesionalesPage() {
       const profesionalId = await crear.mutateAsync(form);
 
       // Si se indico un correo, se crea la cuenta de acceso y se envia el correo
-      // para que el profesional defina su propia contrasena.
+      // para que la persona defina su propia contrasena.
       if (form.email.trim()) {
         const resultado = await invitar.mutateAsync({
           email: form.email.trim(),
@@ -175,7 +183,7 @@ export function ProfesionalesPage() {
         } else {
           setMensaje({
             tipo: 'error',
-            texto: `El profesional se creo, pero no se pudo enviar el correo: ${
+            texto: `El registro se creo, pero no se pudo enviar el correo: ${
               resultado.error_correo ?? 'error desconocido'
             }`,
           });
@@ -204,7 +212,8 @@ export function ProfesionalesPage() {
       id: profesional.id,
       input: {
         nombre: profesional.nombre,
-        area: profesional.area,
+        tipo: profesional.tipo,
+        genero: profesional.genero,
         especialidad: profesional.especialidad,
         duracion_slot_min: profesional.duracion_slot_min,
         color: profesional.color,
@@ -269,13 +278,13 @@ export function ProfesionalesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-ink">Profesionales</h1>
+          <h1 className="text-2xl font-bold text-ink">Personal</h1>
           <p className="text-sm text-muted">
-            Define la especialidad y el horario semanal de cada profesional.
+            Vendedores, veterinarios y peluqueros. Define su tipo y horario semanal.
           </p>
         </div>
         <button type="button" className="btn-primary" onClick={abrirNuevo}>
-          Nuevo profesional
+          Nuevo registro
         </button>
       </div>
 
@@ -299,17 +308,18 @@ export function ProfesionalesPage() {
 
       {isLoading ? (
         <div className="card">
-          <p className="text-sm text-muted">Cargando profesionales...</p>
+          <p className="text-sm text-muted">Cargando personal...</p>
         </div>
       ) : profesionales.length === 0 ? (
         <div className="card">
-          <p className="text-sm text-muted">Sin profesionales registrados.</p>
+          <p className="text-sm text-muted">Sin personal registrado.</p>
         </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
           {profesionales.map((profesional) => {
             const dias = agruparPorDia(horarios, profesional.id);
             const acento = profesional.color || '#177E89';
+            const etiqueta = TIPO_LABEL[profesional.tipo][profesional.genero];
 
             return (
               <article
@@ -331,7 +341,7 @@ export function ProfesionalesPage() {
                         {profesional.nombre}
                       </h3>
                       <p className="truncate text-sm text-muted">
-                        {profesional.especialidad?.trim() || 'Sin especialidad'}
+                        {profesional.especialidad?.trim() || etiqueta}
                       </p>
                     </div>
                   </div>
@@ -341,7 +351,7 @@ export function ProfesionalesPage() {
                 </header>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="badge-brand">{AREA_LABEL[profesional.area]}</span>
+                  <span className="badge-brand">{etiqueta}</span>
                   <span className="badge-neutral">Slot {profesional.duracion_slot_min} min</span>
                   <span className="badge-neutral">Orden {profesional.orden}</span>
                   {profesional.email && (
@@ -414,11 +424,11 @@ export function ProfesionalesPage() {
         </div>
       )}
 
-      {/* Modal profesional */}
+      {/* Modal personal */}
       <Modal
         open={modalAbierto}
         onClose={cerrarModal}
-        title={editando ? 'Editar profesional' : 'Nuevo profesional'}
+        title={editando ? 'Editar registro' : 'Nuevo registro'}
       >
         <form className="space-y-3" onSubmit={guardar}>
           <div>
@@ -432,16 +442,31 @@ export function ProfesionalesPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label">Area</label>
+              <label className="label">Tipo</label>
               <select
                 className="input"
-                value={form.area}
-                onChange={(e) => setForm({ ...form, area: e.target.value as AreaAgenda })}
+                value={form.tipo}
+                onChange={(e) => setForm({ ...form, tipo: e.target.value as TipoPersonal })}
               >
-                <option value="veterinaria">Veterinaria</option>
-                <option value="peluqueria">Peluqueria</option>
+                <option value="vendedor">Vendedor</option>
+                <option value="veterinario">Veterinario</option>
+                <option value="peluquero">Peluquero</option>
               </select>
             </div>
+            <div>
+              <label className="label">Genero</label>
+              <select
+                className="input"
+                value={form.genero}
+                onChange={(e) => setForm({ ...form, genero: e.target.value as GeneroPersonal })}
+              >
+                <option value="masculino">Masculino</option>
+                <option value="femenino">Femenino</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label">Duracion del slot (min)</label>
               <input
@@ -453,13 +478,22 @@ export function ProfesionalesPage() {
                 onChange={(e) => setForm({ ...form, duracion_slot_min: Number(e.target.value) })}
               />
             </div>
+            <div>
+              <label className="label">Orden</label>
+              <input
+                type="number"
+                className="input"
+                value={form.orden}
+                onChange={(e) => setForm({ ...form, orden: Number(e.target.value) })}
+              />
+            </div>
           </div>
 
           <div>
             <label className="label">Especialidad (texto libre)</label>
             <input
               className="input"
-              placeholder="Veterinario general, Radiologo, Imagenologia, Peluqueria y bano..."
+              placeholder="Veterinario general, Radiologo, Peluqueria y bano..."
               value={form.especialidad}
               onChange={(e) => setForm({ ...form, especialidad: e.target.value })}
             />
@@ -470,35 +504,24 @@ export function ProfesionalesPage() {
             <input
               type="email"
               className="input"
-              placeholder="profesional@correo.cl"
+              placeholder="persona@correo.cl"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
             />
             <p className="mt-1 text-xs text-muted">
-              Si indicas un correo, se crea una cuenta y el profesional define su propia contrasena
-              con el enlace que se genera.
+              Si indicas un correo, se crea una cuenta y la persona define su propia contrasena con
+              el enlace que se envia.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Color (opcional)</label>
-              <input
-                className="input"
-                placeholder="#2563eb"
-                value={form.color}
-                onChange={(e) => setForm({ ...form, color: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="label">Orden</label>
-              <input
-                type="number"
-                className="input"
-                value={form.orden}
-                onChange={(e) => setForm({ ...form, orden: Number(e.target.value) })}
-              />
-            </div>
+          <div>
+            <label className="label">Color (opcional)</label>
+            <input
+              className="input"
+              placeholder="#2563eb"
+              value={form.color}
+              onChange={(e) => setForm({ ...form, color: e.target.value })}
+            />
           </div>
 
           <label className="flex items-center gap-2 text-sm text-muted">
@@ -514,7 +537,7 @@ export function ProfesionalesPage() {
 
           <p className="text-xs text-muted">
             El horario semanal se define con el boton <strong>Horario semanal</strong> una vez creado
-            el profesional.
+            el registro. Los vendedores no aparecen en la agenda.
           </p>
 
           <div className="flex gap-2">
@@ -523,7 +546,7 @@ export function ProfesionalesPage() {
               className="btn-primary flex-1"
               disabled={crear.isPending || actualizar.isPending}
             >
-              {editando ? 'Guardar cambios' : 'Crear profesional'}
+              {editando ? 'Guardar cambios' : 'Crear registro'}
             </button>
             <button type="button" className="btn-secondary" onClick={cerrarModal}>
               Cancelar
@@ -677,11 +700,11 @@ export function ProfesionalesPage() {
         )}
       </Modal>
 
-      {/* Modal eliminar profesional */}
+      {/* Modal eliminar */}
       <Modal
         open={Boolean(porEliminar)}
         onClose={() => setPorEliminar(null)}
-        title="Eliminar profesional"
+        title="Eliminar registro"
       >
         <div className="space-y-4">
           <p className="text-sm text-muted">
