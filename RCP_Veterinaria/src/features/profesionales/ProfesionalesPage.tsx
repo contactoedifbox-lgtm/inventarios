@@ -43,6 +43,22 @@ function hhmm(hora: string): string {
   return hora.slice(0, 5);
 }
 
+/** Genera las horas de inicio de los bloques de un tramo segun la duracion del slot. */
+function slotsDeRango(inicio: string, fin: string, paso: number): string[] {
+  const [hi, mi] = inicio.split(':').map(Number);
+  const [hf, mf] = fin.split(':').map(Number);
+  const finMin = hf * 60 + mf;
+  const slots: string[] = [];
+
+  for (let cursor = hi * 60 + mi; cursor + paso <= finMin; cursor += paso) {
+    const h = Math.floor(cursor / 60);
+    const m = cursor % 60;
+    slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+  }
+
+  return slots;
+}
+
 function iniciales(nombre: string): string {
   const partes = nombre.trim().split(/\s+/).filter(Boolean);
   if (partes.length === 0) return '?';
@@ -571,6 +587,41 @@ export function ProfesionalesPage() {
                         )}
                       </div>
                     </div>
+
+                    {filas.length > 0 && (
+                      <div className="mt-2 pl-0 sm:pl-24">
+                        <p className="mb-1 text-xs text-muted">
+                          Bloques de {horarioProfesional.duracion_slot_min} min (
+                          {filas.reduce(
+                            (total, fila) =>
+                              total +
+                              slotsDeRango(
+                                fila.hora_inicio,
+                                fila.hora_fin,
+                                horarioProfesional.duracion_slot_min,
+                              ).length,
+                            0,
+                          )}
+                          )
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {filas.flatMap((fila) =>
+                            slotsDeRango(
+                              fila.hora_inicio,
+                              fila.hora_fin,
+                              horarioProfesional.duracion_slot_min,
+                            ).map((hora) => (
+                              <span
+                                key={`${fila.id}-${hora}`}
+                                className="rounded bg-canvas px-1.5 py-0.5 font-mono text-[11px] text-muted ring-1 ring-line"
+                              >
+                                {hora}
+                              </span>
+                            )),
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     <div className="mt-2 flex flex-wrap items-end gap-2 pl-0 sm:pl-24">
                       <label className="text-xs text-muted">
