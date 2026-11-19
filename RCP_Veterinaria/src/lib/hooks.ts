@@ -40,6 +40,22 @@ export function useRegistrarIngreso() {
   });
 }
 
+export function useAjustarStock() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      productoId,
+      nuevoStock,
+      motivo,
+    }: {
+      productoId: string;
+      nuevoStock: number;
+      motivo: string;
+    }) => api.ajustarStock(productoId, nuevoStock, motivo),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['inventario'] }),
+  });
+}
+
 export function useIva() {
   return useQuery({
     queryKey: ['iva'],

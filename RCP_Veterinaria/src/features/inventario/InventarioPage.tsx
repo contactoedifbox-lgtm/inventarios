@@ -5,6 +5,7 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { listarInventario } from '@/lib/api';
 import {
   useActualizarProducto,
+  useAjustarStock,
   useCancelarReservaProducto,
   useCrearProducto,
   useCrearReservaProducto,
@@ -25,6 +26,7 @@ const FORM_VACIO = {
   stock_minimo: 0,
   precio_venta_total: 0,
   stock_inicial: 0,
+  stock: 0,
 };
 
 function estadoEfectivo(reserva: ReservaProducto): ReservaProducto['estado'] {
@@ -59,6 +61,7 @@ export function InventarioPage() {
   const { data: productos = [], isLoading } = useInventario(debounced);
   const crear = useCrearProducto();
   const actualizar = useActualizarProducto();
+  const ajustarStock = useAjustarStock();
   const registrarIngreso = useRegistrarIngreso();
   const { data: iva = 19 } = useIva();
   const { data: reservas = [] } = useReservasProducto();
@@ -126,6 +129,7 @@ export function InventarioPage() {
       stock_minimo: producto.stock_minimo,
       precio_venta_total: producto.precio_venta_total,
       stock_inicial: 0,
+      stock: producto.stock,
     });
     setError(null);
     setModalAbierto(true);
@@ -150,6 +154,13 @@ export function InventarioPage() {
     try {
       if (editando) {
         await actualizar.mutateAsync({ id: editando.id, input: parsed.data });
+        if (form.stock !== editando.stock) {
+          await ajustarStock.mutateAsync({
+            productoId: editando.id,
+            nuevoStock: form.stock,
+            motivo: 'Ajuste manual desde edicion de producto',
+          });
+        }
       } else {
         const productoId = await crear.mutateAsync(parsed.data);
         if (parsed.data.stock_inicial > 0) {
@@ -442,7 +453,21 @@ export function InventarioPage() {
             <strong>{formatCLP(form.precio_venta_total)}</strong>
           </div>
 
-          {!editando && (
+          {editando ? (
+            <div>
+              <label className="label">Stock</label>
+              <input
+                type="number"
+                min={0}
+                className="input"
+                value={form.stock}
+                onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })}
+              />
+              <p className="mt-1 text-xs text-muted">
+                El cambio de stock queda registrado como un ajuste en el kardex.
+              </p>
+            </div>
+          ) : (
             <div>
               <label className="label">Cantidad inicial (stock)</label>
               <input

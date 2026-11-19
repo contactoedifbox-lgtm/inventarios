@@ -94,6 +94,20 @@ export async function registrarIngreso(
   if (error) throw new Error(error.message);
 }
 
+/** Ajusta el stock a un valor exacto (Maestro y Vendedor) mediante la RPC ajustar_stock. */
+export async function ajustarStock(
+  productoId: string,
+  nuevoStock: number,
+  motivo: string,
+): Promise<void> {
+  const { error } = await supabase.rpc('ajustar_stock', {
+    p_producto_id: productoId,
+    p_nuevo_stock: nuevoStock,
+    p_motivo: motivo,
+  });
+  if (error) throw new Error(error.message);
+}
+
 /** Porcentaje de IVA configurado (por defecto 19). */
 export async function obtenerIva(): Promise<number> {
   const { data, error } = await supabase
