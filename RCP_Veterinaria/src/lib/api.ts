@@ -36,7 +36,7 @@ export async function listarInventario(busqueda = ''): Promise<ProductoInventari
     .from('v_inventario')
     .select('*')
     .order('nombre', { ascending: true })
-    .limit(500);
+    .limit(2000);
 
   const termino = busqueda.trim();
   if (termino) {

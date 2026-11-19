@@ -6,6 +6,7 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import {
   useAnularVenta,
   useInventario,
+  useIva,
   useRegistrarDevolucion,
   useRegistrarVenta,
   useVentaDetalle,
@@ -32,6 +33,7 @@ const MOTIVOS = [
 
 export function VentasPage() {
   const { esMaestro } = useAuth();
+  const { data: iva = 19 } = useIva();
 
   // Carrito
   const [busqueda, setBusqueda] = useState('');
@@ -82,13 +84,15 @@ export function VentasPage() {
         { header: 'Descuento', key: 'descuento', width: 12 },
         { header: 'Descripcion descuento', key: 'descripcion_descuento', width: 28 },
         { header: 'Total', key: 'total', width: 14 },
-        { header: 'Costo neto', key: 'costo', width: 14 },
-        { header: 'Margen neto', key: 'margen', width: 14 },
+        { header: 'Costo neto', key: 'costo_neto', width: 14 },
+        { header: 'IVA costo', key: 'iva_costo', width: 12 },
+        { header: 'Costo total', key: 'costo_total', width: 14 },
         { header: 'Estado', key: 'estado', width: 12 },
       ];
 
       ventas.forEach((venta) => {
-        const costo = costos[venta.id] ?? 0;
+        const costoNeto = costos[venta.id] ?? 0;
+        const costoIva = Math.round((costoNeto * iva) / 100);
         hoja.addRow({
           numero: venta.numero,
           fecha: formatFechaHora(venta.created_at),
@@ -99,8 +103,9 @@ export function VentasPage() {
           descuento: venta.descuento,
           descripcion_descuento: venta.descripcion_descuento ?? '',
           total: venta.total,
-          costo,
-          margen: venta.total_neto - costo,
+          costo_neto: costoNeto,
+          iva_costo: costoIva,
+          costo_total: costoNeto + costoIva,
           estado: venta.estado,
         });
       });

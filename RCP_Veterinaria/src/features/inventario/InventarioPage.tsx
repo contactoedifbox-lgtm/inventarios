@@ -97,7 +97,6 @@ export function InventarioPage() {
           { header: 'Costo neto', key: 'costo_neto', width: 14 },
           { header: 'IVA costo', key: 'iva_costo', width: 12 },
           { header: 'Costo total', key: 'costo_total', width: 14 },
-          { header: 'Margen neto', key: 'margen_neto', width: 14 },
         );
       }
       hoja.columns = columnas;
