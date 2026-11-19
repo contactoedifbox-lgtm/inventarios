@@ -46,6 +46,13 @@ const TIPO_LABEL: Record<TipoPersonal, Record<GeneroPersonal, string>> = {
   peluquero: { masculino: 'Peluquero', femenino: 'Peluquera canina' },
 };
 
+/** Color de acento por tipo de personal (no editable). */
+const COLOR_POR_TIPO: Record<TipoPersonal, string> = {
+  veterinario: '#177E89',
+  vendedor: '#C83779',
+  peluquero: '#35B7C2',
+};
+
 function hhmm(hora: string): string {
   return hora.slice(0, 5);
 }
@@ -150,19 +157,30 @@ export function PersonalPage() {
       setError('El nombre es obligatorio');
       return;
     }
-    if (form.duracion_slot_min < 5 || form.duracion_slot_min > 240) {
+    if (
+      form.tipo !== 'vendedor' &&
+      (form.duracion_slot_min < 5 || form.duracion_slot_min > 240)
+    ) {
       setError('La duracion debe estar entre 5 y 240 minutos');
       return;
     }
 
+    const siguienteOrden =
+      profesionales.reduce((max, p) => Math.max(max, p.orden), 0) + 1;
+    const payload = {
+      ...form,
+      color: COLOR_POR_TIPO[form.tipo],
+      orden: editando ? editando.orden : siguienteOrden,
+    };
+
     try {
       if (editando) {
-        await actualizar.mutateAsync({ id: editando.id, input: form });
+        await actualizar.mutateAsync({ id: editando.id, input: payload });
         cerrarModal();
         return;
       }
 
-      const profesionalId = await crear.mutateAsync(form);
+      const profesionalId = await crear.mutateAsync(payload);
 
       // Si se indico un correo, se crea la cuenta de acceso y se envia el correo
       // para que la persona defina su propia contrasena.
@@ -216,7 +234,7 @@ export function PersonalPage() {
         genero: profesional.genero,
         especialidad: profesional.especialidad,
         duracion_slot_min: profesional.duracion_slot_min,
-        color: profesional.color,
+        color: COLOR_POR_TIPO[profesional.tipo],
         orden: profesional.orden,
         activo: !profesional.activo,
         email: profesional.email,
@@ -318,7 +336,7 @@ export function PersonalPage() {
         <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
           {profesionales.map((profesional) => {
             const dias = agruparPorDia(horarios, profesional.id);
-            const acento = profesional.color || '#177E89';
+            const acento = COLOR_POR_TIPO[profesional.tipo];
             const etiqueta = TIPO_LABEL[profesional.tipo][profesional.genero];
 
             return (
@@ -355,7 +373,6 @@ export function PersonalPage() {
                   {profesional.tipo !== 'vendedor' && (
                     <span className="badge-neutral">Slot {profesional.duracion_slot_min} min</span>
                   )}
-                  <span className="badge-neutral">Orden {profesional.orden}</span>
                   {profesional.email && (
                     <span className="badge-neutral">{profesional.email}</span>
                   )}
@@ -468,7 +485,7 @@ export function PersonalPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          {form.tipo !== 'vendedor' && (
             <div>
               <label className="label">Duracion del slot (min)</label>
               <input
@@ -480,16 +497,7 @@ export function PersonalPage() {
                 onChange={(e) => setForm({ ...form, duracion_slot_min: Number(e.target.value) })}
               />
             </div>
-            <div>
-              <label className="label">Orden</label>
-              <input
-                type="number"
-                className="input"
-                value={form.orden}
-                onChange={(e) => setForm({ ...form, orden: Number(e.target.value) })}
-              />
-            </div>
-          </div>
+          )}
 
           <div>
             <label className="label">Especialidad (texto libre)</label>
@@ -514,16 +522,6 @@ export function PersonalPage() {
               Si indicas un correo, se crea una cuenta y la persona define su propia contrasena con
               el enlace que se envia.
             </p>
-          </div>
-
-          <div>
-            <label className="label">Color (opcional)</label>
-            <input
-              className="input"
-              placeholder="#2563eb"
-              value={form.color}
-              onChange={(e) => setForm({ ...form, color: e.target.value })}
-            />
           </div>
 
           <label className="flex items-center gap-2 text-sm text-muted">
