@@ -11,19 +11,33 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? '';
 export const isSupabaseConfigured = Boolean(url && anonKey);
 
 /**
- * Indica si la URL actual trae un enlace de recuperacion o invitacion de
- * Supabase. Se lee al cargar el modulo, antes de que supabase-js limpie la URL.
+ * Datos del enlace de autenticacion presentes en la URL al cargar la app
+ * (recuperacion/invitacion con tokens en el fragmento, u OAuth con ?code=).
+ *
+ * Se leen al cargar el modulo, ANTES de que el HashRouter consuma el fragmento
+ * (el router reemplaza `#access_token=...` por `#/` y perderia el token).
  */
-export const esEnlaceAuth = (() => {
-  if (typeof window === 'undefined') return false;
-  const hash = window.location.hash;
-  const search = window.location.search;
-  return (
-    hash.includes('type=recovery') ||
-    hash.includes('type=invite') ||
-    search.includes('type=recovery') ||
-    search.includes('type=invite')
-  );
+export type EnlaceAuth =
+  | { kind: 'tokens'; tipo: string; accessToken: string; refreshToken: string }
+  | { kind: 'code'; code: string }
+  | null;
+
+export const enlaceAuth: EnlaceAuth = (() => {
+  if (typeof window === 'undefined') return null;
+
+  const paramsHash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const tipo = paramsHash.get('type');
+  const accessToken = paramsHash.get('access_token');
+  const refreshToken = paramsHash.get('refresh_token');
+  const code = new URLSearchParams(window.location.search).get('code');
+
+  if ((tipo === 'recovery' || tipo === 'invite') && accessToken && refreshToken) {
+    return { kind: 'tokens', tipo, accessToken, refreshToken };
+  }
+  if (code) {
+    return { kind: 'code', code };
+  }
+  return null;
 })();
 
 export const supabase = createClient(

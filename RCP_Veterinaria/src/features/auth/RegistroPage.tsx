@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 import { registroClienteSchema } from '@/lib/schemas';
@@ -24,9 +24,11 @@ export function RegistroPage() {
   const [enviando, setEnviando] = useState(false);
   const [confirmacion, setConfirmacion] = useState(false);
 
-  if (session) {
-    navigate('/', { replace: true });
-  }
+  useEffect(() => {
+    if (session) {
+      navigate('/', { replace: true });
+    }
+  }, [session, navigate]);
 
   async function handleSubmit(evento: FormEvent) {
     evento.preventDefault();

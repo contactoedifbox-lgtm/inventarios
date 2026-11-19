@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 import { loginSchema } from '@/lib/schemas';
@@ -19,9 +19,11 @@ export function LoginPage() {
 
   const destino = (location.state as { from?: string } | null)?.from ?? '/';
 
-  if (session) {
-    navigate(destino, { replace: true });
-  }
+  useEffect(() => {
+    if (session) {
+      navigate(destino, { replace: true });
+    }
+  }, [session, navigate, destino]);
 
   async function handleSubmit(evento: FormEvent) {
     evento.preventDefault();
