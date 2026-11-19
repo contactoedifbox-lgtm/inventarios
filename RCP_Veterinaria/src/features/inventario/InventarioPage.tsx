@@ -9,6 +9,7 @@ import {
   useCancelarReservaProducto,
   useCrearProducto,
   useCrearReservaProducto,
+  useGuardarCosto,
   useInventario,
   useIva,
   useMarcarReservaRetirada,
@@ -27,6 +28,7 @@ const FORM_VACIO = {
   precio_venta_total: 0,
   stock_inicial: 0,
   stock: 0,
+  costo_total: 0,
 };
 
 function estadoEfectivo(reserva: ReservaProducto): ReservaProducto['estado'] {
@@ -62,6 +64,7 @@ export function InventarioPage() {
   const crear = useCrearProducto();
   const actualizar = useActualizarProducto();
   const ajustarStock = useAjustarStock();
+  const guardarCosto = useGuardarCosto();
   const registrarIngreso = useRegistrarIngreso();
   const { data: iva = 19 } = useIva();
   const { data: reservas = [] } = useReservasProducto();
@@ -90,7 +93,12 @@ export function InventarioPage() {
         { header: 'Activo', key: 'activo', width: 8 },
       ];
       if (esMaestro) {
-        columnas.push({ header: 'Costo neto', key: 'costo_neto', width: 14 });
+        columnas.push(
+          { header: 'Costo neto', key: 'costo_neto', width: 14 },
+          { header: 'IVA costo', key: 'iva_costo', width: 12 },
+          { header: 'Costo total', key: 'costo_total', width: 14 },
+          { header: 'Margen neto', key: 'margen_neto', width: 14 },
+        );
       }
       hoja.columns = columnas;
 
@@ -130,6 +138,7 @@ export function InventarioPage() {
       precio_venta_total: producto.precio_venta_total,
       stock_inicial: 0,
       stock: producto.stock,
+      costo_total: producto.costo_total ?? 0,
     });
     setError(null);
     setModalAbierto(true);
@@ -151,6 +160,8 @@ export function InventarioPage() {
       return;
     }
 
+    const costoNeto = Math.round(form.costo_total / (1 + iva / 100));
+
     try {
       if (editando) {
         await actualizar.mutateAsync({ id: editando.id, input: parsed.data });
@@ -161,12 +172,18 @@ export function InventarioPage() {
             motivo: 'Ajuste manual desde edicion de producto',
           });
         }
+        if (esMaestro && form.costo_total > 0) {
+          await guardarCosto.mutateAsync({ productoId: editando.id, costoNeto });
+        }
       } else {
         const productoId = await crear.mutateAsync(parsed.data);
         if (parsed.data.stock_inicial > 0) {
           await registrarIngreso.mutateAsync([
             { producto_id: productoId, cantidad: parsed.data.stock_inicial },
           ]);
+        }
+        if (esMaestro && form.costo_total > 0) {
+          await guardarCosto.mutateAsync({ productoId, costoNeto });
         }
       }
       cerrarModal();
@@ -208,6 +225,8 @@ export function InventarioPage() {
 
   const netoCalculado = Math.round(form.precio_venta_total / (1 + iva / 100));
   const ivaCalculado = form.precio_venta_total - netoCalculado;
+  const costoNetoCalculado = Math.round(form.costo_total / (1 + iva / 100));
+  const costoIvaCalculado = form.costo_total - costoNetoCalculado;
 
   return (
     <div className="space-y-6">
@@ -215,14 +234,16 @@ export function InventarioPage() {
         <h1 className="text-2xl font-bold text-slate-800">Inventario</h1>
         {!esCliente && (
           <div className="flex gap-2">
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => void exportar()}
-              disabled={exportando}
-            >
-              {exportando ? 'Exportando...' : 'Exportar a Excel'}
-            </button>
+            {esMaestro && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => void exportar()}
+                disabled={exportando}
+              >
+                {exportando ? 'Exportando...' : 'Exportar a Excel'}
+              </button>
+            )}
             <button type="button" className="btn-primary" onClick={abrirNuevo}>
               Nuevo producto
             </button>
@@ -477,6 +498,23 @@ export function InventarioPage() {
                 value={form.stock_inicial}
                 onChange={(e) => setForm({ ...form, stock_inicial: Number(e.target.value) })}
               />
+            </div>
+          )}
+
+          {esMaestro && (
+            <div>
+              <label className="label">Costo total (con IVA)</label>
+              <input
+                type="number"
+                min={0}
+                className="input"
+                value={form.costo_total}
+                onChange={(e) => setForm({ ...form, costo_total: Number(e.target.value) })}
+              />
+              <p className="mt-1 text-xs text-muted">
+                Neto: <strong>{formatCLP(costoNetoCalculado)}</strong> · IVA ({iva}%):{' '}
+                <strong>{formatCLP(costoIvaCalculado)}</strong>
+              </p>
             </div>
           )}
 

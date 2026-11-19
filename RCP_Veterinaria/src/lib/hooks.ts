@@ -56,6 +56,15 @@ export function useAjustarStock() {
   });
 }
 
+export function useGuardarCosto() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ productoId, costoNeto }: { productoId: string; costoNeto: number }) =>
+      api.guardarCosto(productoId, costoNeto),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['inventario'] }),
+  });
+}
+
 export function useIva() {
   return useQuery({
     queryKey: ['iva'],

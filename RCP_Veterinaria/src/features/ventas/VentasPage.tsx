@@ -11,6 +11,7 @@ import {
   useVentaDetalle,
   useVentas,
 } from '@/lib/hooks';
+import { costosPorVenta } from '@/lib/api';
 import { formatCLP, formatFechaHora } from '@/lib/format';
 import { hoyISO, rangoDe, type RangoTipo } from '@/lib/dateRanges';
 import type { ItemVenta, MedioPago, ProductoInventario } from '@/lib/types';
@@ -69,6 +70,8 @@ export function VentasPage() {
       const libro = new ExcelJS.Workbook();
       const hoja = libro.addWorksheet('Ventas');
 
+      const costos = await costosPorVenta(ventas.map((venta) => venta.id));
+
       hoja.columns = [
         { header: 'Numero', key: 'numero', width: 10 },
         { header: 'Fecha', key: 'fecha', width: 20 },
@@ -76,11 +79,16 @@ export function VentasPage() {
         { header: 'Medio de pago', key: 'medio_pago', width: 16 },
         { header: 'Neto', key: 'total_neto', width: 12 },
         { header: 'IVA', key: 'total_iva', width: 12 },
+        { header: 'Descuento', key: 'descuento', width: 12 },
+        { header: 'Descripcion descuento', key: 'descripcion_descuento', width: 28 },
         { header: 'Total', key: 'total', width: 14 },
+        { header: 'Costo neto', key: 'costo', width: 14 },
+        { header: 'Margen neto', key: 'margen', width: 14 },
         { header: 'Estado', key: 'estado', width: 12 },
       ];
 
-      ventas.forEach((venta) =>
+      ventas.forEach((venta) => {
+        const costo = costos[venta.id] ?? 0;
         hoja.addRow({
           numero: venta.numero,
           fecha: formatFechaHora(venta.created_at),
@@ -88,10 +96,14 @@ export function VentasPage() {
           medio_pago: venta.medio_pago,
           total_neto: venta.total_neto,
           total_iva: venta.total_iva,
+          descuento: venta.descuento,
+          descripcion_descuento: venta.descripcion_descuento ?? '',
           total: venta.total,
+          costo,
+          margen: venta.total_neto - costo,
           estado: venta.estado,
-        }),
-      );
+        });
+      });
 
       const buffer = await libro.xlsx.writeBuffer();
       const blob = new Blob([buffer], {
@@ -230,14 +242,16 @@ export function VentasPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-slate-800">Ventas</h1>
-        <button
-          type="button"
-          className="btn-secondary"
-          onClick={() => void exportar()}
-          disabled={exportando || ventas.length === 0}
-        >
-          {exportando ? 'Exportando...' : 'Exportar a Excel'}
-        </button>
+        {esMaestro && (
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => void exportar()}
+            disabled={exportando || ventas.length === 0}
+          >
+            {exportando ? 'Exportando...' : 'Exportar a Excel'}
+          </button>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">

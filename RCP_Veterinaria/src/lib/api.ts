@@ -108,6 +108,17 @@ export async function ajustarStock(
   if (error) throw new Error(error.message);
 }
 
+/**
+ * Guarda el costo de un producto (solo Maestro). Se envia el costo NETO; el
+ * trigger de la base calcula el IVA y el costo total.
+ */
+export async function guardarCosto(productoId: string, costoNeto: number): Promise<void> {
+  const { error } = await supabase
+    .from('productos_costos')
+    .upsert({ producto_id: productoId, costo_neto: costoNeto }, { onConflict: 'producto_id' });
+  if (error) throw new Error(error.message);
+}
+
 /** Porcentaje de IVA configurado (por defecto 19). */
 export async function obtenerIva(): Promise<number> {
   const { data, error } = await supabase
@@ -173,6 +184,41 @@ export async function listarVentas(desde: string, hasta: string): Promise<VentaR
 
   if (error) throw new Error(error.message);
   return (data ?? []) as VentaResumen[];
+}
+
+/**
+ * Costo total por venta (solo Maestro). Suma cantidad * costo unitario de cada
+ * item. Devuelve un mapa venta_id -> costo total neto.
+ */
+export async function costosPorVenta(ventaIds: string[]): Promise<Record<string, number>> {
+  if (ventaIds.length === 0) return {};
+
+  const { data: items, error: errItems } = await supabase
+    .from('venta_items')
+    .select('id, venta_id, cantidad')
+    .in('venta_id', ventaIds);
+  if (errItems) throw new Error(errItems.message);
+
+  const itemIds = (items ?? []).map((item) => item.id);
+  if (itemIds.length === 0) return {};
+
+  const { data: costos, error: errCostos } = await supabase
+    .from('venta_items_costos')
+    .select('venta_item_id, costo_unitario_neto')
+    .in('venta_item_id', itemIds);
+  if (errCostos) throw new Error(errCostos.message);
+
+  const costoPorItem: Record<string, number> = {};
+  for (const costo of costos ?? []) {
+    costoPorItem[costo.venta_item_id] = costo.costo_unitario_neto;
+  }
+
+  const mapa: Record<string, number> = {};
+  for (const item of items ?? []) {
+    const costo = costoPorItem[item.id] ?? 0;
+    mapa[item.venta_id] = (mapa[item.venta_id] ?? 0) + item.cantidad * costo;
+  }
+  return mapa;
 }
 
 // ---------------------------------------------------------------------------
