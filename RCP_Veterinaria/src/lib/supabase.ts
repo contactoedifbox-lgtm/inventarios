@@ -17,7 +17,11 @@ export const supabase = createClient(
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: false,
+      // Necesario para el retorno de OAuth (Google) y la confirmacion por correo.
+      // Con HashRouter se usa PKCE: el codigo llega como ?code=... en la query,
+      // que no colisiona con el fragmento (#/ruta) del router.
+      detectSessionInUrl: true,
+      flowType: 'pkce',
     },
   },
 );

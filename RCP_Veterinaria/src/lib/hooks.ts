@@ -438,6 +438,17 @@ export function useMisDatos() {
   });
 }
 
+export function useActualizarMisDatos() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: api.MisDatosInput) => api.actualizarMisDatos(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['mis-datos'] });
+      qc.invalidateQueries({ queryKey: ['clientes'] });
+    },
+  });
+}
+
 export function useCrearReservaCliente() {
   const qc = useQueryClient();
   return useMutation({

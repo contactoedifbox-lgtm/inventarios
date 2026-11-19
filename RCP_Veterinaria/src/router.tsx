@@ -2,6 +2,7 @@ import { createHashRouter, Navigate } from 'react-router-dom';
 import { AppShell } from '@/components/layout/AppShell';
 import { RequireAuth } from '@/components/layout/RequireAuth';
 import { LoginPage } from '@/features/auth/LoginPage';
+import { RegistroPage } from '@/features/auth/RegistroPage';
 import { DashboardPage } from '@/features/dashboard/DashboardPage';
 import { InventarioPage } from '@/features/inventario/InventarioPage';
 import { VentasPage } from '@/features/ventas/VentasPage';
@@ -23,6 +24,7 @@ import { ReservaPublicaPage } from '@/features/publico/ReservaPublicaPage';
  */
 export const router = createHashRouter([
   { path: '/login', element: <LoginPage /> },
+  { path: '/registro', element: <RegistroPage /> },
   { path: '/reservar', element: <ReservaPublicaPage /> },
   {
     path: '/',

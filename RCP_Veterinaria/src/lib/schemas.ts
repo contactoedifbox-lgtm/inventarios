@@ -11,6 +11,21 @@ export const loginSchema = z.object({
   password: z.string().min(6, 'Minimo 6 caracteres'),
 });
 
+export const registroClienteSchema = z.object({
+  nombres: z.string().trim().min(1, 'Los nombres son obligatorios').max(120),
+  apellidos: z.string().trim().min(1, 'Los apellidos son obligatorios').max(120),
+  rut: z
+    .string()
+    .trim()
+    .refine((valor) => validarRut(valor), 'RUT invalido (digito verificador)'),
+  telefono: z.string().trim().min(8, 'Telefono invalido').max(20),
+  email: z.string().trim().email('Correo invalido'),
+  password: z.string().min(6, 'La contrasena debe tener al menos 6 caracteres'),
+  consentimiento: z.literal(true, {
+    errorMap: () => ({ message: 'Debes aceptar el tratamiento de datos' }),
+  }),
+});
+
 export const productoSchema = z.object({
   codigo_barras: z.string().trim().max(64).optional().or(z.literal('')),
   nombre: z.string().trim().min(1, 'El nombre es obligatorio').max(200),
@@ -59,6 +74,7 @@ export const reservaPublicaSchema = z.object({
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
+export type RegistroClienteInput = z.infer<typeof registroClienteSchema>;
 export type ProductoInput = z.infer<typeof productoSchema>;
 export type VentaInput = z.infer<typeof ventaSchema>;
 export type ClienteInput = z.infer<typeof clienteSchema>;

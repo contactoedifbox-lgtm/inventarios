@@ -1,17 +1,34 @@
-import { useMisDatos } from '@/lib/hooks';
+import { useEffect, useState, type FormEvent } from 'react';
+import { useActualizarMisDatos, useMisDatos } from '@/lib/hooks';
 
 export function MisDatosPage() {
   const { data, isLoading } = useMisDatos();
+  const actualizar = useActualizarMisDatos();
+
+  const [form, setForm] = useState({ nombres: '', apellidos: '', rut: '', telefono: '' });
+  const [error, setError] = useState<string | null>(null);
+  const [ok, setOk] = useState(false);
+
+  useEffect(() => {
+    if (data?.cliente) {
+      setForm({
+        nombres: data.cliente.nombres,
+        apellidos: data.cliente.apellidos,
+        rut: data.cliente.rut === 'ANONIMO' ? '' : data.cliente.rut,
+        telefono: data.cliente.telefono === 'ANONIMO' ? '' : data.cliente.telefono,
+      });
+    }
+  }, [data]);
 
   if (isLoading) {
-    return <p className="text-sm text-slate-500">Cargando tus datos...</p>;
+    return <p className="text-sm text-muted">Cargando tus datos...</p>;
   }
 
   if (!data?.cliente) {
     return (
       <div className="card">
-        <h1 className="text-2xl font-bold text-slate-800">Mis datos</h1>
-        <p className="mt-2 text-sm text-amber-700">
+        <h1 className="text-2xl font-bold text-ink">Mis datos</h1>
+        <p className="mt-2 text-sm text-warning-700">
           No tienes una ficha de cliente asociada a tu correo. Contacta a la clinica para
           registrarte.
         </p>
@@ -21,28 +38,111 @@ export function MisDatosPage() {
 
   const { cliente, mascotas } = data;
 
+  async function guardar(evento: FormEvent) {
+    evento.preventDefault();
+    setError(null);
+    setOk(false);
+
+    if (!form.nombres.trim() || !form.apellidos.trim()) {
+      setError('Nombre y apellido son obligatorios');
+      return;
+    }
+
+    try {
+      await actualizar.mutateAsync({
+        nombres: form.nombres,
+        apellidos: form.apellidos,
+        rut: form.rut,
+        telefono: form.telefono,
+      });
+      setOk(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudieron guardar tus datos');
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-slate-800">Mis datos</h1>
+      <h1 className="text-2xl font-bold text-ink">Mis datos</h1>
 
-      <div className="card space-y-2">
-        <h2 className="text-sm font-semibold uppercase text-slate-400">Datos personales</h2>
-        <p className="text-slate-700">
-          {cliente.nombres} {cliente.apellidos}
-        </p>
-        <p className="text-sm text-slate-500">RUT {cliente.rut}</p>
-        <p className="text-sm text-slate-500">Telefono {cliente.telefono}</p>
-        <p className="text-sm text-slate-500">Email {cliente.email ?? '-'}</p>
-      </div>
+      <form className="card space-y-4" onSubmit={guardar}>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+          Datos personales
+        </h2>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="label" htmlFor="nombres">
+              Nombres
+            </label>
+            <input
+              id="nombres"
+              className="input"
+              value={form.nombres}
+              onChange={(e) => setForm({ ...form, nombres: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="apellidos">
+              Apellidos
+            </label>
+            <input
+              id="apellidos"
+              className="input"
+              value={form.apellidos}
+              onChange={(e) => setForm({ ...form, apellidos: e.target.value })}
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="label" htmlFor="rut">
+              RUT
+            </label>
+            <input
+              id="rut"
+              className="input"
+              placeholder="11111111-1"
+              value={form.rut}
+              onChange={(e) => setForm({ ...form, rut: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="telefono">
+              Telefono
+            </label>
+            <input
+              id="telefono"
+              className="input"
+              value={form.telefono}
+              onChange={(e) => setForm({ ...form, telefono: e.target.value })}
+            />
+          </div>
+        </div>
+
+        <p className="text-sm text-muted">Email {cliente.email ?? '-'}</p>
+
+        {error && <p className="text-sm text-danger-600">{error}</p>}
+        {ok && <p className="text-sm text-success-700">Datos guardados correctamente.</p>}
+
+        <div className="flex justify-end">
+          <button type="submit" className="btn-primary" disabled={actualizar.isPending}>
+            {actualizar.isPending ? 'Guardando...' : 'Guardar cambios'}
+          </button>
+        </div>
+      </form>
 
       <div className="card">
-        <h2 className="mb-2 text-sm font-semibold uppercase text-slate-400">Mis mascotas</h2>
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">
+          Mis mascotas
+        </h2>
         {mascotas.length === 0 ? (
-          <p className="text-sm text-slate-500">Sin mascotas registradas.</p>
+          <p className="text-sm text-muted">Sin mascotas registradas.</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-400">
+              <tr className="border-b border-line text-left text-xs uppercase text-muted">
                 <th className="py-2">Nombre</th>
                 <th className="py-2">Especie</th>
                 <th className="py-2">Raza</th>
@@ -51,11 +151,11 @@ export function MisDatosPage() {
             </thead>
             <tbody>
               {mascotas.map((mascota) => (
-                <tr key={mascota.id} className="border-b border-slate-100">
-                  <td className="py-2 text-slate-700">{mascota.nombre}</td>
-                  <td className="py-2 text-slate-500">{mascota.especie}</td>
-                  <td className="py-2 text-slate-500">{mascota.raza ?? '-'}</td>
-                  <td className="py-2 text-right text-slate-500">
+                <tr key={mascota.id} className="border-b border-line">
+                  <td className="py-2 text-ink">{mascota.nombre}</td>
+                  <td className="py-2 text-muted">{mascota.especie}</td>
+                  <td className="py-2 text-muted">{mascota.raza ?? '-'}</td>
+                  <td className="py-2 text-right text-muted">
                     {mascota.peso_kg != null ? `${mascota.peso_kg} kg` : '-'}
                   </td>
                 </tr>
@@ -65,8 +165,8 @@ export function MisDatosPage() {
         )}
       </div>
 
-      <p className="text-xs text-slate-400">
-        Estos datos se precargan al reservar una hora. Para modificarlos, contacta a la clinica.
+      <p className="text-xs text-muted">
+        Estos datos se precargan al reservar una hora. Las mascotas las registra la clinica.
       </p>
     </div>
   );

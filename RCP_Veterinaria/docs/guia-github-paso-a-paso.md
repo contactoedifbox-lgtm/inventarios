@@ -167,3 +167,51 @@ supabase functions deploy admin-usuarios
 
 Cada migración nueva debe incluir en el mismo archivo: tabla, RLS, `GRANT`
 explícito y políticas.
+
+---
+
+## 12. Alta de cuentas de clientes (correo y Google)
+
+Los clientes pueden crear su propia cuenta desde `#/registro` con **correo y
+contraseña** o con **Google**. Al registrarse, un trigger en `auth.users`
+(migración `0020_registro_clientes`) crea automáticamente:
+
+- un perfil en `public.perfiles` con rol **`cliente`** (nunca maestro/vendedor), y
+- una ficha en `public.clientes` vinculada por email.
+
+El rol solo se puede elevar desde la Edge Function `admin-usuarios` (Maestro); el
+autoregistro público siempre queda como `cliente`.
+
+### 12.1 Confirmación de correo
+
+En **Supabase → Authentication → Sign In / Providers → Email**:
+
+- **Confirm email**: si está **activado**, el usuario debe confirmar por correo
+  antes de entrar (la app muestra "Revisa tu correo"). Si está **desactivado**
+  (autoconfirm), entra de inmediato. Para pruebas rápidas conviene desactivarlo.
+
+### 12.2 Habilitar Google (paso manual)
+
+1. En **Google Cloud Console** → *APIs & Services* → *Credentials* → **Create
+   credentials → OAuth client ID** → tipo **Web application**.
+2. En **Authorized redirect URIs** agrega exactamente:
+   `https://vparxfmoqfaahsdqmjcf.supabase.co/auth/v1/callback`
+3. Copia el **Client ID** y **Client Secret**.
+4. En **Supabase → Authentication → Sign In / Providers → Google**: actívalo y
+   pega el Client ID y el Client Secret.
+5. En **Authentication → URL Configuration**:
+   - **Site URL**: `https://contactoedifbox-lgtm.github.io/inventarios/RCP_Veterinaria/`
+   - **Redirect URLs**: agrega
+     `https://contactoedifbox-lgtm.github.io/inventarios/RCP_Veterinaria/` y
+     `http://localhost:5173/`.
+
+> El frontend usa PKCE (`flowType: 'pkce'`), por lo que el retorno de Google llega
+> como `?code=...` y no colisiona con el HashRouter.
+
+### 12.3 Probar
+
+- **Correo:** `#/registro` → completar datos → crear cuenta → iniciar sesión.
+- **Google:** `#/registro` → "Continuar con Google" → elegir cuenta → vuelve
+  autenticado.
+- Verifica en **Table Editor** que aparezcan la fila en `perfiles` (rol `cliente`)
+  y la ficha en `clientes`.

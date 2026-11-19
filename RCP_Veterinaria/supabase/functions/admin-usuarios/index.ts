@@ -74,6 +74,15 @@ Deno.serve(async (req) => {
       return json({ error: 'Faltan datos del usuario' }, 400);
     }
 
+    const rolFinal = rol === 'maestro' ? 'maestro' : rol === 'cliente' ? 'cliente' : 'vendedor';
+
+    // ¿Ya existia una ficha de cliente con ese email? (para no borrar una real)
+    const { data: fichaPrevia } = await supabase
+      .from('clientes')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
     const { data: creado, error: errorCrear } = await supabase.auth.admin.createUser({
       email,
       password,
@@ -84,17 +93,46 @@ Deno.serve(async (req) => {
       return json({ error: errorCrear?.message ?? 'No se pudo crear el usuario' }, 400);
     }
 
-    const rolFinal = rol === 'maestro' ? 'maestro' : rol === 'cliente' ? 'cliente' : 'vendedor';
+    // El trigger en auth.users crea un perfil 'cliente' y una ficha de cliente.
+    // Para roles de personal reemplazamos el perfil (delete + insert, porque el
+    // trigger de proteccion bloquea el UPDATE de rol) y quitamos la ficha creada.
+    if (rolFinal !== 'cliente') {
+      await supabase.from('perfiles').delete().eq('id', creado.user.id);
 
-    const { error: errorPerfil } = await supabase.from('perfiles').insert({
-      id: creado.user.id,
-      nombre_completo,
-      rol: rolFinal,
-      activo: true,
-    });
+      const { error: errorPerfil } = await supabase.from('perfiles').insert({
+        id: creado.user.id,
+        nombre_completo,
+        rol: rolFinal,
+        activo: true,
+      });
 
-    if (errorPerfil) {
-      return json({ error: errorPerfil.message }, 400);
+      if (errorPerfil) {
+        return json({ error: errorPerfil.message }, 400);
+      }
+
+      if (!fichaPrevia) {
+        await supabase.from('clientes').delete().eq('email', email);
+      }
+    } else {
+      // Cliente: el trigger ya creo el perfil; si no, lo creamos aqui.
+      const { data: perfilExistente } = await supabase
+        .from('perfiles')
+        .select('id')
+        .eq('id', creado.user.id)
+        .maybeSingle();
+
+      if (!perfilExistente) {
+        const { error: errorPerfil } = await supabase.from('perfiles').insert({
+          id: creado.user.id,
+          nombre_completo,
+          rol: 'cliente',
+          activo: true,
+        });
+
+        if (errorPerfil) {
+          return json({ error: errorPerfil.message }, 400);
+        }
+      }
     }
 
     return json({ id: creado.user.id }, 201);

@@ -644,6 +644,23 @@ export async function misDatos(): Promise<MisDatos> {
   };
 }
 
+export interface MisDatosInput {
+  nombres: string;
+  apellidos: string;
+  rut: string;
+  telefono: string;
+}
+
+export async function actualizarMisDatos(input: MisDatosInput): Promise<void> {
+  const { error } = await supabase.rpc('actualizar_mis_datos', {
+    p_nombres: input.nombres,
+    p_apellidos: input.apellidos,
+    p_rut: input.rut,
+    p_telefono: input.telefono,
+  });
+  if (error) throw new Error(error.message);
+}
+
 // ---------------------------------------------------------------------------
 // Horario semanal de los profesionales
 // ---------------------------------------------------------------------------

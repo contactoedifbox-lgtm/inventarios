@@ -65,17 +65,33 @@ VITE_BASE_PATH=          # vacío en local; en Pages: /inventarios/RCP_Veterinar
 
 ### Iniciar sesión
 
-Usuarios de prueba (contraseña `123456`):
+Usuario Maestro de prueba (contraseña `123456`):
 
 | Correo | Rol |
 |---|---|
 | `igneel.2@gmail.com` | Maestro |
-| `contacto.edifbox@gmail.com` | Vendedor |
-| `simon.e.monsalve@gmail.com` | Cliente |
 
-Si necesitas restablecer una contraseña, hazlo en
-**Supabase → Authentication → Users** o crea usuarios con la Edge Function
-`admin-usuarios`.
+Los usuarios Vendedor y Cliente se crean desde la app (el Maestro con la Edge
+Function `admin-usuarios`) o se autoregistran los clientes. Si necesitas
+restablecer una contraseña, hazlo en **Supabase → Authentication → Users**.
+
+### Crear cuenta de cliente (autoregistro)
+
+Los clientes pueden crear su propia cuenta en `#/registro` con **correo y
+contraseña** o con **Google**. Al registrarse, un trigger en `auth.users`
+(migración `0020_registro_clientes`) crea automáticamente:
+
+- un perfil en `perfiles` con rol **`cliente`** (nunca maestro/vendedor), y
+- una ficha en `clientes` vinculada por email.
+
+El cliente puede completar o corregir sus datos (nombre, RUT, teléfono) en la
+pestaña **Mis datos**.
+
+Para habilitar **Google** hay que crear credenciales OAuth en Google Cloud y
+activar el proveedor en Supabase (ver
+[`docs/guia-github-paso-a-paso.md`](docs/guia-github-paso-a-paso.md), sección 12).
+La confirmación por correo está desactivada (autoconfirm) para facilitar las
+pruebas.
 
 ### Página pública
 
