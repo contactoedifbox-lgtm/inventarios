@@ -352,7 +352,9 @@ export function PersonalPage() {
 
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="badge-brand">{etiqueta}</span>
-                  <span className="badge-neutral">Slot {profesional.duracion_slot_min} min</span>
+                  {profesional.tipo !== 'vendedor' && (
+                    <span className="badge-neutral">Slot {profesional.duracion_slot_min} min</span>
+                  )}
                   <span className="badge-neutral">Orden {profesional.orden}</span>
                   {profesional.email && (
                     <span className="badge-neutral">{profesional.email}</span>
@@ -565,8 +567,9 @@ export function PersonalPage() {
         {horarioProfesional && (
           <div className="space-y-4">
             <p className="text-xs text-muted">
-              Agrega uno o mas tramos por dia. Los bloques de la agenda se generan automaticamente
-              segun la duracion del slot ({horarioProfesional.duracion_slot_min} min).
+              {horarioProfesional.tipo === 'vendedor'
+                ? 'Agrega uno o mas tramos por dia para registrar su jornada laboral.'
+                : `Agrega uno o mas tramos por dia. Los bloques de la agenda se generan automaticamente segun la duracion del slot (${horarioProfesional.duracion_slot_min} min).`}
             </p>
 
             <div className="space-y-3">
@@ -611,7 +614,7 @@ export function PersonalPage() {
                       </div>
                     </div>
 
-                    {filas.length > 0 && (
+                    {filas.length > 0 && horarioProfesional.tipo !== 'vendedor' && (
                       <div className="mt-2 pl-0 sm:pl-24">
                         <p className="mb-1 text-xs text-muted">
                           Bloques de {horarioProfesional.duracion_slot_min} min (
