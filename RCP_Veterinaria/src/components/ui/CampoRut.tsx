@@ -1,4 +1,4 @@
-import { formatearRut, validarRut } from '@/lib/rut';
+import { calcularDv, formatearRut, limpiarRut, validarRut } from '@/lib/rut';
 
 interface CampoRutProps {
   value: string;
@@ -12,6 +12,10 @@ interface CampoRutProps {
  * verificador. El valor se guarda normalizado (12345678-K) al enviar el formulario.
  */
 export function CampoRut({ value, onChange, id, placeholder = '12.345.678-5' }: CampoRutProps) {
+  const limpio = limpiarRut(value);
+  const invalido = value.length > 3 && !validarRut(value);
+  const dvEsperado = limpio.length >= 2 ? calcularDv(limpio.slice(0, -1)) : '';
+
   return (
     <>
       <input
@@ -23,8 +27,10 @@ export function CampoRut({ value, onChange, id, placeholder = '12.345.678-5' }: 
         value={value}
         onChange={(e) => onChange(formatearRut(e.target.value))}
       />
-      {value.length > 3 && !validarRut(value) && (
-        <p className="mt-1 text-xs text-danger-600">RUT invalido</p>
+      {invalido && (
+        <p className="mt-1 text-xs text-danger-600">
+          RUT invalido{dvEsperado ? ` (el digito verificador correcto es ${dvEsperado})` : ''}
+        </p>
       )}
     </>
   );
