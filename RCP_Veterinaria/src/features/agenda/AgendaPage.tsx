@@ -143,6 +143,7 @@ export function AgendaPage() {
         rut: misDatos.cliente.rut === 'ANONIMO' ? '' : misDatos.cliente.rut,
         telefono: misDatos.cliente.telefono === 'ANONIMO' ? '' : misDatos.cliente.telefono,
       });
+      setMascotaCliente(MASCOTA_VACIA);
     }
   }, [modalNueva, esCliente, misDatos]);
 
@@ -342,7 +343,7 @@ export function AgendaPage() {
           return;
         }
 
-        let mascotaFinal = mascotaId;
+        let mascotaFinal: string | null = mascotaId === '__nueva__' ? null : mascotaId;
 
         if (requiereCompletar) {
           if (!datosCliente.nombres.trim() || !datosCliente.apellidos.trim()) {
@@ -378,6 +379,18 @@ export function AgendaPage() {
               peso_kg: mascotaCliente.peso_kg ? Number(mascotaCliente.peso_kg) : null,
             });
           }
+        } else if (mascotaId === '__nueva__') {
+          if (!mascotaCliente.nombre.trim()) {
+            setErrorNueva('Ingresa el nombre de tu mascota');
+            return;
+          }
+          mascotaFinal = await crearMascota.mutateAsync({
+            cliente_id: misDatos.cliente.id,
+            nombre: mascotaCliente.nombre,
+            especie: mascotaCliente.especie,
+            raza: mascotaCliente.raza || null,
+            peso_kg: mascotaCliente.peso_kg ? Number(mascotaCliente.peso_kg) : null,
+          });
         }
 
         await crearReservaCliente.mutateAsync({
@@ -1091,8 +1104,62 @@ export function AgendaPage() {
                           {m.nombre} ({m.especie})
                         </option>
                       ))}
+                      <option value="__nueva__">Otra mascota</option>
                     </select>
                   </div>
+                  {mascotaId === '__nueva__' && (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="label">Nombre mascota</label>
+                        <input
+                          className="input"
+                          value={mascotaCliente.nombre}
+                          onChange={(e) =>
+                            setMascotaCliente({ ...mascotaCliente, nombre: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Especie</label>
+                        <select
+                          className="input"
+                          value={mascotaCliente.especie}
+                          onChange={(e) =>
+                            setMascotaCliente({
+                              ...mascotaCliente,
+                              especie: e.target.value as Especie,
+                            })
+                          }
+                        >
+                          <option value="perro">Perro</option>
+                          <option value="gato">Gato</option>
+                          <option value="otro">Otro</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="label">Raza (opcional)</label>
+                        <input
+                          className="input"
+                          value={mascotaCliente.raza}
+                          onChange={(e) =>
+                            setMascotaCliente({ ...mascotaCliente, raza: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Peso kg (opcional)</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          className="input"
+                          value={mascotaCliente.peso_kg}
+                          onChange={(e) =>
+                            setMascotaCliente({ ...mascotaCliente, peso_kg: e.target.value })
+                          }
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
