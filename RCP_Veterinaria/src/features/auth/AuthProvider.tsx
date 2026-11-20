@@ -3,6 +3,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -61,6 +62,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     enlaceAuth?.kind === 'tokens' &&
       (enlaceAuth.tipo === 'recovery' || enlaceAuth.tipo === 'invite'),
   );
+  // Usuario cuyo perfil ya se cargo: evita mostrar "cargando" (y desmontar la
+  // pantalla) en un refresco de token al volver a la pestana.
+  const perfilCargadoPara = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -114,12 +118,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function cargarPerfil() {
       if (!session?.user) {
+        perfilCargadoPara.current = null;
         setPerfil(null);
         setCargando(false);
         return;
       }
 
-      setCargando(true);
+      // Solo mostramos "cargando" la primera vez (o si cambia el usuario). En un
+      // refresco de token del mismo usuario no desmontamos la pantalla.
+      if (perfilCargadoPara.current !== session.user.id) {
+        setCargando(true);
+      }
+
       const { data } = await supabase
         .from('perfiles')
         .select('id, nombre_completo, rol, activo')
@@ -127,6 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .maybeSingle();
 
       if (activo) {
+        perfilCargadoPara.current = session.user.id;
         setPerfil((data as Perfil | null) ?? null);
         setCargando(false);
       }

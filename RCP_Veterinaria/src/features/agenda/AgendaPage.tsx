@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { RangoFiltro } from '@/components/ui/RangoFiltro';
 import { CampoRut } from '@/components/ui/CampoRut';
@@ -134,9 +134,15 @@ export function AgendaPage() {
     return () => clearTimeout(timer);
   }, [busquedaCliente]);
 
-  // Precarga los datos del cliente al abrir el modal para completarlos si faltan.
+  // Precarga los datos del cliente al abrir el modal (una sola vez por apertura),
+  // para no borrar lo que el usuario ya escribio si la consulta se refresca.
+  const prefillHecho = useRef(false);
   useEffect(() => {
-    if (modalNueva && esCliente && misDatos?.cliente) {
+    if (!modalNueva) {
+      prefillHecho.current = false;
+      return;
+    }
+    if (esCliente && misDatos?.cliente && !prefillHecho.current) {
       setDatosCliente({
         nombres: misDatos.cliente.nombres === 'ANONIMO' ? '' : misDatos.cliente.nombres,
         apellidos: misDatos.cliente.apellidos === 'ANONIMO' ? '' : misDatos.cliente.apellidos,
@@ -144,6 +150,7 @@ export function AgendaPage() {
         telefono: misDatos.cliente.telefono === 'ANONIMO' ? '' : misDatos.cliente.telefono,
       });
       setMascotaCliente(MASCOTA_VACIA);
+      prefillHecho.current = true;
     }
   }, [modalNueva, esCliente, misDatos]);
 
