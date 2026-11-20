@@ -1,17 +1,27 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { Modal } from '@/components/ui/Modal';
 import { CampoRut } from '@/components/ui/CampoRut';
 import { CampoTelefono } from '@/components/ui/CampoTelefono';
-import { useActualizarMisDatos, useMisDatos } from '@/lib/hooks';
+import { useActualizarMisDatos, useCrearMascota, useMisDatos } from '@/lib/hooks';
 import { normalizarRut } from '@/lib/rut';
 import { normalizarTelefono } from '@/lib/format';
+import { mascotaSchema } from '@/lib/schemas';
+import type { Especie } from '@/lib/types';
+
+const MASCOTA_VACIA = { nombre: '', especie: 'perro' as Especie, raza: '', peso_kg: '' };
 
 export function MisDatosPage() {
   const { data, isLoading } = useMisDatos();
   const actualizar = useActualizarMisDatos();
+  const crearMascota = useCrearMascota();
 
   const [form, setForm] = useState({ nombres: '', apellidos: '', rut: '', telefono: '' });
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
+
+  const [modalMascota, setModalMascota] = useState(false);
+  const [mascota, setMascota] = useState(MASCOTA_VACIA);
+  const [errorMascota, setErrorMascota] = useState<string | null>(null);
 
   useEffect(() => {
     if (data?.cliente) {
@@ -62,6 +72,46 @@ export function MisDatosPage() {
       setOk(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudieron guardar tus datos');
+    }
+  }
+
+  function abrirMascota() {
+    setMascota(MASCOTA_VACIA);
+    setErrorMascota(null);
+    setModalMascota(true);
+  }
+
+  function cerrarMascota() {
+    setModalMascota(false);
+    setErrorMascota(null);
+  }
+
+  async function guardarMascota(evento: FormEvent) {
+    evento.preventDefault();
+    setErrorMascota(null);
+
+    const parsed = mascotaSchema.safeParse({
+      nombre: mascota.nombre,
+      especie: mascota.especie,
+      raza: mascota.raza,
+      peso_kg: mascota.peso_kg ? Number(mascota.peso_kg) : undefined,
+    });
+    if (!parsed.success) {
+      setErrorMascota(parsed.error.issues[0]?.message ?? 'Datos invalidos');
+      return;
+    }
+
+    try {
+      await crearMascota.mutateAsync({
+        cliente_id: cliente.id,
+        nombre: parsed.data.nombre,
+        especie: parsed.data.especie,
+        raza: parsed.data.raza || null,
+        peso_kg: parsed.data.peso_kg ?? null,
+      });
+      cerrarMascota();
+    } catch (err) {
+      setErrorMascota(err instanceof Error ? err.message : 'No se pudo registrar la mascota');
     }
   }
 
@@ -135,11 +185,16 @@ export function MisDatosPage() {
       </form>
 
       <div className="card">
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">
-          Mis mascotas
-        </h2>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Mis mascotas</h2>
+          <button type="button" className="btn-primary" onClick={abrirMascota}>
+            Registrar mascota
+          </button>
+        </div>
         {mascotas.length === 0 ? (
-          <p className="text-sm text-muted">Sin mascotas registradas.</p>
+          <p className="text-sm text-muted">
+            Sin mascotas registradas. Agrega tu primera mascota con el boton de arriba.
+          </p>
         ) : (
           <table className="w-full text-sm">
             <thead>
@@ -167,8 +222,67 @@ export function MisDatosPage() {
       </div>
 
       <p className="text-xs text-muted">
-        Estos datos se precargan al reservar una hora. Las mascotas las registra la clinica.
+        Estos datos se precargan al reservar una hora. Puedes registrar y ver tus mascotas aqui.
       </p>
+
+      <Modal open={modalMascota} onClose={cerrarMascota} title="Registrar mascota">
+        <form className="space-y-3" onSubmit={guardarMascota}>
+          <div>
+            <label className="label">Nombre</label>
+            <input
+              className="input"
+              value={mascota.nombre}
+              onChange={(e) => setMascota({ ...mascota, nombre: e.target.value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Especie</label>
+              <select
+                className="input"
+                value={mascota.especie}
+                onChange={(e) => setMascota({ ...mascota, especie: e.target.value as Especie })}
+              >
+                <option value="perro">Perro</option>
+                <option value="gato">Gato</option>
+                <option value="otro">Otro</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">Peso (kg, opcional)</label>
+              <input
+                type="number"
+                min={0}
+                step="0.1"
+                className="input"
+                value={mascota.peso_kg}
+                onChange={(e) => setMascota({ ...mascota, peso_kg: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="label">Raza (opcional)</label>
+            <input
+              className="input"
+              value={mascota.raza}
+              onChange={(e) => setMascota({ ...mascota, raza: e.target.value })}
+            />
+          </div>
+
+          {errorMascota && <p className="text-sm text-danger-600">{errorMascota}</p>}
+
+          <div className="flex gap-2">
+            <button type="submit" className="btn-primary flex-1" disabled={crearMascota.isPending}>
+              {crearMascota.isPending ? 'Guardando...' : 'Registrar mascota'}
+            </button>
+            <button type="button" className="btn-secondary" onClick={cerrarMascota}>
+              Cancelar
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

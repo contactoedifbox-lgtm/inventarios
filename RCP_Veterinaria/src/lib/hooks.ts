@@ -312,6 +312,7 @@ export function useCrearMascota() {
       qc.invalidateQueries({ queryKey: ['clientes'] });
       qc.invalidateQueries({ queryKey: ['clientes-mascotas'] });
       qc.invalidateQueries({ queryKey: ['mascotas'] });
+      qc.invalidateQueries({ queryKey: ['mis-datos'] });
     },
   });
 }
