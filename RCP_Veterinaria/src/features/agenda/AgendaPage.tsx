@@ -5,6 +5,7 @@ import { CampoRut } from '@/components/ui/CampoRut';
 import { CampoTelefono } from '@/components/ui/CampoTelefono';
 import { useAuth } from '@/features/auth/AuthProvider';
 import {
+  useActualizarMisDatos,
   useAgendaOcupacion,
   useCambiarEstadoReserva,
   useCancelarMiReserva,
@@ -32,7 +33,7 @@ import {
   type RangoTipo,
 } from '@/lib/dateRanges';
 import { clienteSchema, mascotaSchema } from '@/lib/schemas';
-import { normalizarRut } from '@/lib/rut';
+import { normalizarRut, validarRut } from '@/lib/rut';
 import type { Especie, Profesional, ReservaDetalle } from '@/lib/types';
 
 type EstadoBloque = 'libre' | 'reservado' | 'fuera_horario' | 'cerrado';
@@ -113,17 +114,51 @@ export function AgendaPage() {
   const [nuevoCliente, setNuevoCliente] = useState(CLIENTE_VACIO);
   const [nuevaMascota, setNuevaMascota] = useState(MASCOTA_VACIA);
   const [errorNueva, setErrorNueva] = useState<string | null>(null);
+  const [datosCliente, setDatosCliente] = useState({
+    nombres: '',
+    apellidos: '',
+    rut: '',
+    telefono: '',
+  });
+  const [mascotaCliente, setMascotaCliente] = useState(MASCOTA_VACIA);
 
   const { data: clientes = [] } = useClientesConMascotas(debouncedCliente);
   const { data: mascotasCliente = [] } = useMascotasCliente(clienteId);
   const { data: slots = [] } = useHorariosDisponibles(nuevaProfesional || null, fecha, fecha, true);
   const crearCliente = useCrearCliente();
   const crearMascota = useCrearMascota();
+  const actualizarMisDatos = useActualizarMisDatos();
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedCliente(busquedaCliente), 250);
     return () => clearTimeout(timer);
   }, [busquedaCliente]);
+
+  // Precarga los datos del cliente al abrir el modal para completarlos si faltan.
+  useEffect(() => {
+    if (modalNueva && esCliente && misDatos?.cliente) {
+      setDatosCliente({
+        nombres: misDatos.cliente.nombres === 'ANONIMO' ? '' : misDatos.cliente.nombres,
+        apellidos: misDatos.cliente.apellidos === 'ANONIMO' ? '' : misDatos.cliente.apellidos,
+        rut: misDatos.cliente.rut === 'ANONIMO' ? '' : misDatos.cliente.rut,
+        telefono: misDatos.cliente.telefono === 'ANONIMO' ? '' : misDatos.cliente.telefono,
+      });
+    }
+  }, [modalNueva, esCliente, misDatos]);
+
+  const datosCompletos = Boolean(
+    misDatos?.cliente &&
+      misDatos.cliente.nombres &&
+      misDatos.cliente.nombres !== 'ANONIMO' &&
+      misDatos.cliente.apellidos &&
+      misDatos.cliente.apellidos !== 'ANONIMO' &&
+      misDatos.cliente.rut &&
+      misDatos.cliente.rut !== 'ANONIMO' &&
+      misDatos.cliente.telefono &&
+      misDatos.cliente.telefono !== 'ANONIMO',
+  );
+  const tieneMascotas = (misDatos?.mascotas.length ?? 0) > 0;
+  const requiereCompletar = esCliente && (!datosCompletos || !tieneMascotas);
 
   const bloques = useMemo<Bloque[]>(() => {
     const dow = diaSemanaISO(fecha);
@@ -306,9 +341,48 @@ export function AgendaPage() {
           setErrorNueva('No tienes una ficha de cliente asociada');
           return;
         }
+
+        let mascotaFinal = mascotaId;
+
+        if (requiereCompletar) {
+          if (!datosCliente.nombres.trim() || !datosCliente.apellidos.trim()) {
+            setErrorNueva('Completa tu nombre y apellido');
+            return;
+          }
+          if (!validarRut(datosCliente.rut)) {
+            setErrorNueva('Ingresa un RUT valido');
+            return;
+          }
+          if (!datosCliente.telefono.trim()) {
+            setErrorNueva('Ingresa tu telefono');
+            return;
+          }
+
+          await actualizarMisDatos.mutateAsync({
+            nombres: datosCliente.nombres,
+            apellidos: datosCliente.apellidos,
+            rut: normalizarRut(datosCliente.rut),
+            telefono: normalizarTelefono(datosCliente.telefono),
+          });
+
+          if (!tieneMascotas) {
+            if (!mascotaCliente.nombre.trim()) {
+              setErrorNueva('Ingresa el nombre de tu mascota');
+              return;
+            }
+            mascotaFinal = await crearMascota.mutateAsync({
+              cliente_id: misDatos.cliente.id,
+              nombre: mascotaCliente.nombre,
+              especie: mascotaCliente.especie,
+              raza: mascotaCliente.raza || null,
+              peso_kg: mascotaCliente.peso_kg ? Number(mascotaCliente.peso_kg) : null,
+            });
+          }
+        }
+
         await crearReservaCliente.mutateAsync({
           profesionalId: nuevaProfesional,
-          mascotaId,
+          mascotaId: mascotaFinal,
           inicio: nuevaInicio,
           motivo: nuevaMotivo || undefined,
         });
@@ -897,7 +971,107 @@ export function AgendaPage() {
           {esCliente ? (
             <div className="rounded-lg border border-slate-200 p-3">
               <p className="mb-2 text-sm font-medium text-slate-600">Tus datos</p>
-              {misDatos?.cliente ? (
+              {!misDatos?.cliente ? (
+                <p className="text-sm text-amber-700">
+                  No tienes una ficha de cliente asociada. Contacta a la clinica.
+                </p>
+              ) : requiereCompletar ? (
+                <div className="space-y-3">
+                  <p className="rounded-lg bg-amber-50 p-2 text-sm text-amber-800">
+                    Para reservar necesitas completar tus datos
+                    {!tieneMascotas ? ' y registrar tu mascota' : ''}.
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="label">Nombres</label>
+                      <input
+                        className="input"
+                        value={datosCliente.nombres}
+                        onChange={(e) =>
+                          setDatosCliente({ ...datosCliente, nombres: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label className="label">Apellidos</label>
+                      <input
+                        className="input"
+                        value={datosCliente.apellidos}
+                        onChange={(e) =>
+                          setDatosCliente({ ...datosCliente, apellidos: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label className="label">RUT</label>
+                      <CampoRut
+                        value={datosCliente.rut}
+                        onChange={(valor) => setDatosCliente({ ...datosCliente, rut: valor })}
+                      />
+                    </div>
+                    <div>
+                      <label className="label">Telefono</label>
+                      <CampoTelefono
+                        value={datosCliente.telefono}
+                        onChange={(valor) => setDatosCliente({ ...datosCliente, telefono: valor })}
+                      />
+                    </div>
+                  </div>
+                  {!tieneMascotas && (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="label">Nombre mascota</label>
+                        <input
+                          className="input"
+                          value={mascotaCliente.nombre}
+                          onChange={(e) =>
+                            setMascotaCliente({ ...mascotaCliente, nombre: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Especie</label>
+                        <select
+                          className="input"
+                          value={mascotaCliente.especie}
+                          onChange={(e) =>
+                            setMascotaCliente({
+                              ...mascotaCliente,
+                              especie: e.target.value as Especie,
+                            })
+                          }
+                        >
+                          <option value="perro">Perro</option>
+                          <option value="gato">Gato</option>
+                          <option value="otro">Otro</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="label">Raza (opcional)</label>
+                        <input
+                          className="input"
+                          value={mascotaCliente.raza}
+                          onChange={(e) =>
+                            setMascotaCliente({ ...mascotaCliente, raza: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Peso kg (opcional)</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          className="input"
+                          value={mascotaCliente.peso_kg}
+                          onChange={(e) =>
+                            setMascotaCliente({ ...mascotaCliente, peso_kg: e.target.value })
+                          }
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
                 <div className="space-y-2 text-sm text-slate-600">
                   <p>
                     {misDatos.cliente.nombres} {misDatos.cliente.apellidos} · RUT{' '}
@@ -920,10 +1094,6 @@ export function AgendaPage() {
                     </select>
                   </div>
                 </div>
-              ) : (
-                <p className="text-sm text-amber-700">
-                  No tienes una ficha de cliente asociada. Contacta a la clinica.
-                </p>
               )}
             </div>
           ) : (

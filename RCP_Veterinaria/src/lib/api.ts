@@ -596,15 +596,20 @@ export interface MascotaInput {
   peso_kg?: number | null;
 }
 
-export async function crearMascota(input: MascotaInput): Promise<void> {
-  const { error } = await supabase.from('mascotas').insert({
-    cliente_id: input.cliente_id,
-    nombre: input.nombre,
-    especie: input.especie,
-    raza: input.raza || null,
-    peso_kg: input.peso_kg ?? null,
-  });
+export async function crearMascota(input: MascotaInput): Promise<string> {
+  const { data, error } = await supabase
+    .from('mascotas')
+    .insert({
+      cliente_id: input.cliente_id,
+      nombre: input.nombre,
+      especie: input.especie,
+      raza: input.raza || null,
+      peso_kg: input.peso_kg ?? null,
+    })
+    .select('id')
+    .single();
   if (error) throw new Error(error.message);
+  return data.id as string;
 }
 
 export async function listarMascotasCliente(clienteId: string): Promise<MascotaResumen[]> {
