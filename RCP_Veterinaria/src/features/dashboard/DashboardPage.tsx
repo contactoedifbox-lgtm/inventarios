@@ -152,7 +152,7 @@ export function DashboardPage() {
                 <thead>
                   <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-400">
                     <th className="py-2">Producto</th>
-                    <th className="py-2 text-right">Cantidad</th>
+                    <th className="py-2 pr-10 text-right">Cantidad</th>
                     <th className="py-2">Fecha reserva</th>
                     <th className="py-2">Fecha retiro</th>
                     <th className="py-2">Estado</th>
@@ -162,7 +162,7 @@ export function DashboardPage() {
                   {misReservasProducto.map((reserva) => (
                     <tr key={reserva.id} className="border-b border-slate-100">
                       <td className="py-2 text-slate-700">{reserva.producto_nombre}</td>
-                      <td className="py-2 text-right">{reserva.cantidad}</td>
+                      <td className="py-2 pr-10 text-right">{reserva.cantidad}</td>
                       <td className="py-2 text-slate-500">{formatFecha(reserva.created_at)}</td>
                       <td className="py-2 text-slate-500">{formatFecha(reserva.expira_at)}</td>
                       <td className="py-2 text-slate-500">{reserva.estado}</td>
@@ -191,7 +191,7 @@ export function DashboardPage() {
                 <thead>
                   <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-400">
                     <th className="py-2">Producto</th>
-                    <th className="py-2 text-right">Cantidad</th>
+                    <th className="py-2 pr-10 text-right">Cantidad</th>
                     <th className="py-2">Fecha encargo</th>
                     <th className="py-2">Fecha entrega</th>
                     <th className="py-2">Estado</th>
@@ -201,7 +201,7 @@ export function DashboardPage() {
                   {misEncargos.map((encargo) => (
                     <tr key={encargo.id} className="border-b border-slate-100">
                       <td className="py-2 text-slate-700">{encargo.producto_nombre}</td>
-                      <td className="py-2 text-right">{encargo.cantidad}</td>
+                      <td className="py-2 pr-10 text-right">{encargo.cantidad}</td>
                       <td className="py-2 text-slate-500">{formatFecha(encargo.created_at)}</td>
                       <td className="py-2 text-slate-500">
                         {encargo.fecha_entrega ? formatFecha(encargo.fecha_entrega) : '-'}
