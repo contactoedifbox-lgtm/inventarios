@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { RangoFiltro } from '@/components/ui/RangoFiltro';
-import { useAuth } from '@/features/auth/AuthProvider';
+import { etiquetaRol, useAuth } from '@/features/auth/AuthProvider';
 import {
   useDashboard,
   useEncargos,
@@ -37,7 +37,7 @@ function Kpi({ titulo, valor, detalle, tono = 'slate' }: {
 }
 
 export function DashboardPage() {
-  const { perfil, esMaestro, esCliente } = useAuth();
+  const { perfil, esCliente } = useAuth();
 
   const [tipo, setTipo] = useState<RangoTipo>('mes');
   const [desde, setDesde] = useState(hoyISO());
@@ -74,7 +74,7 @@ export function DashboardPage() {
           Hola, {perfil?.nombre_completo ?? 'bienvenido'}
         </h1>
         <p className="text-sm text-slate-500">
-          Rol: {esMaestro ? 'Maestro' : esCliente ? 'Cliente' : 'Vendedor'} · Resumen general
+          Rol: {etiquetaRol(perfil)} · Resumen general
         </p>
       </div>
 

@@ -22,6 +22,27 @@ export interface Perfil {
   genero?: string | null;
 }
 
+const ETIQUETA_ROL: Record<Rol, string> = {
+  maestro: 'Maestro',
+  vendedor: 'Personal',
+  cliente: 'Cliente',
+};
+
+const TIPO_LABEL: Record<string, Record<string, string>> = {
+  vendedor: { masculino: 'Vendedor', femenino: 'Vendedora' },
+  veterinario: { masculino: 'Veterinario', femenino: 'Veterinaria' },
+  peluquero: { masculino: 'Peluquero', femenino: 'Peluquera canina' },
+};
+
+/** Etiqueta del rol: usa el tipo de personal (veterinario/peluquero/vendedor). */
+export function etiquetaRol(perfil: Perfil | null): string {
+  if (!perfil) return '-';
+  if (perfil.rol !== 'vendedor') return ETIQUETA_ROL[perfil.rol];
+  const tipo = perfil.tipo ?? 'vendedor';
+  const genero = perfil.genero ?? 'masculino';
+  return TIPO_LABEL[tipo]?.[genero] ?? 'Personal';
+}
+
 export interface RegistroDatos {
   nombres: string;
   apellidos: string;
