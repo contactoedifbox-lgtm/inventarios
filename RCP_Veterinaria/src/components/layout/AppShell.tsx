@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { useAuth, type Rol } from '@/features/auth/AuthProvider';
+import { useAuth, type Perfil, type Rol } from '@/features/auth/AuthProvider';
 
 interface Enlace {
   to: string;
@@ -22,9 +22,24 @@ const ENLACES: Enlace[] = [
 
 const ETIQUETA_ROL: Record<Rol, string> = {
   maestro: 'Maestro',
-  vendedor: 'Vendedor',
+  vendedor: 'Personal',
   cliente: 'Cliente',
 };
+
+const TIPO_LABEL: Record<string, Record<string, string>> = {
+  vendedor: { masculino: 'Vendedor', femenino: 'Vendedora' },
+  veterinario: { masculino: 'Veterinario', femenino: 'Veterinaria' },
+  peluquero: { masculino: 'Peluquero', femenino: 'Peluquera canina' },
+};
+
+/** Etiqueta del rol: usa el tipo de personal (veterinario/peluquero/vendedor). */
+function etiquetaPerfil(perfil: Perfil | null): string {
+  if (!perfil) return '-';
+  if (perfil.rol !== 'vendedor') return ETIQUETA_ROL[perfil.rol];
+  const tipo = perfil.tipo ?? 'vendedor';
+  const genero = perfil.genero ?? 'masculino';
+  return TIPO_LABEL[tipo]?.[genero] ?? 'Personal';
+}
 
 const LOGO = `${import.meta.env.BASE_URL}logo-lanka.jpeg`;
 
@@ -89,7 +104,7 @@ export function AppShell() {
                 {perfil?.nombre_completo ?? 'Sin perfil'}
               </p>
               <p className="text-xs uppercase tracking-wide text-white/70">
-                {perfil ? ETIQUETA_ROL[perfil.rol] : '-'}
+                {etiquetaPerfil(perfil)}
               </p>
             </div>
             <button

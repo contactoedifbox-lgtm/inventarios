@@ -17,6 +17,9 @@ export interface Perfil {
   nombre_completo: string;
   rol: Rol;
   activo: boolean;
+  /** Tipo de personal (veterinario / vendedor / peluquero) para la etiqueta del rol. */
+  tipo?: string | null;
+  genero?: string | null;
 }
 
 export interface RegistroDatos {
@@ -130,15 +133,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setCargando(true);
       }
 
-      const { data } = await supabase
-        .from('perfiles')
-        .select('id, nombre_completo, rol, activo')
-        .eq('id', session.user.id)
-        .maybeSingle();
+      const [{ data }, { data: profesional }] = await Promise.all([
+        supabase
+          .from('perfiles')
+          .select('id, nombre_completo, rol, activo')
+          .eq('id', session.user.id)
+          .maybeSingle(),
+        supabase
+          .from('profesionales')
+          .select('tipo, genero')
+          .eq('perfil_id', session.user.id)
+          .limit(1)
+          .maybeSingle(),
+      ]);
 
       if (activo) {
         perfilCargadoPara.current = session.user.id;
-        setPerfil((data as Perfil | null) ?? null);
+        const tipo = (profesional as { tipo?: string | null } | null)?.tipo ?? null;
+        const genero = (profesional as { genero?: string | null } | null)?.genero ?? null;
+        setPerfil(data ? { ...(data as Perfil), tipo, genero } : null);
         setCargando(false);
       }
     }
