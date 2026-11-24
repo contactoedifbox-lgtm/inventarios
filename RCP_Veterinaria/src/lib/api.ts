@@ -872,3 +872,12 @@ export async function cambiarEstadoEncargo(
   const { error } = await supabase.from('encargos_productos').update({ estado }).eq('id', id);
   if (error) throw new Error(error.message);
 }
+
+/** Programa la fecha de entrega de un encargo (solo personal). */
+export async function programarEntregaEncargo(id: string, fecha: string): Promise<void> {
+  const { error } = await supabase.rpc('programar_entrega_encargo', {
+    p_id: id,
+    p_fecha: fecha,
+  });
+  if (error) throw new Error(error.message);
+}

@@ -256,4 +256,5 @@ export interface EncargoProducto {
   estado: 'pendiente' | 'entregado' | 'cancelado';
   notas: string | null;
   created_at: string;
+  fecha_entrega: string | null;
 }

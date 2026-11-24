@@ -1,7 +1,13 @@
 import { useMemo, useState } from 'react';
 import { RangoFiltro } from '@/components/ui/RangoFiltro';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { useDashboard, useRanking, useReservasResumen } from '@/lib/hooks';
+import {
+  useDashboard,
+  useEncargos,
+  useRanking,
+  useReservasProducto,
+  useReservasResumen,
+} from '@/lib/hooks';
 import { formatCLP, formatFecha } from '@/lib/format';
 import { hoyISO, rangoDe, type RangoTipo } from '@/lib/dateRanges';
 
@@ -49,6 +55,8 @@ export function DashboardPage() {
   const { data: resumen, isLoading } = useDashboard(rango.desde, rango.hasta);
   const { data: reservas } = useReservasResumen();
   const { data: ranking = [] } = useRanking(rangoRanking.desde, rangoRanking.hasta);
+  const { data: misReservasProducto = [] } = useReservasProducto();
+  const { data: misEncargos = [] } = useEncargos();
 
   const masVendidos = [...ranking].sort((a, b) => b.unidades - a.unidades).slice(0, 10);
   const menosVendidos = [...ranking]
@@ -70,20 +78,24 @@ export function DashboardPage() {
         </p>
       </div>
 
-      {/* Inventario */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Inventario</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Kpi titulo="Productos activos" valor={String(inventario?.productos ?? 0)} tono="brand" />
-          <Kpi titulo="Unidades en stock" valor={String(inventario?.stock_total ?? 0)} />
-          <Kpi
-            titulo={`Stock bajo (${STOCK_ALERTA} o menos)`}
-            valor={String(inventario?.stock_bajo ?? 0)}
-            tono="amber"
-          />
-          <Kpi titulo="Agotados" valor={String(inventario?.agotados ?? 0)} tono="red" />
-        </div>
-      </section>
+      {/* Inventario (solo personal) */}
+      {!esCliente && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
+            Inventario
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Kpi titulo="Productos activos" valor={String(inventario?.productos ?? 0)} tono="brand" />
+            <Kpi titulo="Unidades en stock" valor={String(inventario?.stock_total ?? 0)} />
+            <Kpi
+              titulo={`Stock bajo (${STOCK_ALERTA} o menos)`}
+              valor={String(inventario?.stock_bajo ?? 0)}
+              tono="amber"
+            />
+            <Kpi titulo="Agotados" valor={String(inventario?.agotados ?? 0)} tono="red" />
+          </div>
+        </section>
+      )}
 
       {/* Ventas */}
       {!esCliente && (
@@ -123,6 +135,86 @@ export function DashboardPage() {
           <Kpi titulo="Este mes" valor={String(reservas?.mes ?? 0)} />
         </div>
       </section>
+
+      {/* Reservas de productos (solo cliente) */}
+      {esCliente && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
+            Mis reservas de productos
+          </h2>
+          {misReservasProducto.length === 0 ? (
+            <div className="card">
+              <p className="text-sm text-slate-500">Sin reservas de productos.</p>
+            </div>
+          ) : (
+            <div className="card overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-400">
+                    <th className="py-2">Producto</th>
+                    <th className="py-2 text-right">Cantidad</th>
+                    <th className="py-2">Fecha reserva</th>
+                    <th className="py-2">Fecha retiro</th>
+                    <th className="py-2">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {misReservasProducto.map((reserva) => (
+                    <tr key={reserva.id} className="border-b border-slate-100">
+                      <td className="py-2 text-slate-700">{reserva.producto_nombre}</td>
+                      <td className="py-2 text-right">{reserva.cantidad}</td>
+                      <td className="py-2 text-slate-500">{formatFecha(reserva.created_at)}</td>
+                      <td className="py-2 text-slate-500">{formatFecha(reserva.expira_at)}</td>
+                      <td className="py-2 text-slate-500">{reserva.estado}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Encargos (solo cliente) */}
+      {esCliente && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
+            Mis encargos
+          </h2>
+          {misEncargos.length === 0 ? (
+            <div className="card">
+              <p className="text-sm text-slate-500">Sin encargos.</p>
+            </div>
+          ) : (
+            <div className="card overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-400">
+                    <th className="py-2">Producto</th>
+                    <th className="py-2 text-right">Cantidad</th>
+                    <th className="py-2">Fecha encargo</th>
+                    <th className="py-2">Fecha entrega</th>
+                    <th className="py-2">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {misEncargos.map((encargo) => (
+                    <tr key={encargo.id} className="border-b border-slate-100">
+                      <td className="py-2 text-slate-700">{encargo.producto_nombre}</td>
+                      <td className="py-2 text-right">{encargo.cantidad}</td>
+                      <td className="py-2 text-slate-500">{formatFecha(encargo.created_at)}</td>
+                      <td className="py-2 text-slate-500">
+                        {encargo.fecha_entrega ? formatFecha(encargo.fecha_entrega) : '-'}
+                      </td>
+                      <td className="py-2 text-slate-500">{encargo.estado}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Ranking de productos */}
       {!esCliente && (

@@ -579,6 +579,15 @@ export function useCambiarEstadoEncargo() {
   });
 }
 
+export function useProgramarEntregaEncargo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, fecha }: { id: string; fecha: string }) =>
+      api.programarEntregaEncargo(id, fecha),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['encargos'] }),
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Eliminar clientes y profesionales / invitar usuarios
 // ---------------------------------------------------------------------------

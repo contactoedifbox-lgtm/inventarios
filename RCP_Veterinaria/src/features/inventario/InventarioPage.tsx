@@ -16,10 +16,11 @@ import {
   useInventario,
   useIva,
   useMarcarReservaRetirada,
+  useProgramarEntregaEncargo,
   useRegistrarIngreso,
   useReservasProducto,
 } from '@/lib/hooks';
-import { formatCLP, formatFechaHora } from '@/lib/format';
+import { formatCLP, formatFecha, formatFechaHora } from '@/lib/format';
 import { productoSchema } from '@/lib/schemas';
 import type { ProductoInventario, ReservaProducto } from '@/lib/types';
 
@@ -123,6 +124,7 @@ export function InventarioPage() {
   const { data: encargos = [] } = useEncargos();
   const crearEncargo = useCrearEncargo();
   const cambiarEstadoEncargo = useCambiarEstadoEncargo();
+  const programarEntrega = useProgramarEntregaEncargo();
 
   const productosOrdenados = useMemo(() => {
     const copia = [...productos];
@@ -559,7 +561,8 @@ export function InventarioPage() {
                 {!esCliente && <th className="py-2">Solicitante</th>}
                 <th className="py-2 text-right">Cantidad</th>
                 <th className="py-2">Estado</th>
-                <th className="py-2">Fecha</th>
+                <th className="py-2">Fecha encargo</th>
+                <th className="py-2">Fecha entrega</th>
                 <th className="py-2" />
               </tr>
             </thead>
@@ -585,6 +588,26 @@ export function InventarioPage() {
                     </span>
                   </td>
                   <td className="py-2 text-slate-500">{formatFechaHora(encargo.created_at)}</td>
+                  <td className="py-2">
+                    {esCliente ? (
+                      encargo.fecha_entrega ? (
+                        formatFecha(encargo.fecha_entrega)
+                      ) : (
+                        '-'
+                      )
+                    ) : (
+                      <input
+                        type="date"
+                        className="input"
+                        value={encargo.fecha_entrega ?? ''}
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            programarEntrega.mutate({ id: encargo.id, fecha: e.target.value });
+                          }
+                        }}
+                      />
+                    )}
+                  </td>
                   <td className="py-2 text-right">
                     {encargo.estado === 'pendiente' && (
                       <div className="flex justify-end gap-3">
