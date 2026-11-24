@@ -332,18 +332,16 @@ export function InventarioPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-slate-800">Inventario</h1>
-        {!esCliente && (
+        {esMaestro && (
           <div className="flex gap-2">
-            {esMaestro && (
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => void exportar()}
-                disabled={exportando}
-              >
-                {exportando ? 'Exportando...' : 'Exportar a Excel'}
-              </button>
-            )}
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => void exportar()}
+              disabled={exportando}
+            >
+              {exportando ? 'Exportando...' : 'Exportar a Excel'}
+            </button>
             <button type="button" className="btn-primary" onClick={abrirNuevo}>
               Nuevo producto
             </button>
@@ -366,7 +364,9 @@ export function InventarioPage() {
         <p className="text-xs text-slate-400">
           {esCliente
             ? 'Puedes reservar productos: tienes 1 dia para retirarlos en la clinica.'
-            : 'El stock solo cambia por RPC (ventas, devoluciones, ingresos y ajustes).'}
+            : esMaestro
+              ? 'El stock solo cambia por RPC (ventas, devoluciones, ingresos y ajustes).'
+              : 'Solo el maestro puede crear y editar productos.'}
         </p>
       </div>
 
@@ -462,7 +462,7 @@ export function InventarioPage() {
                           Encargar
                         </button>
                       )
-                    ) : (
+                    ) : esMaestro ? (
                       <button
                         type="button"
                         className="text-brand-600 hover:underline"
@@ -470,7 +470,7 @@ export function InventarioPage() {
                       >
                         Editar
                       </button>
-                    )}
+                    ) : null}
                   </td>
                 </tr>
               ))}
