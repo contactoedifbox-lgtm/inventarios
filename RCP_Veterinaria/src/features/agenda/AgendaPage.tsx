@@ -224,8 +224,9 @@ export function AgendaPage() {
           cursor = new Date(cursor.getTime() + paso * 60000)
         ) {
           const inicio = new Date(cursor);
-          const fin = new Date(cursor.getTime() + paso * 60000);
-          if (fin > finVentana) break;
+          const finCalculado = new Date(cursor.getTime() + paso * 60000);
+          // El ultimo bloque puede quedar mas corto: se ajusta al fin de la ventana.
+          const fin = finCalculado > finVentana ? new Date(finVentana) : finCalculado;
 
           const ocupado = ocupados.find((o) =>
             solapan(inicio, fin, new Date(o.inicio), new Date(o.fin)),

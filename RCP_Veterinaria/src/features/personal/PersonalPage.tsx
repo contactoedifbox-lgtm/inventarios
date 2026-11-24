@@ -57,14 +57,18 @@ function hhmm(hora: string): string {
   return hora.slice(0, 5);
 }
 
-/** Genera las horas de inicio de los bloques de un tramo segun la duracion del slot. */
+/**
+ * Genera las horas de inicio de los bloques de un tramo segun la duracion del
+ * slot. El ultimo bloque se incluye aunque quede mas corto que el slot (el
+ * ajuste siempre va en el ultimo bloque).
+ */
 function slotsDeRango(inicio: string, fin: string, paso: number): string[] {
   const [hi, mi] = inicio.split(':').map(Number);
   const [hf, mf] = fin.split(':').map(Number);
   const finMin = hf * 60 + mf;
   const slots: string[] = [];
 
-  for (let cursor = hi * 60 + mi; cursor + paso <= finMin; cursor += paso) {
+  for (let cursor = hi * 60 + mi; cursor < finMin; cursor += paso) {
     const h = Math.floor(cursor / 60);
     const m = cursor % 60;
     slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
