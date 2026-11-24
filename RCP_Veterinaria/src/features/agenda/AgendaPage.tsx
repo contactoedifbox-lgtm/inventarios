@@ -417,6 +417,7 @@ export function AgendaPage() {
           cliente_id: clienteId,
           mascota_id: mascotaId,
           inicio: nuevaInicio,
+          fin: nuevaFin || null,
           motivo: nuevaMotivo || null,
           forzar_fuera_horario: nuevaForzar,
         });
