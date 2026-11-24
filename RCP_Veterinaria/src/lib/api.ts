@@ -8,6 +8,7 @@ import type {
   ClienteConMascotas,
   ConfigPublica,
   DashboardResumen,
+  EncargoProducto,
   ExcepcionAgenda,
   HorarioSemanal,
   ItemVenta,
@@ -833,5 +834,41 @@ export async function crearHorario(input: HorarioInput): Promise<void> {
 
 export async function eliminarHorario(id: string): Promise<void> {
   const { error } = await supabase.from('horarios_semanales').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+// ---------------------------------------------------------------------------
+// Encargos de productos (pedidos de productos sin stock)
+// ---------------------------------------------------------------------------
+export async function crearEncargoProducto(
+  productoId: string,
+  cantidad: number,
+  notas?: string | null,
+): Promise<string> {
+  const { data, error } = await supabase.rpc('crear_encargo_producto', {
+    p_producto_id: productoId,
+    p_cantidad: cantidad,
+    p_notas: notas ?? null,
+  });
+  if (error) throw new Error(error.message);
+  return data as string;
+}
+
+export async function listarEncargos(): Promise<EncargoProducto[]> {
+  const { data, error } = await supabase
+    .from('v_encargos_producto')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(100);
+  if (error) throw new Error(error.message);
+  return (data ?? []) as EncargoProducto[];
+}
+
+export async function cambiarEstadoEncargo(
+  id: string,
+  estado: 'pendiente' | 'entregado' | 'cancelado',
+): Promise<void> {
+  // El RLS permite al personal cualquier encargo y al cliente solo el suyo.
+  const { error } = await supabase.from('encargos_productos').update({ estado }).eq('id', id);
   if (error) throw new Error(error.message);
 }

@@ -539,6 +539,47 @@ export function useCancelarMiReserva() {
 }
 
 // ---------------------------------------------------------------------------
+// Encargos de productos
+// ---------------------------------------------------------------------------
+export function useEncargos() {
+  return useQuery({
+    queryKey: ['encargos'],
+    queryFn: api.listarEncargos,
+    staleTime: STALE_TIME.agenda,
+  });
+}
+
+export function useCrearEncargo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      productoId,
+      cantidad,
+      notas,
+    }: {
+      productoId: string;
+      cantidad: number;
+      notas?: string | null;
+    }) => api.crearEncargoProducto(productoId, cantidad, notas),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['encargos'] }),
+  });
+}
+
+export function useCambiarEstadoEncargo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      estado,
+    }: {
+      id: string;
+      estado: 'pendiente' | 'entregado' | 'cancelado';
+    }) => api.cambiarEstadoEncargo(id, estado),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['encargos'] }),
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Eliminar clientes y profesionales / invitar usuarios
 // ---------------------------------------------------------------------------
 export function useEliminarCliente() {

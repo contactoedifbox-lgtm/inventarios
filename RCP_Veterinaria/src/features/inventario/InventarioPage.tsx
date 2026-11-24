@@ -6,9 +6,12 @@ import { listarInventario } from '@/lib/api';
 import {
   useActualizarProducto,
   useAjustarStock,
+  useCambiarEstadoEncargo,
   useCancelarReservaProducto,
+  useCrearEncargo,
   useCrearProducto,
   useCrearReservaProducto,
+  useEncargos,
   useGuardarCosto,
   useInventario,
   useIva,
@@ -95,6 +98,12 @@ export function InventarioPage() {
   const [errorReserva, setErrorReserva] = useState<string | null>(null);
   const [mensajeReserva, setMensajeReserva] = useState<string | null>(null);
 
+  // Encargo de producto (cliente, cuando no hay stock)
+  const [productoEncargar, setProductoEncargar] = useState<ProductoInventario | null>(null);
+  const [cantidadEncargo, setCantidadEncargo] = useState(1);
+  const [notasEncargo, setNotasEncargo] = useState('');
+  const [errorEncargo, setErrorEncargo] = useState<string | null>(null);
+
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(busqueda), 250);
     return () => clearTimeout(timer);
@@ -111,6 +120,9 @@ export function InventarioPage() {
   const crearReserva = useCrearReservaProducto();
   const cancelarReserva = useCancelarReservaProducto();
   const marcarRetirada = useMarcarReservaRetirada();
+  const { data: encargos = [] } = useEncargos();
+  const crearEncargo = useCrearEncargo();
+  const cambiarEstadoEncargo = useCambiarEstadoEncargo();
 
   const productosOrdenados = useMemo(() => {
     const copia = [...productos];
@@ -279,6 +291,32 @@ export function InventarioPage() {
     }
   }
 
+  function abrirEncargo(producto: ProductoInventario) {
+    setProductoEncargar(producto);
+    setCantidadEncargo(1);
+    setNotasEncargo('');
+    setErrorEncargo(null);
+  }
+
+  async function confirmarEncargo() {
+    if (!productoEncargar) return;
+    setErrorEncargo(null);
+
+    try {
+      await crearEncargo.mutateAsync({
+        productoId: productoEncargar.id,
+        cantidad: cantidadEncargo,
+        notas: notasEncargo || undefined,
+      });
+      setMensajeReserva(
+        `Encargo registrado para ${productoEncargar.nombre}. La clinica te avisara cuando este disponible.`,
+      );
+      setProductoEncargar(null);
+    } catch (err) {
+      setErrorEncargo(err instanceof Error ? err.message : 'No se pudo registrar el encargo');
+    }
+  }
+
   // El personal ve todas las reservas; el cliente solo las suyas (lo limita el RLS),
   // incluyendo el historial, y puede cancelar las que estan pendientes.
   const reservasVisibles = reservas;
@@ -380,11 +418,21 @@ export function InventarioPage() {
                     {producto.descripcion ?? '-'}
                   </td>
                   <td className="py-2 text-right">
-                    {producto.stock}
-                    {producto.stock <= 3 && (
-                      <span className="ml-2 rounded bg-warning-50 px-1.5 py-0.5 text-xs text-warning-700">
-                        {producto.stock === 0 ? 'agotado' : 'bajo'}
-                      </span>
+                    {esCliente ? (
+                      producto.stock > 0 ? (
+                        <span className="badge-success">Disponible</span>
+                      ) : (
+                        <span className="badge-danger">Sin stock</span>
+                      )
+                    ) : (
+                      <>
+                        {producto.stock}
+                        {producto.stock <= 3 && (
+                          <span className="ml-2 rounded bg-warning-50 px-1.5 py-0.5 text-xs text-warning-700">
+                            {producto.stock === 0 ? 'agotado' : 'bajo'}
+                          </span>
+                        )}
+                      </>
                     )}
                   </td>
                   <td className="py-2 text-right">{formatCLP(producto.precio_venta_total)}</td>
@@ -395,14 +443,23 @@ export function InventarioPage() {
                   )}
                   <td className="py-2 text-right">
                     {esCliente ? (
-                      <button
-                        type="button"
-                        className="text-brand-600 hover:underline disabled:text-slate-300"
-                        disabled={producto.stock <= 0}
-                        onClick={() => abrirReserva(producto)}
-                      >
-                        Reservar
-                      </button>
+                      producto.stock > 0 ? (
+                        <button
+                          type="button"
+                          className="text-brand-600 hover:underline"
+                          onClick={() => abrirReserva(producto)}
+                        >
+                          Reservar
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="text-brand-600 hover:underline"
+                          onClick={() => abrirEncargo(producto)}
+                        >
+                          Encargar
+                        </button>
+                      )
                     ) : (
                       <button
                         type="button"
@@ -485,6 +542,77 @@ export function InventarioPage() {
                   </tr>
                 );
               })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {encargos.length > 0 && (
+        <div className="card overflow-x-auto">
+          <h2 className="mb-2 text-sm font-semibold uppercase text-slate-400">
+            {esCliente ? 'Mis encargos' : 'Encargos de productos'}
+          </h2>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-400">
+                <th className="py-2">Producto</th>
+                {!esCliente && <th className="py-2">Solicitante</th>}
+                <th className="py-2 text-right">Cantidad</th>
+                <th className="py-2">Estado</th>
+                <th className="py-2">Fecha</th>
+                <th className="py-2" />
+              </tr>
+            </thead>
+            <tbody>
+              {encargos.map((encargo) => (
+                <tr key={encargo.id} className="border-b border-slate-100">
+                  <td className="py-2 text-slate-700">{encargo.producto_nombre}</td>
+                  {!esCliente && (
+                    <td className="py-2 text-slate-500">{encargo.perfil_nombre ?? '-'}</td>
+                  )}
+                  <td className="py-2 text-right">{encargo.cantidad}</td>
+                  <td className="py-2">
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-xs ${
+                        encargo.estado === 'pendiente'
+                          ? 'bg-warning-50 text-warning-700'
+                          : encargo.estado === 'entregado'
+                            ? 'bg-success-50 text-success-700'
+                            : 'bg-slate-100 text-muted'
+                      }`}
+                    >
+                      {encargo.estado}
+                    </span>
+                  </td>
+                  <td className="py-2 text-slate-500">{formatFechaHora(encargo.created_at)}</td>
+                  <td className="py-2 text-right">
+                    {encargo.estado === 'pendiente' && (
+                      <div className="flex justify-end gap-3">
+                        {!esCliente && (
+                          <button
+                            type="button"
+                            className="text-success-600 hover:underline"
+                            onClick={() =>
+                              cambiarEstadoEncargo.mutate({ id: encargo.id, estado: 'entregado' })
+                            }
+                          >
+                            Entregado
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="text-danger-600 hover:underline"
+                          onClick={() =>
+                            cambiarEstadoEncargo.mutate({ id: encargo.id, estado: 'cancelado' })
+                          }
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -629,7 +757,7 @@ export function InventarioPage() {
           <div className="space-y-3">
             <p className="text-sm text-slate-600">
               <span className="font-medium text-slate-800">{productoReservar.nombre}</span> ·{' '}
-              {formatCLP(productoReservar.precio_venta_total)} · stock {productoReservar.stock}
+              {formatCLP(productoReservar.precio_venta_total)}
             </p>
 
             <div className="rounded-lg bg-warning-50 p-3 text-sm text-warning-700">
@@ -673,6 +801,67 @@ export function InventarioPage() {
                 type="button"
                 className="btn-secondary"
                 onClick={() => setProductoReservar(null)}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal encargar producto (cliente, sin stock) */}
+      <Modal
+        open={Boolean(productoEncargar)}
+        onClose={() => setProductoEncargar(null)}
+        title="Encargar producto"
+      >
+        {productoEncargar && (
+          <div className="space-y-3">
+            <p className="text-sm text-slate-600">
+              <span className="font-medium text-slate-800">{productoEncargar.nombre}</span> ·{' '}
+              {formatCLP(productoEncargar.precio_venta_total)}
+            </p>
+
+            <div className="rounded-lg bg-warning-50 p-3 text-sm text-warning-700">
+              Este producto no tiene stock. Registra un encargo y la clinica te avisara cuando este
+              disponible.
+            </div>
+
+            <div>
+              <label className="label">Cantidad</label>
+              <input
+                type="number"
+                min={1}
+                className="input"
+                value={cantidadEncargo}
+                onChange={(e) => setCantidadEncargo(Number(e.target.value))}
+              />
+            </div>
+
+            <div>
+              <label className="label">Notas (opcional)</label>
+              <input
+                className="input"
+                value={notasEncargo}
+                onChange={(e) => setNotasEncargo(e.target.value)}
+              />
+            </div>
+
+            {errorEncargo && <p className="text-sm text-danger-600">{errorEncargo}</p>}
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="btn-primary flex-1"
+                disabled={crearEncargo.isPending}
+                onClick={() => void confirmarEncargo()}
+              >
+                {crearEncargo.isPending ? 'Enviando...' : 'Confirmar encargo'}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setProductoEncargar(null)}
               >
                 Cancelar
               </button>

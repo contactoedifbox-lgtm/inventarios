@@ -244,3 +244,16 @@ export interface ExcepcionAgenda {
   modo: 'cerrar' | 'abrir';
   motivo: string | null;
 }
+
+export interface EncargoProducto {
+  id: string;
+  producto_id: string;
+  producto_nombre: string;
+  codigo_barras: string | null;
+  perfil_id: string;
+  perfil_nombre: string | null;
+  cantidad: number;
+  estado: 'pendiente' | 'entregado' | 'cancelado';
+  notas: string | null;
+  created_at: string;
+}
