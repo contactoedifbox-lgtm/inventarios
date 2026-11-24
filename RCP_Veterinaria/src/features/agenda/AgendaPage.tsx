@@ -584,20 +584,11 @@ export function AgendaPage() {
               const bloquesProfesional = bloques.filter((b) => b.profesionalId === profesional.id);
               return (
                 <div key={profesional.id} className="card">
-                  <div className="mb-3 flex items-center justify-between">
-                    <div>
-                      <h2 className="font-semibold text-slate-800">{profesional.nombre}</h2>
-                      <p className="text-xs uppercase text-slate-400">
-                        {profesional.especialidad ?? profesional.area}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      className="text-xs text-brand-600 hover:underline"
-                      onClick={() => abrirNueva(profesional.id)}
-                    >
-                      + Reservar
-                    </button>
+                  <div className="mb-3">
+                    <h2 className="font-semibold text-slate-800">{profesional.nombre}</h2>
+                    <p className="text-xs uppercase text-slate-400">
+                      {profesional.especialidad ?? profesional.area}
+                    </p>
                   </div>
 
                   {bloquesProfesional.length === 0 ? (
