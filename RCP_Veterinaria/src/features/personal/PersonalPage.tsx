@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import {
   useActualizarProfesional,
+  useActualizarRolPerfil,
   useCrearHorario,
   useCrearProfesional,
   useEliminarHorario,
@@ -105,6 +106,7 @@ export function PersonalPage() {
   const { data: horarios = [] } = useHorariosSemanales();
   const crear = useCrearProfesional();
   const actualizar = useActualizarProfesional();
+  const actualizarRol = useActualizarRolPerfil();
   const crearHorario = useCrearHorario();
   const eliminarHorario = useEliminarHorario();
   const eliminarProfesional = useEliminarProfesional();
@@ -118,6 +120,7 @@ export function PersonalPage() {
   const [porEliminar, setPorEliminar] = useState<Profesional | null>(null);
   const [errorEliminar, setErrorEliminar] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
+  const [rolMaestro, setRolMaestro] = useState(false);
 
   const [horarioProfesional, setHorarioProfesional] = useState<Profesional | null>(null);
   const [rangos, setRangos] = useState<Record<number, { inicio: string; fin: string }>>({});
@@ -126,6 +129,7 @@ export function PersonalPage() {
   function abrirNuevo() {
     setEditando(null);
     setForm(FORM_VACIO);
+    setRolMaestro(false);
     setError(null);
     setModalAbierto(true);
   }
@@ -143,6 +147,7 @@ export function PersonalPage() {
       activo: profesional.activo,
       email: profesional.email ?? '',
     });
+    setRolMaestro(profesional.perfil_rol === 'maestro');
     setError(null);
     setModalAbierto(true);
   }
@@ -180,6 +185,12 @@ export function PersonalPage() {
     try {
       if (editando) {
         await actualizar.mutateAsync({ id: editando.id, input: payload });
+        if (editando.perfil_id) {
+          await actualizarRol.mutateAsync({
+            perfilId: editando.perfil_id,
+            rol: rolMaestro ? 'maestro' : 'vendedor',
+          });
+        }
         cerrarModal();
         return;
       }
@@ -192,7 +203,7 @@ export function PersonalPage() {
         const resultado = await invitar.mutateAsync({
           email: form.email.trim(),
           nombre_completo: form.nombre.trim(),
-          rol: 'vendedor',
+          rol: rolMaestro ? 'maestro' : 'vendedor',
           redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}`,
         });
         await vincular.mutateAsync({ profesionalId, perfilId: resultado.id });
@@ -527,6 +538,17 @@ export function PersonalPage() {
               el enlace que se envia.
             </p>
           </div>
+
+          {(editando?.perfil_id || form.email.trim()) && (
+            <label className="flex items-center gap-2 text-sm text-muted">
+              <input
+                type="checkbox"
+                checked={rolMaestro}
+                onChange={(e) => setRolMaestro(e.target.checked)}
+              />
+              Dar acceso de <strong>maestro</strong> (gestiona todo el sistema)
+            </label>
+          )}
 
           <label className="flex items-center gap-2 text-sm text-muted">
             <input

@@ -71,6 +71,8 @@ export interface Profesional {
   activo: boolean;
   email: string | null;
   perfil_id: string | null;
+  /** Rol del perfil vinculado (maestro/vendedor/cliente), si tiene cuenta. */
+  perfil_rol?: string | null;
 }
 
 export interface Reserva {

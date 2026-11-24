@@ -293,11 +293,25 @@ export async function listarProfesionales(): Promise<Profesional[]> {
 export async function listarProfesionalesTodos(): Promise<Profesional[]> {
   const { data, error } = await supabase
     .from('profesionales')
-    .select('id, nombre, area, tipo, genero, especialidad, duracion_slot_min, color, orden, activo, email, perfil_id')
+    .select(
+      'id, nombre, area, tipo, genero, especialidad, duracion_slot_min, color, orden, activo, email, perfil_id, perfil:perfiles ( rol )',
+    )
     .order('orden', { ascending: true });
 
   if (error) throw new Error(error.message);
-  return (data ?? []) as Profesional[];
+  const filas = (data ?? []) as unknown as (Profesional & {
+    perfil?: { rol?: string } | null;
+  })[];
+  return filas.map((fila) => ({ ...fila, perfil_rol: fila.perfil?.rol ?? null }));
+}
+
+/** Cambia el rol del perfil vinculado (solo maestro). */
+export async function actualizarRolPerfil(
+  perfilId: string,
+  rol: 'maestro' | 'vendedor',
+): Promise<void> {
+  const { error } = await supabase.from('perfiles').update({ rol }).eq('id', perfilId);
+  if (error) throw new Error(error.message);
 }
 
 export interface ProfesionalInput {

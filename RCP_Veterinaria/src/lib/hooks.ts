@@ -395,6 +395,18 @@ export function useActualizarProfesional() {
   });
 }
 
+export function useActualizarRolPerfil() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ perfilId, rol }: { perfilId: string; rol: 'maestro' | 'vendedor' }) =>
+      api.actualizarRolPerfil(perfilId, rol),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['profesionales'] });
+      qc.invalidateQueries({ queryKey: ['profesionales-todos'] });
+    },
+  });
+}
+
 export function useCrearHorario() {
   const qc = useQueryClient();
   return useMutation({
