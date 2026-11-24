@@ -44,6 +44,7 @@ export function DashboardPage() {
   const [hasta, setHasta] = useState(hoyISO());
   const rango = useMemo(() => rangoDe(tipo, desde, hasta), [tipo, desde, hasta]);
 
+  const [limiteRanking, setLimiteRanking] = useState(10);
   const [tipoRanking, setTipoRanking] = useState<RangoTipo>('mes');
   const [desdeRanking, setDesdeRanking] = useState(hoyISO());
   const [hastaRanking, setHastaRanking] = useState(hoyISO());
@@ -58,10 +59,12 @@ export function DashboardPage() {
   const { data: misReservasProducto = [] } = useReservasProducto();
   const { data: misEncargos = [] } = useEncargos();
 
-  const masVendidos = [...ranking].sort((a, b) => b.unidades - a.unidades).slice(0, 10);
+  const masVendidos = [...ranking]
+    .sort((a, b) => b.unidades - a.unidades)
+    .slice(0, limiteRanking);
   const menosVendidos = [...ranking]
     .sort((a, b) => a.unidades - b.unidades || b.dias_detenido - a.dias_detenido)
-    .slice(0, 10);
+    .slice(0, limiteRanking);
 
   const inventario = resumen?.inventario;
   const ventas = resumen?.ventas;
@@ -223,14 +226,26 @@ export function DashboardPage() {
             <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
               Rotacion de productos
             </h2>
-            <RangoFiltro
-              tipo={tipoRanking}
-              onTipo={setTipoRanking}
-              desde={desdeRanking}
-              hasta={hastaRanking}
-              onDesde={setDesdeRanking}
-              onHasta={setHastaRanking}
-            />
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="text-sm text-slate-600">
+                <span className="mb-1 block text-xs text-slate-400">Mostrar</span>
+                <input
+                  type="number"
+                  min={1}
+                  className="input w-24"
+                  value={limiteRanking}
+                  onChange={(e) => setLimiteRanking(Math.max(1, Number(e.target.value) || 1))}
+                />
+              </label>
+              <RangoFiltro
+                tipo={tipoRanking}
+                onTipo={setTipoRanking}
+                desde={desdeRanking}
+                hasta={hastaRanking}
+                onDesde={setDesdeRanking}
+                onHasta={setHastaRanking}
+              />
+            </div>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
