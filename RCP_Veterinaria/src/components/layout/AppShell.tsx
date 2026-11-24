@@ -12,6 +12,7 @@ interface Enlace {
 const ENLACES: Enlace[] = [
   { to: '/', label: 'Inicio', end: true, roles: ['maestro', 'vendedor', 'cliente'] },
   { to: '/inventario', label: 'Inventario', roles: ['maestro', 'vendedor', 'cliente'] },
+  { to: '/reservas', label: 'Reservas y encargos', roles: ['maestro', 'vendedor'] },
   { to: '/ventas', label: 'Ventas', roles: ['maestro', 'vendedor'] },
   { to: '/clientes', label: 'Clientes', roles: ['maestro', 'vendedor'] },
   { to: '/agenda', label: 'Agenda', roles: ['maestro', 'vendedor', 'cliente'] },

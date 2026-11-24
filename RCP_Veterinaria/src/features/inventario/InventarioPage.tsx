@@ -479,7 +479,7 @@ export function InventarioPage() {
         )}
       </div>
 
-      {reservasVisibles.length > 0 && (
+      {esCliente && reservasVisibles.length > 0 && (
         <div className="card overflow-x-auto">
           <h2 className="mb-2 text-sm font-semibold uppercase text-slate-400">
             {esCliente ? 'Mis reservas' : 'Reservas de productos'}
@@ -549,7 +549,7 @@ export function InventarioPage() {
         </div>
       )}
 
-      {encargos.length > 0 && (
+      {esCliente && encargos.length > 0 && (
         <div className="card overflow-x-auto">
           <h2 className="mb-2 text-sm font-semibold uppercase text-slate-400">
             {esCliente ? 'Mis encargos' : 'Encargos de productos'}

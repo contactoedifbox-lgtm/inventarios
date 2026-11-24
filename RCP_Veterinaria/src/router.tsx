@@ -6,6 +6,7 @@ import { RegistroPage } from '@/features/auth/RegistroPage';
 import { EstablecerClavePage } from '@/features/auth/EstablecerClavePage';
 import { DashboardPage } from '@/features/dashboard/DashboardPage';
 import { InventarioPage } from '@/features/inventario/InventarioPage';
+import { ReservasPage } from '@/features/reservas/ReservasPage';
 import { VentasPage } from '@/features/ventas/VentasPage';
 import { ClientesPage } from '@/features/clientes/ClientesPage';
 import { AgendaPage } from '@/features/agenda/AgendaPage';
@@ -38,6 +39,14 @@ export const router = createHashRouter([
     children: [
       { index: true, element: <DashboardPage /> },
       { path: 'inventario', element: <InventarioPage /> },
+      {
+        path: 'reservas',
+        element: (
+          <RequireAuth roles={['maestro', 'vendedor']}>
+            <ReservasPage />
+          </RequireAuth>
+        ),
+      },
       {
         path: 'ventas',
         element: (
