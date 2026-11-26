@@ -41,20 +41,20 @@ export function AppShell() {
   return (
     <div className="flex min-h-full flex-col">
       <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-r from-brand-700/95 via-brand-600/95 to-accent-600/95 text-white shadow-lg shadow-brand-900/20 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
-          <div className="flex items-center gap-4">
-            <span className="flex h-24 w-24 items-center justify-center rounded-full bg-white/10 shadow-md ring-1 ring-white/25 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 md:gap-4 md:py-3">
+          <div className="flex items-center gap-3 md:gap-4">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/10 shadow-md ring-1 ring-white/25 backdrop-blur-sm md:h-24 md:w-24">
               <img
                 src={LOGO}
                 alt="Lanka Pet Care"
-                className="h-20 w-20 rounded-full object-cover"
+                className="h-11 w-11 rounded-full object-cover md:h-20 md:w-20"
               />
             </span>
             <div className="leading-tight">
-              <span className="block text-2xl font-extrabold tracking-tight text-white drop-shadow-sm">
+              <span className="block text-xl font-extrabold tracking-tight text-white drop-shadow-sm md:text-2xl">
                 Lanka
               </span>
-              <span className="block text-xs font-semibold uppercase tracking-[0.22em] text-white/80">
+              <span className="block text-[10px] font-semibold uppercase tracking-[0.22em] text-white/80 md:text-xs">
                 Pet Care
               </span>
             </div>

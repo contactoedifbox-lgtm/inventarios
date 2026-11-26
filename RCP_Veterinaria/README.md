@@ -2,9 +2,11 @@
 
 Sistema de gestión veterinaria con tres piezas:
 
-1. **App interna** con login (roles Maestro, Vendedor y Cliente): dashboard con
-   métricas, inventario con costos y márgenes, ventas y devoluciones con lector de
-   código de barras, clientes y mascotas, profesionales con horario semanal y agenda.
+1. **App interna** con login (Maestro, personal y Cliente): dashboard con métricas
+   y rotación de productos, inventario (gestión solo del Maestro), ventas y
+   devoluciones con descuentos y lector de código de barras, clientes y mascotas,
+   personal con horario semanal, agenda y una pestaña de reservas y encargos de
+   productos.
 2. **Página pública de reservas** sin login (veterinaria y peluquería).
 3. **Base de datos Supabase** con RLS estricto, funciones RPC transaccionales y
    auditoría.
@@ -32,9 +34,21 @@ para la reserva pública.
 
 | Rol | Alcance |
 |---|---|
-| **Maestro** | Todo: costos, profesionales, usuarios, anulación de ventas, reportes. |
-| **Vendedor** | Inventario (sin costos), ventas, clientes, agenda. No ve profesionales ni costos. |
-| **Cliente** | Ver catálogo de inventario (solo reservar producto), reservar horario, ver/cancelar sus reservas y sus datos. |
+| **Maestro** | Todo: inventario (crear/editar, costos, exportar), personal, usuarios, reservas y encargos (incluida la **fecha de entrega**), anulación de ventas, reportes y exportaciones. |
+| **Personal** (Veterinario / Peluquero / Vendedor) | Mismo permiso de app: ventas, clientes, agenda y reservas/encargos. Ve el inventario pero **no** lo crea ni edita. No ve costos. La etiqueta que se muestra depende del *tipo* de personal. |
+| **Cliente** | Catálogo de inventario **sin cantidades** (solo "Disponible"/"Sin stock"): puede **Reservar** (si hay stock) o **Encargar** (si no hay). Reservar horario y ver/cancelar sus reservas, encargos y datos. |
+
+## Funcionalidades
+
+- **Inicio (dashboard)**: KPIs de inventario y ventas (personal); rotación de productos (más/menos vendidos) con filtro de cuántos ver; para el cliente, sus reservas de productos y encargos.
+- **Inventario**: catálogo con orden por producto, stock y precio. La gestión (crear/editar, costos, exportar) es **solo del Maestro**. El cliente ve "Disponible"/"Sin stock" y puede **Reservar** o **Encargar**.
+- **Ventas**: carrito con lector de barras, **descuentos**, devoluciones (con reingreso o pérdida), anulación y **exportación a Excel solo Maestro** (con costo, IVA y descuentos).
+- **Clientes y mascotas**: alta/edición por el personal; el cliente autogestiona sus datos y puede registrar sus mascotas.
+- **Agenda**: bloques por profesional (incluido el último bloque, aunque quede más corto que la duración del slot), reservas del día, historial y exportación.
+- **Personal**: alta del personal (tipo, género; color y orden automáticos; horario semanal) y asignación del acceso de **Maestro** a un trabajador.
+- **Reservas y encargos** (uso interno): gestión de las reservas de productos y de los encargos; la **fecha de entrega** la fija solo el Maestro.
+- **Reportes**: ventas por día/semana/mes con exportación.
+- **Página pública**: reserva de horas sin login (Cloudflare Turnstile + Edge Function).
 
 ## Probar en local
 
@@ -198,7 +212,7 @@ Sí, y de forma **inmediata y directa**:
 src/
 ├── lib/          Cliente Supabase, TanStack Query, RUT, formato, fechas y esquemas Zod
 ├── components/   Layout, UI y lector de código de barras
-├── features/     auth, dashboard, inventario, ventas, clientes, agenda, profesionales, reportes, publico
+├── features/     auth, dashboard, inventario, ventas, clientes, agenda, personal, reservas, reportes, publico
 └── styles/       Tailwind
 supabase/
 ├── migrations/   Migraciones versionadas (tabla + RLS + GRANT + políticas)

@@ -17,7 +17,7 @@ export function Modal({ open, title, onClose, children, wide = false }: ModalPro
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-2 sm:p-4"
       onMouseDown={(evento) => {
         inicioEnFondo.current = evento.target === evento.currentTarget;
       }}
@@ -29,7 +29,7 @@ export function Modal({ open, title, onClose, children, wide = false }: ModalPro
       role="presentation"
     >
       <div
-        className={`mt-10 w-full ${wide ? 'max-w-3xl' : 'max-w-lg'} rounded-xl bg-white shadow-xl`}
+        className={`mt-4 w-full sm:mt-10 ${wide ? 'max-w-3xl' : 'max-w-lg'} rounded-xl bg-white shadow-xl`}
         onClick={(evento) => evento.stopPropagation()}
         role="dialog"
         aria-modal="true"

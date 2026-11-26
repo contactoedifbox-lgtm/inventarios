@@ -376,7 +376,7 @@ export function InventarioPage() {
         ) : productos.length === 0 ? (
           <p className="text-sm text-slate-500">Sin productos.</p>
         ) : (
-          <table className="w-full text-sm">
+          <table className="tabla-movil w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-400">
                 <ThOrden
@@ -410,16 +410,16 @@ export function InventarioPage() {
             <tbody>
               {productosOrdenados.map((producto) => (
                 <tr key={producto.id} className="border-b border-slate-100">
-                  <td className="py-2">
+                  <td className="py-2" data-label="Producto">
                     <span className="font-medium text-slate-700">{producto.nombre}</span>
                     {producto.codigo_barras && (
                       <span className="ml-2 text-xs text-slate-400">{producto.codigo_barras}</span>
                     )}
                   </td>
-                  <td className="max-w-xs truncate py-2 text-slate-500">
+                  <td className="max-w-xs truncate py-2 text-slate-500" data-label="Descripcion">
                     {producto.descripcion ?? '-'}
                   </td>
-                  <td className="py-2 text-right">
+                  <td className="py-2 text-right" data-label="Stock">
                     {esCliente ? (
                       producto.stock > 0 ? (
                         <span className="badge-success">Disponible</span>
@@ -437,13 +437,15 @@ export function InventarioPage() {
                       </>
                     )}
                   </td>
-                  <td className="py-2 text-right">{formatCLP(producto.precio_venta_total)}</td>
+                  <td className="py-2 text-right" data-label="Precio">
+                    {formatCLP(producto.precio_venta_total)}
+                  </td>
                   {esMaestro && (
-                    <td className="py-2 text-right text-slate-500">
+                    <td className="py-2 text-right text-slate-500" data-label="Costo">
                       {producto.costo_neto != null ? formatCLP(producto.costo_neto) : '-'}
                     </td>
                   )}
-                  <td className="py-2 text-right">
+                  <td className="py-2 text-right" data-label="">
                     {esCliente ? (
                       producto.stock > 0 ? (
                         <button
@@ -484,7 +486,7 @@ export function InventarioPage() {
           <h2 className="mb-2 text-sm font-semibold uppercase text-slate-400">
             {esCliente ? 'Mis reservas' : 'Reservas de productos'}
           </h2>
-          <table className="w-full text-sm">
+          <table className="tabla-movil w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-400">
                 <th className="py-2">Producto</th>
@@ -500,12 +502,18 @@ export function InventarioPage() {
                 const estado = estadoEfectivo(reserva);
                 return (
                   <tr key={reserva.id} className="border-b border-slate-100">
-                    <td className="py-2 text-slate-700">{reserva.producto_nombre}</td>
+                    <td className="py-2 text-slate-700" data-label="Producto">
+                      {reserva.producto_nombre}
+                    </td>
                     {!esCliente && (
-                      <td className="py-2 text-slate-500">{reserva.perfil_nombre ?? '-'}</td>
+                      <td className="py-2 text-slate-500" data-label="Solicitante">
+                        {reserva.perfil_nombre ?? '-'}
+                      </td>
                     )}
-                    <td className="py-2 text-right">{reserva.cantidad}</td>
-                    <td className="py-2">
+                    <td className="py-2 text-right" data-label="Cantidad">
+                      {reserva.cantidad}
+                    </td>
+                    <td className="py-2" data-label="Estado">
                       <span
                         className={`rounded px-1.5 py-0.5 text-xs ${
                           estado === 'pendiente'
@@ -518,8 +526,10 @@ export function InventarioPage() {
                         {estado}
                       </span>
                     </td>
-                    <td className="py-2 text-slate-500">{formatFechaHora(reserva.expira_at)}</td>
-                    <td className="py-2 text-right">
+                    <td className="py-2 text-slate-500" data-label="Retirar antes de">
+                      {formatFechaHora(reserva.expira_at)}
+                    </td>
+                    <td className="py-2 text-right" data-label="">
                       {estado === 'pendiente' && (
                         <div className="flex justify-end gap-3">
                           {!esCliente && (
@@ -554,7 +564,7 @@ export function InventarioPage() {
           <h2 className="mb-2 text-sm font-semibold uppercase text-slate-400">
             {esCliente ? 'Mis encargos' : 'Encargos de productos'}
           </h2>
-          <table className="w-full text-sm">
+          <table className="tabla-movil w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-400">
                 <th className="py-2">Producto</th>
@@ -569,12 +579,18 @@ export function InventarioPage() {
             <tbody>
               {encargos.map((encargo) => (
                 <tr key={encargo.id} className="border-b border-slate-100">
-                  <td className="py-2 text-slate-700">{encargo.producto_nombre}</td>
+                  <td className="py-2 text-slate-700" data-label="Producto">
+                    {encargo.producto_nombre}
+                  </td>
                   {!esCliente && (
-                    <td className="py-2 text-slate-500">{encargo.perfil_nombre ?? '-'}</td>
+                    <td className="py-2 text-slate-500" data-label="Solicitante">
+                      {encargo.perfil_nombre ?? '-'}
+                    </td>
                   )}
-                  <td className="py-2 text-right">{encargo.cantidad}</td>
-                  <td className="py-2">
+                  <td className="py-2 text-right" data-label="Cantidad">
+                    {encargo.cantidad}
+                  </td>
+                  <td className="py-2" data-label="Estado">
                     <span
                       className={`rounded px-1.5 py-0.5 text-xs ${
                         encargo.estado === 'pendiente'
@@ -587,8 +603,10 @@ export function InventarioPage() {
                       {encargo.estado}
                     </span>
                   </td>
-                  <td className="py-2 text-slate-500">{formatFechaHora(encargo.created_at)}</td>
-                  <td className="py-2">
+                  <td className="py-2 text-slate-500" data-label="Fecha encargo">
+                    {formatFechaHora(encargo.created_at)}
+                  </td>
+                  <td className="py-2" data-label="Fecha entrega">
                     {esCliente ? (
                       encargo.fecha_entrega ? (
                         formatFecha(encargo.fecha_entrega)
@@ -608,7 +626,7 @@ export function InventarioPage() {
                       />
                     )}
                   </td>
-                  <td className="py-2 text-right">
+                  <td className="py-2 text-right" data-label="">
                     {encargo.estado === 'pendiente' && (
                       <div className="flex justify-end gap-3">
                         {!esCliente && (

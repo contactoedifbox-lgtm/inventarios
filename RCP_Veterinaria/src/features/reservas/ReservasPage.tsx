@@ -50,7 +50,7 @@ export function ReservasPage() {
         ) : reservas.length === 0 ? (
           <p className="text-sm text-slate-500">Sin reservas.</p>
         ) : (
-          <table className="w-full text-sm">
+          <table className="tabla-movil w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-400">
                 <th className="py-2">Producto</th>
@@ -66,10 +66,16 @@ export function ReservasPage() {
                 const estado = estadoEfectivo(reserva);
                 return (
                   <tr key={reserva.id} className="border-b border-slate-100">
-                    <td className="py-2 text-slate-700">{reserva.producto_nombre}</td>
-                    <td className="py-2 text-slate-500">{reserva.perfil_nombre ?? '-'}</td>
-                    <td className="py-2 pr-10 text-right">{reserva.cantidad}</td>
-                    <td className="py-2">
+                    <td className="py-2 text-slate-700" data-label="Producto">
+                      {reserva.producto_nombre}
+                    </td>
+                    <td className="py-2 text-slate-500" data-label="Solicitante">
+                      {reserva.perfil_nombre ?? '-'}
+                    </td>
+                    <td className="py-2 pr-10 text-right" data-label="Cantidad">
+                      {reserva.cantidad}
+                    </td>
+                    <td className="py-2" data-label="Estado">
                       <span
                         className={`rounded px-1.5 py-0.5 text-xs ${
                           estado === 'pendiente'
@@ -82,8 +88,10 @@ export function ReservasPage() {
                         {estado}
                       </span>
                     </td>
-                    <td className="py-2 text-slate-500">{formatFechaHora(reserva.expira_at)}</td>
-                    <td className="py-2 text-right">
+                    <td className="py-2 text-slate-500" data-label="Retirar antes de">
+                      {formatFechaHora(reserva.expira_at)}
+                    </td>
+                    <td className="py-2 text-right" data-label="">
                       {estado === 'pendiente' && (
                         <div className="flex justify-end gap-3">
                           <button
@@ -120,7 +128,7 @@ export function ReservasPage() {
         ) : encargos.length === 0 ? (
           <p className="text-sm text-slate-500">Sin encargos.</p>
         ) : (
-          <table className="w-full text-sm">
+          <table className="tabla-movil w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-400">
                 <th className="py-2">Producto</th>
@@ -135,10 +143,16 @@ export function ReservasPage() {
             <tbody>
               {encargos.map((encargo) => (
                 <tr key={encargo.id} className="border-b border-slate-100">
-                  <td className="py-2 text-slate-700">{encargo.producto_nombre}</td>
-                  <td className="py-2 text-slate-500">{encargo.perfil_nombre ?? '-'}</td>
-                  <td className="py-2 pr-10 text-right">{encargo.cantidad}</td>
-                  <td className="py-2">
+                  <td className="py-2 text-slate-700" data-label="Producto">
+                    {encargo.producto_nombre}
+                  </td>
+                  <td className="py-2 text-slate-500" data-label="Solicitante">
+                    {encargo.perfil_nombre ?? '-'}
+                  </td>
+                  <td className="py-2 pr-10 text-right" data-label="Cantidad">
+                    {encargo.cantidad}
+                  </td>
+                  <td className="py-2" data-label="Estado">
                     <span
                       className={`rounded px-1.5 py-0.5 text-xs ${
                         encargo.estado === 'pendiente'
@@ -151,8 +165,10 @@ export function ReservasPage() {
                       {encargo.estado}
                     </span>
                   </td>
-                  <td className="py-2 text-slate-500">{formatFechaHora(encargo.created_at)}</td>
-                  <td className="py-2">
+                  <td className="py-2 text-slate-500" data-label="Fecha encargo">
+                    {formatFechaHora(encargo.created_at)}
+                  </td>
+                  <td className="py-2" data-label="Fecha entrega">
                     {esMaestro ? (
                       <input
                         type="date"
@@ -170,7 +186,7 @@ export function ReservasPage() {
                       '-'
                     )}
                   </td>
-                  <td className="py-2 text-right">
+                  <td className="py-2 text-right" data-label="">
                     {encargo.estado === 'pendiente' && (
                       <div className="flex justify-end gap-3">
                         <button

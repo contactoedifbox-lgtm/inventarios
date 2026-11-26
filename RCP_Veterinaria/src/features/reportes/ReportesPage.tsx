@@ -98,7 +98,7 @@ export function ReportesPage() {
         ) : filas.length === 0 ? (
           <p className="text-sm text-slate-500">Sin ventas en el periodo seleccionado.</p>
         ) : (
-          <table className="w-full text-sm">
+          <table className="tabla-movil w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-400">
                 <th className="py-2">Producto</th>
@@ -112,12 +112,24 @@ export function ReportesPage() {
             <tbody>
               {filas.map((fila) => (
                 <tr key={`${fila.producto_id}-${fila.periodo}`} className="border-b border-slate-100">
-                  <td className="py-2 font-medium text-slate-700">{fila.nombre_producto}</td>
-                  <td className="py-2 text-slate-500">{fila.periodo}</td>
-                  <td className="py-2 text-right">{fila.unidades}</td>
-                  <td className="py-2 text-right">{formatCLP(fila.total_neto)}</td>
-                  <td className="py-2 text-right">{formatCLP(fila.total_iva)}</td>
-                  <td className="py-2 text-right font-medium">{formatCLP(fila.total)}</td>
+                  <td className="py-2 font-medium text-slate-700" data-label="Producto">
+                    {fila.nombre_producto}
+                  </td>
+                  <td className="py-2 text-slate-500" data-label="Periodo">
+                    {fila.periodo}
+                  </td>
+                  <td className="py-2 text-right" data-label="Unidades">
+                    {fila.unidades}
+                  </td>
+                  <td className="py-2 text-right" data-label="Neto">
+                    {formatCLP(fila.total_neto)}
+                  </td>
+                  <td className="py-2 text-right" data-label="IVA">
+                    {formatCLP(fila.total_iva)}
+                  </td>
+                  <td className="py-2 text-right font-medium" data-label="Total">
+                    {formatCLP(fila.total)}
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -92,4 +92,67 @@
   .badge-neutral {
     @apply badge bg-slate-100 text-muted;
   }
+
+  /*
+   * Tabla que se convierte en tarjetas en pantallas pequeñas (móvil vertical).
+   * Cada <td> debe llevar data-label="Encabezado" para mostrar la etiqueta.
+   * En pantallas medianas o mayores se comporta como una tabla normal.
+   */
+  @media (max-width: 767px) {
+    .tabla-movil {
+      display: block;
+      width: 100%;
+    }
+
+    .tabla-movil thead {
+      display: none;
+    }
+
+    .tabla-movil tbody,
+    .tabla-movil tr,
+    .tabla-movil td {
+      display: block;
+      width: 100%;
+    }
+
+    .tabla-movil tr {
+      padding: 0.6rem 0;
+      border-bottom: 1px solid #dce7ea;
+    }
+
+    .tabla-movil tr:last-child {
+      border-bottom: none;
+    }
+
+    .tabla-movil td {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.2rem 0;
+      border: none;
+      text-align: right;
+    }
+
+    .tabla-movil td::before {
+      content: attr(data-label);
+      flex: 0 0 auto;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: #566d73;
+      text-align: left;
+      padding-top: 0.15rem;
+    }
+
+    .tabla-movil td[data-label='']::before,
+    .tabla-movil td:not([data-label])::before {
+      content: none;
+    }
+
+    .tabla-movil td[data-label=''] {
+      justify-content: flex-end;
+    }
+  }
 }

@@ -129,7 +129,7 @@ export function ClientesPage() {
         ) : clientes.length === 0 ? (
           <p className="text-sm text-slate-500">Sin clientes.</p>
         ) : (
-          <table className="w-full text-sm">
+          <table className="tabla-movil w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-400">
                 <th className="py-2">Cliente</th>
@@ -143,13 +143,19 @@ export function ClientesPage() {
             <tbody>
               {clientes.map((registro) => (
                 <tr key={registro.id} className="border-b border-slate-100">
-                  <td className="py-2 font-medium text-slate-700">
+                  <td className="py-2 font-medium text-slate-700" data-label="Cliente">
                     {registro.apellidos}, {registro.nombres}
                   </td>
-                  <td className="py-2 text-slate-500">{registro.rut}</td>
-                  <td className="py-2 text-slate-500">{registro.telefono}</td>
-                  <td className="py-2 text-slate-500">{registro.email ?? '-'}</td>
-                  <td className="py-2 text-slate-500">
+                  <td className="py-2 text-slate-500" data-label="RUT">
+                    {registro.rut}
+                  </td>
+                  <td className="py-2 text-slate-500" data-label="Telefono">
+                    {registro.telefono}
+                  </td>
+                  <td className="py-2 text-slate-500" data-label="Email">
+                    {registro.email ?? '-'}
+                  </td>
+                  <td className="py-2 text-slate-500" data-label="Mascotas">
                     {registro.mascotas.length === 0
                       ? '-'
                       : registro.mascotas
@@ -157,7 +163,7 @@ export function ClientesPage() {
                           .join(', ')}
                   </td>
                   {esMaestro && (
-                    <td className="py-2 text-right">
+                    <td className="py-2 text-right" data-label="">
                       <button
                         type="button"
                         className="text-danger-600 hover:underline"

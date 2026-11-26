@@ -306,7 +306,7 @@ export function VentasPage() {
               <p className="text-sm text-slate-500">Sin movimientos en el rango seleccionado.</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="tabla-movil w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-400">
                       <th className="py-2">#</th>
@@ -321,9 +321,13 @@ export function VentasPage() {
                   <tbody>
                     {ventas.map((venta) => (
                       <tr key={venta.id} className="border-b border-slate-100">
-                        <td className="py-2">{venta.numero}</td>
-                        <td className="py-2 text-slate-500">{formatFechaHora(venta.created_at)}</td>
-                        <td className="py-2">
+                        <td className="py-2" data-label="#">
+                          {venta.numero}
+                        </td>
+                        <td className="py-2 text-slate-500" data-label="Fecha">
+                          {formatFechaHora(venta.created_at)}
+                        </td>
+                        <td className="py-2" data-label="Tipo">
                           <span
                             className={`rounded px-1.5 py-0.5 text-xs ${
                               venta.tipo === 'venta'
@@ -334,10 +338,16 @@ export function VentasPage() {
                             {venta.tipo}
                           </span>
                         </td>
-                        <td className="py-2 text-slate-500">{venta.medio_pago}</td>
-                        <td className="py-2 text-right">{formatCLP(venta.total)}</td>
-                        <td className="py-2 text-slate-500">{venta.estado}</td>
-                        <td className="py-2 text-right">
+                        <td className="py-2 text-slate-500" data-label="Medio">
+                          {venta.medio_pago}
+                        </td>
+                        <td className="py-2 text-right" data-label="Total">
+                          {formatCLP(venta.total)}
+                        </td>
+                        <td className="py-2 text-slate-500" data-label="Estado">
+                          {venta.estado}
+                        </td>
+                        <td className="py-2 text-right" data-label="">
                           <div className="flex justify-end gap-3">
                             {venta.tipo === 'venta' && venta.estado === 'completada' && (
                               <button

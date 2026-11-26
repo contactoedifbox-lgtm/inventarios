@@ -653,7 +653,7 @@ export function AgendaPage() {
           {reservas.length === 0 ? (
             <p className="text-sm text-slate-500">Sin reservas para esta fecha.</p>
           ) : (
-            <table className="w-full text-sm">
+            <table className="tabla-movil w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-400">
                   <th className="py-2">Hora</th>
@@ -667,17 +667,21 @@ export function AgendaPage() {
               <tbody>
                 {reservas.map((reserva) => (
                   <tr key={reserva.id} className="border-b border-slate-100">
-                    <td className="py-2 text-slate-600">{formatHora(reserva.inicio)}</td>
-                    <td className="py-2 text-slate-600">
+                    <td className="py-2 text-slate-600" data-label="Hora">
+                      {formatHora(reserva.inicio)}
+                    </td>
+                    <td className="py-2 text-slate-600" data-label="Profesional">
                       {nombreProfesional(reserva.profesional_id)}
                     </td>
-                    <td className="py-2 text-slate-600">
+                    <td className="py-2 text-slate-600" data-label="Cliente">
                       {reserva.clientes
                         ? `${reserva.clientes.nombres} ${reserva.clientes.apellidos}`
                         : '-'}
                     </td>
-                    <td className="py-2 text-slate-500">{reserva.mascotas?.nombre ?? '-'}</td>
-                    <td className="py-2">
+                    <td className="py-2 text-slate-500" data-label="Mascota">
+                      {reserva.mascotas?.nombre ?? '-'}
+                    </td>
+                    <td className="py-2" data-label="Estado">
                       <span
                         className={`rounded px-1.5 py-0.5 text-xs ${
                           reserva.estado === 'confirmada'
@@ -690,7 +694,7 @@ export function AgendaPage() {
                         {reserva.estado}
                       </span>
                     </td>
-                    <td className="py-2 text-right">
+                    <td className="py-2 text-right" data-label="">
                       {reserva.estado === 'confirmada' && (
                         <button
                           type="button"
@@ -740,7 +744,7 @@ export function AgendaPage() {
             <p className="text-sm text-slate-500">Sin consultas en el rango seleccionado.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="tabla-movil w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-400">
                     <th className="py-2">Fecha</th>
@@ -755,23 +759,31 @@ export function AgendaPage() {
                 <tbody>
                   {historial.map((reserva) => (
                     <tr key={reserva.id} className="border-b border-slate-100">
-                      <td className="py-2 text-slate-600">{formatFecha(reserva.inicio)}</td>
-                      <td className="py-2 text-slate-600">{formatHora(reserva.inicio)}</td>
-                      <td className="py-2 text-slate-600">
+                      <td className="py-2 text-slate-600" data-label="Fecha">
+                        {formatFecha(reserva.inicio)}
+                      </td>
+                      <td className="py-2 text-slate-600" data-label="Hora">
+                        {formatHora(reserva.inicio)}
+                      </td>
+                      <td className="py-2 text-slate-600" data-label="Profesional">
                         {nombreProfesional(reserva.profesional_id)}
                       </td>
-                      <td className="py-2 text-slate-600">
+                      <td className="py-2 text-slate-600" data-label="Dueno">
                         {reserva.clientes
                           ? `${reserva.clientes.nombres} ${reserva.clientes.apellidos}`
                           : '-'}
                       </td>
-                      <td className="py-2 text-slate-500">
+                      <td className="py-2 text-slate-500" data-label="Mascota">
                         {reserva.mascotas
                           ? `${reserva.mascotas.nombre} (${reserva.mascotas.especie})`
                           : '-'}
                       </td>
-                      <td className="py-2 text-slate-500">{reserva.motivo ?? '-'}</td>
-                      <td className="py-2 text-slate-500">{reserva.estado}</td>
+                      <td className="py-2 text-slate-500" data-label="Motivo">
+                        {reserva.motivo ?? '-'}
+                      </td>
+                      <td className="py-2 text-slate-500" data-label="Estado">
+                        {reserva.estado}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -788,7 +800,7 @@ export function AgendaPage() {
           {misReservas.length === 0 ? (
             <p className="text-sm text-slate-500">No tienes reservas registradas.</p>
           ) : (
-            <table className="w-full text-sm">
+            <table className="tabla-movil w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-400">
                   <th className="py-2">Fecha</th>
@@ -802,10 +814,16 @@ export function AgendaPage() {
               <tbody>
                 {misReservas.map((reserva) => (
                   <tr key={reserva.id} className="border-b border-slate-100">
-                    <td className="py-2 text-slate-600">{formatFechaHora(reserva.inicio)}</td>
-                    <td className="py-2 text-slate-600">{reserva.profesionales?.nombre ?? '-'}</td>
-                    <td className="py-2 text-slate-500">{reserva.mascotas?.nombre ?? '-'}</td>
-                    <td className="py-2">
+                    <td className="py-2 text-slate-600" data-label="Fecha">
+                      {formatFechaHora(reserva.inicio)}
+                    </td>
+                    <td className="py-2 text-slate-600" data-label="Profesional">
+                      {reserva.profesionales?.nombre ?? '-'}
+                    </td>
+                    <td className="py-2 text-slate-500" data-label="Mascota">
+                      {reserva.mascotas?.nombre ?? '-'}
+                    </td>
+                    <td className="py-2" data-label="Estado">
                       <span
                         className={`rounded px-1.5 py-0.5 text-xs ${
                           reserva.estado === 'confirmada'
@@ -818,8 +836,10 @@ export function AgendaPage() {
                         {reserva.estado}
                       </span>
                     </td>
-                    <td className="py-2 text-muted">{reserva.motivo ?? '-'}</td>
-                    <td className="py-2 text-right">
+                    <td className="py-2 text-muted" data-label="Motivo">
+                      {reserva.motivo ?? '-'}
+                    </td>
+                    <td className="py-2 text-right" data-label="">
                       {reserva.estado === 'confirmada' && (
                         <button
                           type="button"

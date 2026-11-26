@@ -151,7 +151,7 @@ export function DashboardPage() {
             </div>
           ) : (
             <div className="card overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="tabla-movil w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-400">
                     <th className="py-2">Producto</th>
@@ -164,11 +164,21 @@ export function DashboardPage() {
                 <tbody>
                   {misReservasProducto.map((reserva) => (
                     <tr key={reserva.id} className="border-b border-slate-100">
-                      <td className="py-2 text-slate-700">{reserva.producto_nombre}</td>
-                      <td className="py-2 pr-10 text-right">{reserva.cantidad}</td>
-                      <td className="py-2 text-slate-500">{formatFecha(reserva.created_at)}</td>
-                      <td className="py-2 text-slate-500">{formatFecha(reserva.expira_at)}</td>
-                      <td className="py-2 text-slate-500">{reserva.estado}</td>
+                      <td className="py-2 text-slate-700" data-label="Producto">
+                        {reserva.producto_nombre}
+                      </td>
+                      <td className="py-2 pr-10 text-right" data-label="Cantidad">
+                        {reserva.cantidad}
+                      </td>
+                      <td className="py-2 text-slate-500" data-label="Fecha reserva">
+                        {formatFecha(reserva.created_at)}
+                      </td>
+                      <td className="py-2 text-slate-500" data-label="Fecha retiro">
+                        {formatFecha(reserva.expira_at)}
+                      </td>
+                      <td className="py-2 text-slate-500" data-label="Estado">
+                        {reserva.estado}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -190,7 +200,7 @@ export function DashboardPage() {
             </div>
           ) : (
             <div className="card overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="tabla-movil w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-400">
                     <th className="py-2">Producto</th>
@@ -203,13 +213,21 @@ export function DashboardPage() {
                 <tbody>
                   {misEncargos.map((encargo) => (
                     <tr key={encargo.id} className="border-b border-slate-100">
-                      <td className="py-2 text-slate-700">{encargo.producto_nombre}</td>
-                      <td className="py-2 pr-10 text-right">{encargo.cantidad}</td>
-                      <td className="py-2 text-slate-500">{formatFecha(encargo.created_at)}</td>
-                      <td className="py-2 text-slate-500">
+                      <td className="py-2 text-slate-700" data-label="Producto">
+                        {encargo.producto_nombre}
+                      </td>
+                      <td className="py-2 pr-10 text-right" data-label="Cantidad">
+                        {encargo.cantidad}
+                      </td>
+                      <td className="py-2 text-slate-500" data-label="Fecha encargo">
+                        {formatFecha(encargo.created_at)}
+                      </td>
+                      <td className="py-2 text-slate-500" data-label="Fecha entrega">
                         {encargo.fecha_entrega ? formatFecha(encargo.fecha_entrega) : '-'}
                       </td>
-                      <td className="py-2 text-slate-500">{encargo.estado}</td>
+                      <td className="py-2 text-slate-500" data-label="Estado">
+                        {encargo.estado}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -254,7 +272,7 @@ export function DashboardPage() {
               {masVendidos.length === 0 ? (
                 <p className="text-sm text-slate-500">Sin datos en el rango.</p>
               ) : (
-                <table className="w-full text-sm">
+                <table className="tabla-movil w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-400">
                       <th className="py-2">Producto</th>
@@ -265,9 +283,15 @@ export function DashboardPage() {
                   <tbody>
                     {masVendidos.map((fila) => (
                       <tr key={fila.producto_id} className="border-b border-slate-100">
-                        <td className="py-2 text-slate-700">{fila.nombre}</td>
-                        <td className="py-2 text-right font-medium">{fila.unidades}</td>
-                        <td className="py-2 text-right">{formatCLP(fila.total)}</td>
+                        <td className="py-2 text-slate-700" data-label="Producto">
+                          {fila.nombre}
+                        </td>
+                        <td className="py-2 text-right font-medium" data-label="Unidades">
+                          {fila.unidades}
+                        </td>
+                        <td className="py-2 text-right" data-label="Monto">
+                          {formatCLP(fila.total)}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -282,7 +306,7 @@ export function DashboardPage() {
               {menosVendidos.length === 0 ? (
                 <p className="text-sm text-slate-500">Sin datos en el rango.</p>
               ) : (
-                <table className="w-full text-sm">
+                <table className="tabla-movil w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-400">
                       <th className="py-2">Producto</th>
@@ -294,12 +318,16 @@ export function DashboardPage() {
                   <tbody>
                     {menosVendidos.map((fila) => (
                       <tr key={fila.producto_id} className="border-b border-slate-100">
-                        <td className="py-2 text-slate-700">{fila.nombre}</td>
-                        <td className="py-2 text-right">{fila.unidades}</td>
-                        <td className="py-2 text-slate-500">
+                        <td className="py-2 text-slate-700" data-label="Producto">
+                          {fila.nombre}
+                        </td>
+                        <td className="py-2 text-right" data-label="Unid.">
+                          {fila.unidades}
+                        </td>
+                        <td className="py-2 text-slate-500" data-label="Ultima venta">
                           {fila.ultima_venta ? formatFecha(fila.ultima_venta) : 'sin ventas'}
                         </td>
-                        <td className="py-2 text-right">
+                        <td className="py-2 text-right" data-label="Dias detenido">
                           <span
                             className={`rounded px-1.5 py-0.5 text-xs ${
                               fila.dias_detenido >= 60
