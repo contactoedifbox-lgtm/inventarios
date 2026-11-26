@@ -376,7 +376,30 @@ export function InventarioPage() {
         ) : productos.length === 0 ? (
           <p className="text-sm text-slate-500">Sin productos.</p>
         ) : (
-          <table className="tabla-movil w-full text-sm">
+          <>
+            {/* Orden en movil: la cabecera de la tabla se oculta en pantallas chicas. */}
+            <div className="mb-3 flex flex-wrap items-center gap-2 md:hidden">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+                Ordenar por
+              </span>
+              <select
+                className="input w-auto"
+                value={ordenCampo}
+                onChange={(e) => setOrdenCampo(e.target.value as OrdenCampo)}
+              >
+                <option value="nombre">Producto</option>
+                <option value="stock">Stock</option>
+                <option value="precio">Precio</option>
+              </select>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setOrdenDir((dir) => (dir === 'asc' ? 'desc' : 'asc'))}
+              >
+                {ordenDir === 'asc' ? '↑ Menor a mayor' : '↓ Mayor a menor'}
+              </button>
+            </div>
+            <table className="tabla-movil w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-400">
                 <ThOrden
@@ -477,7 +500,8 @@ export function InventarioPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </>
         )}
       </div>
 
